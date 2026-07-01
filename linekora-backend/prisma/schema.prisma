@@ -1,0 +1,88 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  output          = "../node_modules/@prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  firebaseUid        String   @unique
+  email              String   @unique
+  displayName        String
+  role               Role     @default(WORKER)
+  phone              String?
+  location           String?
+  trustScore         Int      @default(50)
+  tier               String   @default("Free Account")
+  verificationStatus String   @default("unverified")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  jobsPosted      Job[]         @relation("EmployerJobs")
+  applications    Application[]
+  reviewsReceived Review[]      @relation("ReviewReceiver")
+  reviewsGiven    Review[]      @relation("ReviewGiver")
+  messagesSent    Message[]     @relation("MessageSender")
+  messagesReceived Message[]    @relation("MessageReceiver")
+}
+
+model Job {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  salary      String
+  location    String
+  category    String?
+  urgent      Boolean  @default(false)
+  status      String   @default("open") // open, accepted, completion_requested, completed
+  employerId  String
+  employer    User     @relation("EmployerJobs", fields: [employerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  applications Application[]
+}
+
+model Application {
+  id        Int      @id @default(autoincrement())
+  jobId     Int
+  job       Job      @relation(fields: [jobId], references: [id])
+  workerId  String
+  worker    User     @relation(fields: [workerId], references: [id])
+  status    String   @default("pending") // pending, accepted, rejected
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  rating     Int
+  comment    String?
+  reviewerId String
+  reviewer   User     @relation("ReviewGiver", fields: [reviewerId], references: [id])
+  targetId   String
+  target     User     @relation("ReviewReceiver", fields: [targetId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  content    String
+  read       Boolean  @default(false)
+  senderId   String
+  sender     User     @relation("MessageSender", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User     @relation("MessageReceiver", fields: [receiverId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+enum Role {
+  WORKER
+  COMPANY
+  EMPLOYER
+  ADMIN
+}

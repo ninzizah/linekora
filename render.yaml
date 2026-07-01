@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: linekora-api
+    runtime: node
+    rootDir: linekora-backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PORT
+        value: 5000
+    autoDeploy: true
