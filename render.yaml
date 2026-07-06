@@ -1,6 +1,7 @@
 services:
   - type: web
     name: linekora-api
+    plan: free
     runtime: node
     rootDir: linekora-backend
     buildCommand: npm install && npx prisma generate && npm run build
