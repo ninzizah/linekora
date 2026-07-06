@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Base user profile for all roles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["worker", "company", "individual"] },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "location": { "type": "string" },
+        "trustScore": { "type": "number" },
+        "verificationStatus": { "type": "string", "enum": ["none", "pending", "verified", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "WorkerProfile": {
+      "title": "Worker Profile",
+      "description": "Detailed profile for job seekers",
+      "type": "object",
+      "properties": {
+        "bio": { "type": "string" },
+        "skills": { "type": "array" },
+        "experience": { "type": "string" },
+        "certificates": { "type": "array" },
+        "portfolio": { "type": "array" },
+        "rating": { "type": "number" },
+        "jobsCompleted": { "type": "number" }
+      }
+    },
+    "Job": {
+      "title": "Job Posting",
+      "description": "A job opportunity posted by an employer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "salary": { "type": "string" },
+        "location": { "type": "string" },
+        "category": { "type": "string" },
+        "deadline": { "type": "string", "format": "date-time" },
+        "requirements": { "type": "string" },
+        "jobType": { "type": "string", "enum": ["full-time", "part-time", "contract", "on-demand"] },
+        "verificationRequired": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["open", "closed", "filled"] },
+        "postedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "postedBy"]
+    },
+    "VerificationRequest": {
+      "title": "Verification Request",
+      "description": "Identity verification submission",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "idFrontUrl": { "type": "string" },
+        "idBackUrl": { "type": "string" },
+        "selfieUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "adminNotes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Wallet": {
+      "title": "User Wallet",
+      "description": "Financial records and balance",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "balance": { "type": "number" },
+        "escrow": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account documents"
+    },
+    "/workerProfiles/{userId}": {
+      "schema": "WorkerProfile",
+      "description": "Detailed worker data"
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "All job postings"
+    },
+    "/verificationRequests/{requestId}": {
+      "schema": "VerificationRequest",
+      "description": "Identity verification queue"
+    },
+    "/wallets/{userId}": {
+      "schema": "Wallet",
+      "description": "Financial balances"
+    }
+  }
+}

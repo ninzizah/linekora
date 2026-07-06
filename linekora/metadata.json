@@ -1,0 +1,14 @@
+{
+  "name": "LINEKORA",
+  "description": "A trusted marketplace for verified jobs and workers, featuring biometric verification, escrow payments, and real-time chat.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "User Authentication",
+    "Real-time Chat",
+    "Identity Verification",
+    "Secure Payments"
+  ]
+}

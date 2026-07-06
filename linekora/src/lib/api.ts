@@ -1,0 +1,139 @@
+/**
+ * Linekora API Service
+ * Central place for all HTTP calls to our Express/PostgreSQL backend.
+ */
+
+const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+// ─── USERS ───────────────────────────────────────────────────────────────────
+
+export interface UserProfile {
+  id: string;
+  firebaseUid: string;
+  email: string;
+  displayName: string;
+  role: 'WORKER' | 'COMPANY' | 'EMPLOYER' | 'ADMIN';
+  phone?: string;
+  location?: string;
+  trustScore: number;
+  tier: string;
+  verificationStatus: string;
+  createdAt: string;
+}
+
+export const getUser = (firebaseUid: string) =>
+  request<UserProfile>(`/users/${firebaseUid}`);
+
+export const upsertUser = (data: Partial<UserProfile>) =>
+  request<UserProfile>('/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const updateUser = (id: string, data: Partial<UserProfile>) =>
+  request<UserProfile>(`/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+export const getUsers = () => request<UserProfile[]>('/users');
+
+// ─── JOBS ─────────────────────────────────────────────────────────────────────
+
+export interface Job {
+  id: number;
+  title: string;
+  description: string;
+  salary: string;
+  location: string;
+  category?: string;
+  urgent: boolean;
+  status: string;
+  employerId: string;
+  employer?: Pick<UserProfile, 'id' | 'displayName' | 'email' | 'phone'>;
+  createdAt: string;
+}
+
+export const getJobs = (params?: { urgent?: boolean; category?: string; status?: string }) => {
+  const qs = new URLSearchParams(
+    Object.entries(params || {}).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+  ).toString();
+  return request<Job[]>(`/jobs${qs ? `?${qs}` : ''}`);
+};
+
+export const createJob = (data: Omit<Job, 'id' | 'createdAt' | 'employer'>) =>
+  request<Job>('/jobs', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateJob = (id: number, data: Partial<Job>) =>
+  request<Job>(`/jobs/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+// ─── APPLICATIONS ─────────────────────────────────────────────────────────────
+
+export interface Application {
+  id: number;
+  jobId: number;
+  workerId: string;
+  status: string;
+  createdAt: string;
+  job?: Job;
+  worker?: Pick<UserProfile, 'id' | 'displayName' | 'trustScore' | 'verificationStatus'>;
+}
+
+export const getApplications = (params: { workerId?: string; jobId?: number }) => {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+  ).toString();
+  return request<Application[]>(`/applications${qs ? `?${qs}` : ''}`);
+};
+
+export const createApplication = (data: { jobId: number; workerId: string }) =>
+  request<Application>('/applications', { method: 'POST', body: JSON.stringify(data) });
+
+// ─── MESSAGES ─────────────────────────────────────────────────────────────────
+
+export interface Message {
+  id: number;
+  content: string;
+  read: boolean;
+  senderId: string;
+  receiverId: string;
+  createdAt: string;
+  sender?: { id: string; displayName: string };
+  receiver?: { id: string; displayName: string };
+}
+
+export const getMessages = (userId: string) =>
+  request<Message[]>(`/messages?userId=${userId}`);
+
+export const sendMessage = (data: { content: string; senderId: string; receiverId: string }) =>
+  request<Message>('/messages', { method: 'POST', body: JSON.stringify(data) });
+
+// ─── REVIEWS ─────────────────────────────────────────────────────────────────
+
+export interface Review {
+  id: number;
+  rating: number;
+  comment?: string;
+  reviewerId: string;
+  targetId: string;
+  createdAt: string;
+  reviewer?: { displayName: string; verificationStatus: string };
+}
+
+export const getReviews = (targetId: string) =>
+  request<Review[]>(`/reviews/${targetId}`);
+
+export const createReview = (data: { rating: number; comment?: string; reviewerId: string; targetId: string }) =>
+  request<Review>('/reviews', { method: 'POST', body: JSON.stringify(data) });
