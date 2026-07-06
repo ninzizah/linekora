@@ -31,8 +31,9 @@ app.get('/api/users', async (_req, res) => {
       orderBy: { createdAt: 'desc' },
     });
     res.json(users);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch users' });
+  } catch (error: any) {
+    console.error('Failed to fetch users:', error);
+    res.status(500).json({ error: 'Failed to fetch users', details: error.message || String(error) });
   }
 });
 
