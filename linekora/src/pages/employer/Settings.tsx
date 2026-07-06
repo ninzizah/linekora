@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, Bell, Shield, CreditCard, LogOut, Save, CheckCircle, 
-  X, AlertTriangle, AlertCircle, Sparkles, Check, Phone, FileCheck
+  X, AlertTriangle, AlertCircle, Sparkles, Check, Phone, FileCheck, Camera
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
@@ -20,12 +20,15 @@ interface Toast {
 export default function EmployerSettings() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile Inputs State
   const [displayName, setDisplayName] = useState('');
   const [location, setLocation] = useState('');
   const [phone, setPhone] = useState('+250 788 345 612');
   const [bio, setBio] = useState('Home owner based in Kiyovi looking for gardening, cleaning and plumbing tasks assistance.');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [uploadError, setUploadError] = useState('');
   
   // Verification states
   const [isVerified, setIsVerified] = useState(false);
@@ -50,7 +53,6 @@ export default function EmployerSettings() {
       setLocation(profile.location || 'Nyarugenge, Kiyovu');
     }
 
-    // Load any local storage overrides if present
     const savedOverrides = localStorage.getItem('employer_profile_overrides');
     if (savedOverrides) {
       try {
@@ -68,7 +70,25 @@ export default function EmployerSettings() {
         console.error('Error parsing profile settings overrides', e);
       }
     }
+
+    // Load avatar
+    const key = profile?.uid ? `linekora_profile_picture_${profile.uid}` : `linekora_profile_picture_guest`;
+    const saved = localStorage.getItem(key);
+    if (saved) setAvatarUrl(saved);
   }, [profile]);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('Photo must be smaller than 2MB.');
+      return;
+    }
+    setUploadError('');
+    const reader = new FileReader();
+    reader.onload = (ev) => setAvatarUrl(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const addToast = (title: string, message: string, type: 'success' | 'info' | 'error' = 'success') => {
     const id = Date.now().toString();
@@ -83,42 +103,31 @@ export default function EmployerSettings() {
     navigate('/');
   };
 
-  // Profile Save
   const handleSaveChanges = () => {
     if (!displayName.trim()) {
       addToast('Validation Failure ❌', 'Display Name cannot be blank.', 'error');
       return;
     }
-    if (!location.trim()) {
-      addToast('Validation Failure ❌', 'Work site location location must be specified.', 'error');
-      return;
-    }
 
     setSaving(true);
-    
-    // Save to local storage for runtime persistence across screens
     const payload = {
-      displayName,
-      location,
-      phone,
-      bio,
-      isVerified,
-      notifyApps,
-      notifyMsgs,
-      notifyEscrow,
-      notifyAlerts
+      displayName, location, phone, bio, isVerified,
+      notifyApps, notifyMsgs, notifyEscrow, notifyAlerts
     };
-    
     localStorage.setItem('employer_profile_overrides', JSON.stringify(payload));
-    
-    // Set simulated updated user object in local storage
     localStorage.setItem('current_username', displayName);
     localStorage.setItem('current_user_location', location);
 
+    // Save avatar
+    const key = profile?.uid ? `linekora_profile_picture_${profile.uid}` : `linekora_profile_picture_guest`;
+    if (avatarUrl) {
+      localStorage.setItem(key, avatarUrl);
+    }
+
     setTimeout(() => {
       setSaving(false);
-      addToast('Settings Preserved 💾', 'Your employer profile updates have been fully synced to LINEKORA database nodes.', 'success');
-    }, 1200);
+      addToast('Settings Saved 💾', 'Your profile updates have been saved.', 'success');
+    }, 800);
   };
 
   // Mock Verification process
@@ -178,8 +187,52 @@ export default function EmployerSettings() {
           </div>
         </header>
 
-        <div className="bg-white rounded-[3rem] p-6 md:p-10 border border-gray-100 shadow-xl space-y-10">
+        <div className="bg-white rounded-3xl sm:rounded-[3rem] p-5 sm:p-10 border border-gray-100 shadow-xl space-y-10">
           
+          {/* AVATAR / LOGO UPLOAD */}
+          <section className="space-y-4">
+            <h3 className="text-lg font-black text-gray-900 font-sans tracking-tight flex items-center gap-2.5 uppercase border-b border-gray-50 pb-3">
+              <Camera size={20} className="text-blue-600" />
+              Profile Photo / Logo
+            </h3>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              <div className="relative">
+                <div className="h-24 w-24 rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-blue-50 shrink-0">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
+                      <User size={36} className="text-blue-400" />
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-2 -right-2 h-9 w-9 bg-blue-600 text-white rounded-xl shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all border-2 border-white"
+                >
+                  <Camera size={16} />
+                </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl('')}
+                    className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-all border-2 border-white"
+                  >
+                    <X size={10} />
+                  </button>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+              </div>
+              <div>
+                <p className="text-sm font-black text-gray-900">{displayName}</p>
+                <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mt-0.5">Individual Employer</p>
+                <p className="text-xs text-gray-400 mt-2">Tap the <span className="text-blue-600 font-bold">camera icon</span> to upload your photo or company logo.<br/>Max: 2MB. JPG, PNG, or WEBP.</p>
+                {uploadError && <p className="text-xs text-red-500 font-bold mt-1">{uploadError}</p>}
+              </div>
+            </div>
+          </section>
+
           {/* BIO SECTION & CORE INFO */}
           <section className="space-y-6">
             <h3 className="text-lg font-black text-gray-905 font-sans tracking-tight flex items-center gap-2.5 uppercase border-b border-gray-50 pb-3">

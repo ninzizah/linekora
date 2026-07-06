@@ -18,6 +18,8 @@ model User {
   trustScore         Int      @default(50)
   tier               String   @default("Free Account")
   verificationStatus String   @default("unverified")
+  avatarUrl          String?  // URL or base64 for profile picture
+  bio                String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

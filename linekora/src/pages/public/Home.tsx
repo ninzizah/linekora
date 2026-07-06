@@ -29,7 +29,7 @@ export default function Home() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-20 pb-32">
+      <section className="relative overflow-hidden pt-12 pb-20 sm:pt-20 sm:pb-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
             <motion.div 
@@ -41,14 +41,14 @@ export default function Home() {
                 <Shield size={16} />
                 <span className="font-sans text-sm font-bold tracking-tight">Biometric Verification Enabled</span>
               </div>
-              <h1 className="mt-8 font-sans text-5xl font-extrabold tracking-tight text-gray-900 lg:text-7xl">
+              <h1 className="mt-6 font-sans text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-gray-900 leading-tight">
                 Find trusted work. <br/>
                 <span className="text-blue-600">Hire trusted people.</span>
               </h1>
-              <p className="mt-6 font-sans text-xl text-gray-600 leading-relaxed max-w-xl">
+              <p className="mt-5 font-sans text-base sm:text-xl text-gray-600 leading-relaxed max-w-xl">
                 LINEKORA is Africa's most secure marketplace connecting verified workers with vetted employers. Escrow payments, verified identities, and total peace of mind.
               </p>
-              <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <Link to="/register" className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-8 py-4 font-sans text-lg font-bold text-white shadow-xl shadow-blue-200 transition-all hover:bg-blue-700 hover:-translate-y-1">
                   Find Jobs
                   <ChevronRight size={20} />
@@ -57,11 +57,11 @@ export default function Home() {
                   Hire Workers
                 </Link>
               </div>
-              <div className="mt-12 grid grid-cols-2 gap-8 md:grid-cols-4">
+              <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
                 {stats.map((stat, i) => (
                   <div key={i}>
-                    <p className="font-sans text-2xl font-black text-gray-900">{stat.value}</p>
-                    <p className="font-sans text-sm text-gray-500 font-medium">{stat.label}</p>
+                    <p className="font-sans text-xl sm:text-2xl font-black text-gray-900">{stat.value}</p>
+                    <p className="font-sans text-xs sm:text-sm text-gray-500 font-medium">{stat.label}</p>
                   </div>
                 ))}
               </div>
@@ -87,7 +87,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              {/* Decorative elements */}
               <div className="absolute -top-12 -right-12 h-64 w-64 rounded-full bg-blue-100/50 mix-blend-multiply filter blur-3xl"></div>
               <div className="absolute -bottom-12 -left-12 h-64 w-64 rounded-full bg-indigo-100/50 mix-blend-multiply filter blur-3xl"></div>
             </motion.div>
