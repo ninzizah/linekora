@@ -52,6 +52,55 @@ export default function WorkerDashboard() {
     setTimeout(() => {
       // Simulate SMS alert blast sending and claim job
       const matchedJob = urgentJobs.find(job => job.id === id);
+      if (matchedJob) {
+        // Load existing contracts
+        let contractList: any[] = [];
+        const cachedContracts = localStorage.getItem('linekora_contracts');
+        if (cachedContracts) {
+          try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
+        }
+
+        const exists = contractList.some(c => c.id === id);
+        if (!exists) {
+          const newContract: any = {
+            id: matchedJob.id,
+            jobTitle: matchedJob.title,
+            company: matchedJob.company || 'Private Client',
+            salary: matchedJob.salary,
+            location: matchedJob.location,
+            status: 'accepted',
+            workerId: 'worker_demo_1',
+            workerName: 'Shema Honore',
+            employerId: 'employer_demo_1',
+            employerName: matchedJob.company || 'Private Client',
+            daysSinceRequest: 0,
+            rating: 0,
+            review: '',
+            commissionPaidWorker: false,
+            commissionPaidEmployer: false,
+            date: 'Active Shift Contract',
+            logo: matchedJob.logo || 'PJ',
+            phone: matchedJob.phone || '+250 780 000 000'
+          };
+          contractList.push(newContract);
+          localStorage.setItem('linekora_contracts', JSON.stringify(contractList));
+        }
+
+        // Push alert to employer
+        const existingAlerts = localStorage.getItem('system_alerts') || '[]';
+        let alertsArr = [];
+        try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
+        alertsArr.push({
+          id: Date.now().toString(),
+          category: 'success',
+          title: '⚡ Hot Task Claimed!',
+          details: `Worker Shema Honore claimed your hot task "${matchedJob.title}". Contract is now active.`,
+          time: 'Just now',
+          read: false
+        });
+        localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
+      }
+
       setUrgentJobs(prev => {
         const updated = prev.filter(job => job.id !== id);
         localStorage.setItem('urgent_jobs', JSON.stringify(updated));

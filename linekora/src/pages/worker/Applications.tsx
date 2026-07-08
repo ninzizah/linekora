@@ -111,6 +111,34 @@ export default function WorkerApplications() {
     setIsProcessing(true);
     setConfirmingAction(null);
     setTimeout(() => {
+      // Mark matching contract in linekora_contracts as rejected
+      let contractList: any[] = [];
+      const cachedContracts = localStorage.getItem('linekora_contracts');
+      if (cachedContracts) {
+        try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
+      }
+      const updatedContracts = contractList.map(c => 
+        c.id === id ? { ...c, status: 'rejected' } : c
+      );
+      localStorage.setItem('linekora_contracts', JSON.stringify(updatedContracts));
+
+      // Push alert
+      const declinedApp = apps.find(ap => ap.id === id);
+      if (declinedApp) {
+        const existingAlerts = localStorage.getItem('system_alerts') || '[]';
+        let alertsArr = [];
+        try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
+        alertsArr.push({
+          id: Date.now().toString(),
+          category: 'urgent',
+          title: '❌ Job Offer Declined',
+          details: `Worker Shema Honore declined your job offer for "${declinedApp.jobTitle}".`,
+          time: 'Just now',
+          read: false
+        });
+        localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
+      }
+
       const updated = apps.map(ap => 
         ap.id === id ? { ...ap, status: 'rejected' as const } : ap
       );
@@ -145,6 +173,59 @@ export default function WorkerApplications() {
   const handleAcceptOffer = (id: number) => {
     setIsProcessing(true);
     setTimeout(() => {
+      const acceptedApp = apps.find(ap => ap.id === id);
+      if (acceptedApp) {
+        let contractList: any[] = [];
+        const cachedContracts = localStorage.getItem('linekora_contracts');
+        if (cachedContracts) {
+          try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
+        }
+
+        const exists = contractList.some(c => c.id === id);
+        if (!exists) {
+          const newContract: any = {
+            id: acceptedApp.id,
+            jobTitle: acceptedApp.jobTitle,
+            company: acceptedApp.company,
+            salary: acceptedApp.salary,
+            location: acceptedApp.location,
+            status: 'accepted',
+            workerId: 'worker_demo_1',
+            workerName: 'Shema Honore',
+            employerId: 'employer_demo_1',
+            employerName: acceptedApp.company,
+            daysSinceRequest: 0,
+            rating: 0,
+            review: '',
+            commissionPaidWorker: false,
+            commissionPaidEmployer: false,
+            date: 'Active Shift Contract',
+            logo: acceptedApp.logo,
+            phone: acceptedApp.phone
+          };
+          contractList.push(newContract);
+        } else {
+          contractList = contractList.map(c => 
+            c.id === id ? { ...c, status: 'accepted', date: 'Active Shift Contract' } : c
+          );
+        }
+        localStorage.setItem('linekora_contracts', JSON.stringify(contractList));
+
+        // Push alert
+        const existingAlerts = localStorage.getItem('system_alerts') || '[]';
+        let alertsArr = [];
+        try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
+        alertsArr.push({
+          id: Date.now().toString(),
+          category: 'success',
+          title: '🤝 Job Offer Approved!',
+          details: `Worker Shema Honore approved your job offer for "${acceptedApp.jobTitle}". Contract is now active.`,
+          time: 'Just now',
+          read: false
+        });
+        localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
+      }
+
       const updated = apps.map(ap => 
         ap.id === id ? { ...ap, status: 'accepted' as const, date: 'Active Shift Contract' } : ap
       );

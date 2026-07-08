@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Search, FileText, MessageSquare, 
   ShieldCheck, Star, Wallet, Settings, LogOut, Menu, X, 
   Briefcase, PlusSquare, Users, ShieldAlert, Shield, User, TrendingUp,
-  Bell, Trash, Check, CheckCheck, Inbox, ChevronRight, Sparkles, Clock,
+  Bell, Trash, Inbox, ChevronRight, Sparkles,
   Home
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
@@ -34,11 +34,24 @@ interface ChatPreview {
   unread: boolean;
 }
 
+// Map DB role (uppercase) → layout key (lowercase)
+function getRoleKey(role?: string | null): 'worker' | 'company' | 'individual' | 'admin' {
+  if (!role) return 'individual';
+  const map: Record<string, 'worker' | 'company' | 'individual' | 'admin'> = {
+    WORKER: 'worker', worker: 'worker',
+    COMPANY: 'company', company: 'company',
+    EMPLOYER: 'individual', individual: 'individual', employer: 'individual',
+    ADMIN: 'admin', admin: 'admin',
+  };
+  return map[role] ?? 'individual';
+}
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { profile: user, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const roleKey = getRoleKey(user?.role);
 
   // Unified Notification & Message Panel state
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -53,7 +66,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (!user?.role) return;
 
     // Generate alerts and messages according to current logged-in role
-    if (user.role === 'worker') {
+    if (roleKey === 'worker') {
       setAlerts([
         { id: 'a1', category: 'urgent', title: '🚨 Emergency Gig Alert', details: 'Hospitality assistant required at Gishushu, Kigali. RWF 14,000/day.', time: '5m ago', read: false },
         { id: 'a2', category: 'success', title: '✅ Application Approved', details: 'SafeGuard Sec approved your shift credentials.', time: '1h ago', read: false },
@@ -65,7 +78,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         { id: 'w2', sender: 'SafeGuard Sec', role: 'Company Admin', body: 'Your shifts for next week have been approved.', time: '3h ago', unread: false },
         { id: 'w3', sender: 'Tech Hub Solutions', role: 'HR Manager', body: "We viewed your profile and would like to interview you.", time: '1d ago', unread: false }
       ]);
-    } else if (user.role === 'company') {
+    } else if (roleKey === 'company') {
       setAlerts([
         { id: 'c1', category: 'urgent', title: '👤 New Worker Application', details: 'John Musoke (CCTV Specialist) applied for Night Guard.', time: '3m ago', read: false },
         { id: 'c2', category: 'success', title: '🛡️ Business Verified', details: 'Your corporate license was approved. Premium badge active.', time: '4h ago', read: false },
@@ -159,7 +172,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ]
   };
 
-  const currentMenuItems = user?.role ? (menuItems[user.role as keyof typeof menuItems] || []) : [];
+  const currentMenuItems = menuItems[roleKey] || [];
 
   // Notifications calculation helper
   const unreadAlertsCount = alerts.filter(a => !a.read).length;
@@ -183,15 +196,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleChatClick = (id: string) => {
     setChats(prev => prev.map(c => c.id === id ? { ...c, unread: false } : c));
     setIsPanelOpen(false);
-    
-    // Route based on role
-    if (user?.role === 'worker') {
-      navigate('/dashboard/worker/messages');
-    } else if (user?.role === 'company') {
-      navigate('/dashboard/company/messages');
-    } else {
-      navigate('/dashboard/employer/messages');
-    }
+    const routes: Record<string, string> = {
+      worker: '/dashboard/worker/messages',
+      company: '/dashboard/company/messages',
+      individual: '/dashboard/employer/messages',
+      admin: '/admin',
+    };
+    navigate(routes[roleKey] || '/dashboard/employer/messages');
+  };
+
+  const getSettingsPath = () => {
+    const paths: Record<string, string> = {
+      worker: '/dashboard/worker/settings',
+      company: '/dashboard/company/settings',
+      individual: '/dashboard/employer/settings',
+      admin: '/admin',
+    };
+    return paths[roleKey] || '/';
   };
 
   const getAvatarUrl = () => {
@@ -250,31 +271,37 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </nav>
 
           <div className="mt-auto pt-6 border-t border-gray-100">
-            <div className="flex items-center gap-3 px-4 py-3 mb-4">
-              <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0">
+            {/* Clickable avatar → goes to Settings */}
+            <Link
+              to={getSettingsPath()}
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl hover:bg-gray-50 transition-all group"
+            >
+              <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-blue-100 shadow-sm shrink-0 group-hover:border-blue-400 transition-colors">
                 <img 
-                  src={getAvatarUrl() || null} 
+                  src={getAvatarUrl()}
                   alt={user?.displayName || 'Avatar'} 
                   className="h-full w-full object-cover"
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <div className="overflow-hidden">
+              <div className="overflow-hidden flex-1">
                 <p className="text-sm font-bold text-gray-900 truncate font-sans">
-                  {user?.role === 'worker' ? (localStorage.getItem('worker_profile_name') || user?.displayName || 'User') :
-                   user?.role === 'company' ? (localStorage.getItem('company_display_name_override') || user?.displayName || 'User') :
+                  {roleKey === 'worker' ? (localStorage.getItem('worker_profile_name') || user?.displayName || 'User') :
+                   roleKey === 'company' ? (localStorage.getItem('company_display_name_override') || user?.displayName || 'User') :
                    (user?.displayName || 'User')}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-1.5 py-0.5 rounded ${
-                    user?.role === 'company' ? 'bg-blue-600 text-white' : 
-                    user?.role === 'worker' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'
+                    roleKey === 'company' ? 'bg-blue-600 text-white' : 
+                    roleKey === 'worker' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'
                   }`}>
                     {user?.role || 'Member'}
                   </span>
+                  <span className="text-[8px] text-gray-400 font-bold group-hover:text-blue-500 transition-colors">→ Settings</span>
                 </div>
               </div>
-            </div>
+            </Link>
             <button 
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-sans font-bold text-sm text-red-500 hover:bg-red-50 transition-all"
@@ -288,18 +315,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-10 relative">
-          <button className="lg:hidden text-gray-500" onClick={() => setIsSidebarOpen(true)}>
+        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 lg:px-10 relative z-[100]">
+          <button className="lg:hidden text-gray-500 p-1" onClick={() => setIsSidebarOpen(true)}>
             <Menu size={24} />
           </button>
-          <div className="flex items-center gap-4 ml-auto">
+          <div className="flex items-center gap-3 ml-auto">
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-bold border border-yellow-100">
               <ShieldAlert size={14} />
               Trust Score: {user?.trustScore || 0}%
             </div>
-            <div className="h-8 w-px bg-gray-100 mx-2" />
+            <div className="hidden md:block h-8 w-px bg-gray-100" />
             
-            {/* INBOX/NOTIFICATION INTEGRATIVE POPUP TOGGIER */}
+            {/* INBOX/NOTIFICATION INTEGRATIVE POPUP TOGGLER */}
             <div className="relative" ref={panelRef}>
               <button 
                 id="header-notification-bell-btn"
@@ -314,6 +341,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 )}
               </button>
 
+              {/* Mobile backdrop when panel open */}
+              {isPanelOpen && (
+                <div
+                  className="fixed inset-0 z-[190] bg-black/30 md:hidden"
+                  onClick={() => setIsPanelOpen(false)}
+                />
+              )}
+
               <AnimatePresence>
                 {isPanelOpen && (
                   <motion.div 
@@ -321,7 +356,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -10 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }}
-                    className="absolute right-0 mt-3 w-80 md:w-96 bg-white rounded-3xl border border-gray-150 shadow-2xl z-55 overflow-hidden"
+                    className="fixed md:absolute right-0 left-0 md:left-auto bottom-0 md:bottom-auto top-auto md:top-full md:mt-3 w-full md:w-96 bg-white md:rounded-3xl rounded-t-3xl border border-gray-150 shadow-2xl z-[200] overflow-hidden"
                   >
                     <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                       <div>
@@ -440,13 +475,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       <button 
                         onClick={() => {
                           setIsPanelOpen(false);
-                          if (user?.role === 'worker') {
-                            navigate('/dashboard/worker/messages');
-                          } else if (user?.role === 'company') {
-                            navigate('/dashboard/company/messages');
-                          } else {
-                            navigate('/dashboard/employer/messages');
-                          }
+                          const routes: Record<string, string> = {
+                            worker: '/dashboard/worker/messages',
+                            company: '/dashboard/company/messages',
+                            individual: '/dashboard/employer/messages',
+                            admin: '/admin',
+                          };
+                          navigate(routes[roleKey] || '/dashboard/employer/messages');
                         }}
                         className="text-[10px] font-black text-blue-600 hover:text-blue-750 uppercase tracking-widest flex items-center gap-1 transition-all font-sans"
                       >
@@ -458,6 +493,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Clickable Header Avatar for direct Settings access on mobile & desktop */}
+            <Link 
+              to={getSettingsPath()}
+              className="h-9 w-9 rounded-full overflow-hidden border border-gray-200 hover:border-blue-500 transition-colors shrink-0 flex items-center justify-center bg-white"
+              title="Go to Settings"
+            >
+              <img 
+                src={getAvatarUrl()} 
+                alt="Avatar" 
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </Link>
           </div>
         </header>
 

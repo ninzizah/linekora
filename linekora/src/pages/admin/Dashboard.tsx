@@ -253,6 +253,16 @@ export default function AdminDashboard() {
         const realUsers: UserAccount[] = [];
         const realPendingVerifications: any[] = [];
 
+        // Read uploaded verification docs from localStorage
+        let workerDocs: any = null;
+        let employerDocs: any = null;
+        try {
+          const wd = localStorage.getItem('worker_verification_docs');
+          const ed = localStorage.getItem('employer_verification_docs');
+          if (wd) workerDocs = JSON.parse(wd);
+          if (ed) employerDocs = JSON.parse(ed);
+        } catch (e) {}
+
         apiUsers.forEach((u) => {
           if (u.role === 'ADMIN') return;
           realUsers.push({
@@ -267,16 +277,24 @@ export default function AdminDashboard() {
             verificationStatus: u.verificationStatus as any,
           });
           if (u.verificationStatus === 'pending') {
+            const isWorker = u.role === 'WORKER';
+            const docs = isWorker ? workerDocs : employerDocs;
             realPendingVerifications.push({
               id: `v_${u.id}`,
               user: u.displayName,
-              type: u.role === 'WORKER' ? 'Worker' : u.role === 'COMPANY' ? 'Company' : 'Individual',
-              date: 'Recently',
+              type: isWorker ? 'Worker' : u.role === 'COMPANY' ? 'Company' : 'Individual',
+              date: docs?.date || 'Recently',
               status: 'pending',
-              idType: 'National ID / Passport',
+              idType: isWorker ? 'National ID / Passport' : 'ID Document',
               details: `Uploaded documents waiting for approval. Email: ${u.email}`,
               code: `UID-${u.id.slice(0, 4).toUpperCase()}`,
               userId: u.id,
+              // Attach actual uploaded images
+              frontId: docs?.frontId || null,
+              backId: docs?.backId || null,
+              selfie: docs?.capturedPhoto || null,
+              nationalIdNum: docs?.nationalIdNum || docs?.idNumber || null,
+              selectedTier: docs?.selectedTier || null,
             });
           }
         });
@@ -1014,43 +1032,99 @@ export default function AdminDashboard() {
               </h3>
 
               {selectedVerification ? (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-red-950/20 text-red-400 border border-red-900/50 rounded-lg flex items-center justify-center font-black">
+                    <div className="h-10 w-10 bg-red-950/20 text-red-400 border border-red-900/50 rounded-lg flex items-center justify-center font-black text-[9px]">
                       {selectedVerification.code}
                     </div>
                     <div>
                       <h4 className="font-black text-white text-sm leading-none">{selectedVerification.user}</h4>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Pending {selectedVerification.type} Files</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Pending {selectedVerification.type} Verification</p>
                     </div>
                   </div>
 
-                  {/* Beautiful interactive legal/gov ID document rendering */}
-                  <div className="py-2">
-                    <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block mb-2 leading-none">Scanned Identity Artifact</span>
-                    <IdentityCardVisual 
-                      name={selectedVerification.user}
-                      type={selectedVerification.type}
-                      idType={selectedVerification.idType}
-                      details={selectedVerification.details}
-                      code={selectedVerification.code}
-                    />
-                  </div>
+                  {/* Real uploaded ID document images */}
+                  {(selectedVerification.frontId || selectedVerification.backId) ? (
+                    <div className="space-y-3">
+                      <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block leading-none">Uploaded ID Documents</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        {selectedVerification.frontId ? (
+                          <div className="space-y-1">
+                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">Front ID</p>
+                            <img
+                              src={selectedVerification.frontId}
+                              alt="Front ID"
+                              className="w-full h-28 object-cover rounded-xl border border-gray-800 bg-gray-950"
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-28 rounded-xl border border-dashed border-gray-800 bg-gray-950 flex items-center justify-center">
+                            <p className="text-[9px] text-gray-600 font-bold uppercase">No Front ID</p>
+                          </div>
+                        )}
+                        {selectedVerification.backId ? (
+                          <div className="space-y-1">
+                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">Back ID</p>
+                            <img
+                              src={selectedVerification.backId}
+                              alt="Back ID"
+                              className="w-full h-28 object-cover rounded-xl border border-gray-800 bg-gray-950"
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-28 rounded-xl border border-dashed border-gray-800 bg-gray-950 flex items-center justify-center">
+                            <p className="text-[9px] text-gray-600 font-bold uppercase">No Back ID</p>
+                          </div>
+                        )}
+                      </div>
+                      {selectedVerification.selfie && (
+                        <div className="space-y-1">
+                          <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">Biometric Selfie</p>
+                          <img
+                            src={selectedVerification.selfie}
+                            alt="Biometric Selfie"
+                            referrerPolicy="no-referrer"
+                            className="w-24 h-24 object-cover rounded-2xl border border-gray-800 bg-gray-950"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="py-3">
+                      <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block mb-2 leading-none">Scanned Identity Artifact</span>
+                      <IdentityCardVisual 
+                        name={selectedVerification.user}
+                        type={selectedVerification.type}
+                        idType={selectedVerification.idType}
+                        details={selectedVerification.details}
+                        code={selectedVerification.code}
+                      />
+                    </div>
+                  )}
 
-                  <div className="space-y-4 text-xs leading-relaxed">
-                    <div className="p-4 bg-gray-950 rounded-xl border border-gray-900">
+                  <div className="space-y-3 text-xs leading-relaxed">
+                    {selectedVerification.nationalIdNum && (
+                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">National ID Number</span>
+                        <p className="font-mono font-black text-white tracking-widest">{selectedVerification.nationalIdNum}</p>
+                      </div>
+                    )}
+
+                    <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
                       <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Uploaded Document Type</span>
                       <p className="font-black text-white">{selectedVerification.idType}</p>
                     </div>
 
-                    <div className="p-4 bg-gray-950 rounded-xl border border-gray-900">
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">System Audit Details</span>
-                      <p className="text-gray-400 font-sans font-medium">{selectedVerification.details}</p>
-                    </div>
+                    {selectedVerification.selectedTier && (
+                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Requested Verification Tier</span>
+                        <p className="font-black text-orange-400 uppercase tracking-wider">{selectedVerification.selectedTier}</p>
+                      </div>
+                    )}
 
-                    <div className="p-4 bg-gray-950 rounded-xl border border-gray-900">
+                    <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
                       <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Submission Timestamp</span>
-                      <p className="text-gray-400 font-mono font-bold">{selectedVerification.date} (Automated check passed)</p>
+                      <p className="text-gray-400 font-mono font-bold">{selectedVerification.date}</p>
                     </div>
                   </div>
 

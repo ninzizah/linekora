@@ -3,7 +3,19 @@
  * Central place for all HTTP calls to our Express/PostgreSQL backend.
  */
 
-const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
+const getApiBase = () => {
+  const envUrl = (import.meta as any).env?.VITE_API_URL;
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl;
+  }
+  // If we are testing on a mobile phone / local network device, use the current page's hostname
+  if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return `http://${window.location.hostname}:5000/api`;
+  }
+  return envUrl || 'http://localhost:5000/api';
+};
+
+const API_BASE = getApiBase();
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

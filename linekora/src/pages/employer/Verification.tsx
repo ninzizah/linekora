@@ -26,6 +26,17 @@ export default function EmployerVerification() {
 
   const saveVerificationToApi = async () => {
     try {
+      // Save full verification artifacts to localStorage so admin has access to view them
+      localStorage.setItem('employer_verification_docs', JSON.stringify({
+        frontId,
+        backId,
+        idNumber,
+        sector,
+        cell,
+        capturedPhoto,
+        date: new Date().toLocaleString()
+      }));
+
       if (profile?.id) {
         await updateUser(profile.id, {
           verificationStatus: 'pending',
@@ -269,6 +280,7 @@ export default function EmployerVerification() {
                         className="hidden" 
                         ref={frontInputRef} 
                         onChange={handleFrontIdChange} 
+                        onClick={(e) => e.stopPropagation()}
                       />
                       {frontId ? (
                         <>
@@ -286,7 +298,7 @@ export default function EmployerVerification() {
                         </>
                       )}
                     </div>
-
+ 
                     <div 
                       onClick={() => backInputRef.current?.click()}
                       className="border-2 border-dashed border-gray-150 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-600 transition-colors group bg-gray-50/50 relative overflow-hidden min-h-[140px]"
@@ -297,6 +309,7 @@ export default function EmployerVerification() {
                         className="hidden" 
                         ref={backInputRef} 
                         onChange={handleBackIdChange} 
+                        onClick={(e) => e.stopPropagation()}
                       />
                       {backId ? (
                         <>

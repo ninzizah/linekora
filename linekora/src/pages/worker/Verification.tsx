@@ -27,6 +27,16 @@ export default function WorkerVerification() {
 
   const saveVerificationToApi = async () => {
     try {
+      // Save full verification artifacts to localStorage so admin has access to view them
+      localStorage.setItem('worker_verification_docs', JSON.stringify({
+        frontId,
+        backId,
+        nationalIdNum,
+        capturedPhoto,
+        selectedTier,
+        date: new Date().toLocaleString()
+      }));
+
       if (profile?.id) {
         await updateUser(profile.id, {
           verificationStatus: 'pending',
@@ -331,6 +341,7 @@ export default function WorkerVerification() {
                         className="hidden" 
                         ref={frontInputRef} 
                         onChange={handleFrontIdChange} 
+                        onClick={(e) => e.stopPropagation()}
                       />
                       {frontId ? (
                         <>
@@ -348,7 +359,7 @@ export default function WorkerVerification() {
                         </>
                       )}
                     </div>
-
+ 
                     <div 
                       onClick={() => backInputRef.current?.click()}
                       className="border-2 border-dashed border-gray-150 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-600 transition-colors group bg-gray-50/50 relative overflow-hidden min-h-[140px]"
@@ -359,6 +370,7 @@ export default function WorkerVerification() {
                         className="hidden" 
                         ref={backInputRef} 
                         onChange={handleBackIdChange} 
+                        onClick={(e) => e.stopPropagation()}
                       />
                       {backId ? (
                         <>

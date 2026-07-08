@@ -42,7 +42,23 @@ export default function ActiveContractsResolver() {
 
   useEffect(() => {
     loadContracts();
-  }, []);
+
+    // Real-time sync: reload contracts when another tab/page updates localStorage
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'linekora_contracts') {
+        loadContracts();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also poll every 4 seconds as a fallback for same-tab updates
+    const interval = setInterval(loadContracts, 4000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadContracts = () => {
     const cached = localStorage.getItem('linekora_contracts');
