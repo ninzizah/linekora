@@ -103,7 +103,7 @@ export interface Application {
   worker?: Pick<UserProfile, 'id' | 'displayName' | 'trustScore' | 'verificationStatus'>;
 }
 
-export const getApplications = (params: { workerId?: string; jobId?: number }) => {
+export const getApplications = (params: { workerId?: string; jobId?: number; employerId?: string }) => {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
   ).toString();
@@ -112,6 +112,33 @@ export const getApplications = (params: { workerId?: string; jobId?: number }) =
 
 export const createApplication = (data: { jobId: number; workerId: string }) =>
   request<Application>('/applications', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateApplication = (id: number, data: { status: string }) =>
+  request<Application>(`/applications/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+// ─── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+
+export interface Notification {
+  id: number;
+  userId: string;
+  title: string;
+  body: string;
+  type: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export const getNotifications = (userId: string) =>
+  request<Notification[]>(`/notifications?userId=${userId}`);
+
+export const createNotification = (data: { userId: string; title: string; body: string; type?: string }) =>
+  request<Notification>('/notifications', { method: 'POST', body: JSON.stringify(data) });
+
+export const markNotificationRead = (id: number) =>
+  request<Notification>(`/notifications/${id}/read`, { method: 'PATCH' });
+
+export const markAllNotificationsRead = (userId: string) =>
+  request<{ success: boolean }>('/notifications/read-all', { method: 'PATCH', body: JSON.stringify({ userId }) });
 
 // ─── MESSAGES ─────────────────────────────────────────────────────────────────
 

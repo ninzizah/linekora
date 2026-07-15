@@ -82,11 +82,14 @@ const DashboardRedirect = () => {
   return null;
 };
 
+import { LanguageProvider } from './lib/LanguageContext';
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
+    <LanguageProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
@@ -134,12 +137,12 @@ export default function App() {
           <Route path="/dashboard/employer/wallet" element={<EmployerWallet />} />
           <Route path="/dashboard/employer/settings" element={<EmployerSettings />} />
           <Route path="/dashboard/employer/*" element={<EmployerDashboard />} />
-
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/*" element={<AdminDashboard />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+    </LanguageProvider>
   );
 }

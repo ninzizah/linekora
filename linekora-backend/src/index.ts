@@ -152,6 +152,74 @@ app.post('/api/applications', async (req, res) => {
   }
 });
 
+app.patch('/api/applications/:id', async (req, res) => {
+  try {
+    const application = await prisma.application.update({
+      where: { id: parseInt(req.params.id) },
+      data: req.body,
+      include: {
+        job: { include: { employer: { select: { id: true, displayName: true } } } },
+        worker: { select: { id: true, displayName: true } },
+      },
+    });
+    res.json(application);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update application' });
+  }
+});
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────────────────────
+
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    const notifications = await (prisma as any).notification.findMany({
+      where: { userId: userId as string },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    res.json(notifications);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+app.post('/api/notifications', async (req, res) => {
+  try {
+    const notification = await (prisma as any).notification.create({ data: req.body });
+    res.json(notification);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to create notification' });
+  }
+});
+
+app.patch('/api/notifications/read-all', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    await (prisma as any).notification.updateMany({
+      where: { userId, read: false },
+      data: { read: true },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to mark all as read' });
+  }
+});
+
+app.patch('/api/notifications/:id/read', async (req, res) => {
+  try {
+    const notification = await (prisma as any).notification.update({
+      where: { id: parseInt(req.params.id) },
+      data: { read: true },
+    });
+    res.json(notification);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
+});
+
 // ─── MESSAGES ────────────────────────────────────────────────────────────────
 
 app.get('/api/messages', async (req, res) => {

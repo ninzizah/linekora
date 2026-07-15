@@ -6,9 +6,10 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
+import { getUsers } from '../../lib/api';
 
 interface WorkerItem {
-  id: number;
+  id: string | number;
   name: string;
   role: string;
   location: string;
@@ -37,17 +38,48 @@ export default function BrowseWorkers() {
   const [selectedExperience, setSelectedExperience] = useState<string | null>(null);
   const [onlyHighlyTrusted, setOnlyHighlyTrusted] = useState(false);
 
+  const DEMO_WORKERS: WorkerItem[] = [
+    { id: 'demo-1', name: 'John Musoke', role: 'Plumber', location: 'Kampala', rating: 4.8, jobs: 142, verified: true, skills: ['Pipe Fitting', 'Emergency Repair', 'Drainage'], trustScore: 850, experience: '5yrs+' },
+    { id: 'demo-2', name: 'Sarah Namono', role: 'Professional Cleaner', location: 'Entebbe', rating: 4.9, jobs: 86, verified: true, skills: ['Deep Cleaning', 'Office Sanitization', 'Laundry'], trustScore: 920, experience: '3-5yrs' },
+    { id: 'demo-3', name: 'Peter Okello', role: 'Security Guard', location: 'Mukono', rating: 4.5, jobs: 54, verified: true, skills: ['CCTV Monitoring', 'Crowd Control', 'Night Watch'], trustScore: 780, experience: '3-5yrs' },
+    { id: 'demo-4', name: 'Grace Akello', role: 'Nanny / Caretaker', location: 'Kira', rating: 5.0, jobs: 24, verified: true, skills: ['First Aid', 'Cooking', 'Early Learning'], trustScore: 950, experience: '1-2yrs' },
+    { id: 'demo-5', name: 'Emmanuel Sseunda', role: 'Mechanic', location: 'Kampala', rating: 4.7, jobs: 110, verified: false, skills: ['Engine Repair', 'Brake Systems', 'Electrical'], trustScore: 640, experience: '5yrs+' },
+    { id: 'demo-6', name: 'Fabrice Ndoli', role: 'Electrician', location: 'Kiyovu', rating: 4.9, jobs: 42, verified: true, skills: ['Breaker Repair', 'Wall Wiring', 'LED setup', 'AC install'], trustScore: 915, experience: '3-5yrs' },
+    { id: 'demo-7', name: 'Kevin Mutara', role: 'Painter', location: 'Kimihurura', rating: 4.6, jobs: 61, verified: true, skills: ['Varnish', 'Wall Stencil', 'Exterior Paint', 'Ceiling Scrape'], trustScore: 810, experience: '5yrs+' },
+    { id: 'demo-8', name: 'Allen Mugisha', role: 'Chef / House cook', location: 'Kiyovu', rating: 4.9, jobs: 19, verified: false, skills: ['Local Dishes', 'Continental Cookery', 'Kitchen Sanitizing'], trustScore: 710, experience: '1-2yrs' }
+  ];
+
   // Workers dataset
-  const [workers] = useState<WorkerItem[]>([
-    { id: 1, name: 'John Musoke', role: 'Plumber', location: 'Kampala', rating: 4.8, jobs: 142, verified: true, skills: ['Pipe Fitting', 'Emergency Repair', 'Drainage'], trustScore: 850, experience: '5yrs+' },
-    { id: 2, name: 'Sarah Namono', role: 'Professional Cleaner', location: 'Entebbe', rating: 4.9, jobs: 86, verified: true, skills: ['Deep Cleaning', 'Office Sanitization', 'Laundry'], trustScore: 920, experience: '3-5yrs' },
-    { id: 3, name: 'Peter Okello', role: 'Security Guard', location: 'Mukono', rating: 4.5, jobs: 54, verified: true, skills: ['CCTV Monitoring', 'Crowd Control', 'Night Watch'], trustScore: 780, experience: '3-5yrs' },
-    { id: 4, name: 'Grace Akello', role: 'Nanny / Caretaker', location: 'Kira', rating: 5.0, jobs: 24, verified: true, skills: ['First Aid', 'Cooking', 'Early Learning'], trustScore: 950, experience: '1-2yrs' },
-    { id: 5, name: 'Emmanuel Sseunda', role: 'Mechanic', location: 'Kampala', rating: 4.7, jobs: 110, verified: false, skills: ['Engine Repair', 'Brake Systems', 'Electrical'], trustScore: 640, experience: '5yrs+' },
-    { id: 6, name: 'Fabrice Ndoli', role: 'Electrician', location: 'Kiyovu', rating: 4.9, jobs: 42, verified: true, skills: ['Breaker Repair', 'Wall Wiring', 'LED setup', 'AC install'], trustScore: 915, experience: '3-5yrs' },
-    { id: 7, name: 'Kevin Mutara', role: 'Painter', location: 'Kimihurura', rating: 4.6, jobs: 61, verified: true, skills: ['Varnish', 'Wall Stencil', 'Exterior Paint', 'Ceiling Scrape'], trustScore: 810, experience: '5yrs+' },
-    { id: 8, name: 'Allen Mugisha', role: 'Chef / House cook', location: 'Kiyovu', rating: 4.9, jobs: 19, verified: false, skills: ['Local Dishes', 'Continental Cookery', 'Kitchen Sanitizing'], trustScore: 710, experience: '1-2yrs' }
-  ]);
+  const [workers, setWorkers] = useState<WorkerItem[]>(DEMO_WORKERS);
+
+  useEffect(() => {
+    async function loadWorkers() {
+      try {
+        const users = await getUsers();
+        const realWorkers: WorkerItem[] = users
+          .filter(u => u.role === 'WORKER')
+          .map((u, idx) => ({
+            id: u.id,
+            name: u.displayName,
+            role: 'Professional Worker',
+            location: u.location || 'Kigali',
+            rating: 5.0,
+            jobs: 0,
+            verified: u.verificationStatus === 'verified',
+            skills: ['Domestic Help', 'Quick Tasks', 'Punctual'],
+            trustScore: u.trustScore,
+            experience: (['1-2yrs', '3-5yrs', '5yrs+'])[idx % 3],
+          }));
+        // Real workers first, then demo workers to fill the pool
+        setWorkers([...realWorkers, ...DEMO_WORKERS]);
+      } catch (err) {
+        console.error('Failed to load workers from DB', err);
+        // Keep demo workers on failure
+      }
+    }
+    loadWorkers();
+  }, []);
+
 
   // Employer active draft jobs parsed from localStorage to let them match quickly
   const [employerPresetJobs, setEmployerPresetJobs] = useState<any[]>([]);
@@ -241,18 +273,24 @@ export default function BrowseWorkers() {
             <input 
               type="text" 
               placeholder="Search by candidate name, direct role (e.g., Plumber), or skill tag..." 
-              className="w-full pl-11 pr-4 py-4 rounded-2xl bg-white border border-gray-100 shadow-sm focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none font-sans font-medium text-sm transition-all"
+              className="w-full pl-11 pr-36 py-4 rounded-2xl bg-white border border-gray-100 shadow-sm focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none font-sans font-medium text-sm transition-all"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setSearch(''); }}
             />
             {search && (
               <button 
                 onClick={() => setSearch('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold"
+                className="absolute right-24 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold text-xs"
               >
                 Clear
               </button>
             )}
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-sans font-black text-xs uppercase tracking-widest transition-all shadow-sm"
+            >
+              Search
+            </button>
           </div>
           <button 
             type="button"

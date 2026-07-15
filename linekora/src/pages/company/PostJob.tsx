@@ -8,6 +8,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
+import { createJob } from '../../lib/api';
 
 interface NotificationMsg {
   id: string;
@@ -111,42 +112,57 @@ export default function PostJob() {
     }, 4500);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Create new job object
-    const newJob = {
-      id: Date.now(),
-      title: formData.title,
-      description: formData.description,
-      salary: formData.salary.includes('RWF') ? formData.salary : `RWF ${formData.salary}`,
-      location: formData.location,
-      category: formData.category,
-      type: isUrgent ? 'Urgent Task' : formData.jobType,
-      verified: true,
-      postedAt: 'Just now',
-      urgent: isUrgent,
-      company: profile?.displayName || 'Tech Hub Solutions'
-    };
 
-    if (isUrgent) {
-      const existingUrgent = localStorage.getItem('urgent_jobs');
-      const urgentList = existingUrgent ? JSON.parse(existingUrgent) : [];
-      localStorage.setItem('urgent_jobs', JSON.stringify([newJob, ...urgentList]));
-    }
-
-    // Also store general jobs
-    const existingJobs = localStorage.getItem('all_jobs');
-    const jobsList = existingJobs ? JSON.parse(existingJobs) : [];
-    localStorage.setItem('all_jobs', JSON.stringify([newJob, ...jobsList]));
-
-    setTimeout(() => {
+    if (!profile?.id) {
+      addNotification('error', 'Not Authenticated', 'Please sign in before posting a job.');
       setLoading(false);
-      setPublishedJobId(newJob.id);
+      return;
+    }
+    
+    const salaryStr = formData.salary.includes('RWF') ? formData.salary : `RWF ${formData.salary}`;
+
+    try {
+      // ✅ Write to real PostgreSQL database
+      const dbJob = await createJob({
+        title: formData.title,
+        description: formData.description,
+        salary: salaryStr,
+        location: formData.location,
+        category: formData.category,
+        status: 'open',
+        urgent: isUrgent,
+        employerId: profile.id,
+      });
+
+      // Also cache locally for offline use
+      const localJob = {
+        ...dbJob,
+        company: profile.displayName,
+        postedAt: new Date(dbJob.createdAt).toISOString(),
+        type: isUrgent ? 'Urgent Task' : formData.jobType,
+        verified: true,
+      };
+
+      if (isUrgent) {
+        const existingUrgent = localStorage.getItem('urgent_jobs');
+        const urgentList = existingUrgent ? JSON.parse(existingUrgent) : [];
+        localStorage.setItem('urgent_jobs', JSON.stringify([localJob, ...urgentList]));
+      }
+      const existingJobs = localStorage.getItem('all_jobs');
+      const jobsList = existingJobs ? JSON.parse(existingJobs) : [];
+      localStorage.setItem('all_jobs', JSON.stringify([localJob, ...jobsList]));
+
+      setLoading(false);
+      setPublishedJobId(dbJob.id);
       setShowSuccessModal(true);
-      addNotification('success', 'Job Published Successfully 🎉', 'Match vectors calculated. Interactive worker profiles ready below.');
-    }, 1600);
+      addNotification('success', 'Job Published Successfully 🎉', 'Saved to database. Workers can now find and apply!');
+    } catch (err: any) {
+      setLoading(false);
+      addNotification('error', 'Failed to Publish Job', err.message || 'Server error. Please try again.');
+    }
   };
 
   // Renew an expired job

@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, Search, Filter, Star, 
   CheckCircle2, XCircle, MessageSquare, ChevronRight,
-  Shield, MapPin, Info, X, Briefcase, Award
+  Shield, MapPin, Info, X, Briefcase, Award, Loader2, RefreshCw
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../lib/AuthContext';
+import { getApplications, updateApplication, createNotification } from '../../lib/api';
 
 interface Applicant {
   id: number;
@@ -24,102 +26,85 @@ interface Applicant {
 }
 
 export default function CompanyApplicants() {
+  const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('all');
-  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
+  const [selectedApplicant, setSelectedApplicant] = useState<any | null>(null);
+  const [applicants, setApplicants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const [applicants, setApplicants] = useState<Applicant[]>(() => {
-    const defaultApplicants: Applicant[] = [
-      { 
-        id: 1, 
-        name: 'John Mweru', 
-        job: 'Office Cleaner', 
-        location: 'Kigali, Nyarugenge', 
-        trustScore: 820, 
-        verified: true,
-        lastActive: '10m ago',
-        avatar: 'JM',
-        status: 'pending',
-        phone: '+250 788 123 456',
-        experience: '3 years at Kigali Business Center as lead facility cleaner.',
-        bio: 'Dedicated and punctual sanitation professional. Trustworthy and comfortable working night shifts. Background check approved by RDB registry.',
-        documentsMatched: true
-      },
-      { 
-        id: 2, 
-        name: 'Sarah Nakato', 
-        job: 'Office Cleaner', 
-        location: 'Kigali, Kimihurura', 
-        trustScore: 750, 
-        verified: true,
-        lastActive: '1h ago',
-        avatar: 'SN',
-        status: 'accepted',
-        phone: '+250 782 987 654',
-        experience: '2 years working for private embassies.',
-        bio: 'Professional cleaner and domestic organizer. Thorough attention to detail, eco-products certified, highly reliable.',
-        documentsMatched: true
-      },
-      { 
-        id: 3, 
-        name: 'David Okello', 
-        job: 'Security Guard', 
-        location: 'Kigali, Remera', 
-        trustScore: 680, 
-        verified: false,
-        lastActive: '2d ago',
-        avatar: 'DO',
-        status: 'rejected',
-        phone: '+250 783 555 123',
-        experience: '1 year as neighborhood watch guard.',
-        bio: 'Committed to safety and active patrols. Seeking full-time warehouse guard role.',
-        documentsMatched: false
-      }
-    ];
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
 
-    const cached = localStorage.getItem('company_applicants');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        return defaultApplicants;
-      }
+  const loadApplications = async () => {
+    if (!profile?.id) return;
+    setLoading(true);
+    try {
+      const apps = await getApplications({ employerId: profile.id });
+      setApplicants(apps);
+    } catch (err) {
+      console.error('Failed to load applications', err);
+    } finally {
+      setLoading(false);
     }
-    localStorage.setItem('company_applicants', JSON.stringify(defaultApplicants));
-    return defaultApplicants;
-  });
-
-  const saveToStorage = (updated: Applicant[]) => {
-    setApplicants(updated);
-    localStorage.setItem('company_applicants', JSON.stringify(updated));
   };
 
-  const handleStatusChange = (id: number, newStatus: 'accepted' | 'rejected') => {
-    const updated = applicants.map(app => 
-      app.id === id ? { ...app, status: newStatus } : app
-    );
-    saveToStorage(updated);
-    if (selectedApplicant && selectedApplicant.id === id) {
-      setSelectedApplicant({ ...selectedApplicant, status: newStatus });
+  useEffect(() => { loadApplications(); }, [profile?.id]);
+
+  const handleStatusChange = async (appId: number, newStatus: 'accepted' | 'rejected') => {
+    const app = applicants.find(a => a.id === appId);
+    if (!app) return;
+    setProcessingId(appId);
+    try {
+      await updateApplication(appId, { status: newStatus });
+      // Notify the worker
+      if (app.workerId) {
+        await createNotification({
+          userId: app.workerId,
+          title: newStatus === 'accepted' ? '🎉 Application Accepted!' : '❌ Application Rejected',
+          body: newStatus === 'accepted'
+            ? `Congratulations! Your application for "${app.job?.title || 'the job'}" has been accepted. The employer will contact you soon.`
+            : `Your application for "${app.job?.title || 'the job'}" was not accepted this time. Keep applying!`,
+          type: newStatus === 'accepted' ? 'success' : 'info',
+        });
+      }
+      setApplicants(prev => prev.map(a => a.id === appId ? { ...a, status: newStatus } : a));
+      if (selectedApplicant?.id === appId) setSelectedApplicant((prev: any) => ({ ...prev, status: newStatus }));
+      showToast(newStatus === 'accepted' ? `✅ Worker accepted and notified!` : `Candidate rejected.`);
+    } catch (err) {
+      showToast('Failed to update application status.');
+    } finally {
+      setProcessingId(null);
     }
   };
 
   // Filter & Search Logic
   const filteredApplicants = applicants.filter(app => {
+    const workerName = app.worker?.displayName || '';
+    const jobTitle = app.job?.title || '';
     const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
-    const matchesQuery = 
-      app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.job.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesQuery =
+      workerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      jobTitle.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesQuery;
   });
+
 
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto">
-        <header className="mb-10">
-          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Job Applicants</h1>
-          <p className="text-gray-500 font-sans font-medium mt-1 italic">Review, view details, accept or reject talent for your open positions.</p>
+        <header className="mb-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Job Applicants</h1>
+            <p className="text-gray-500 font-sans font-medium mt-1 italic">
+              {loading ? 'Loading...' : `${filteredApplicants.length} ${filteredApplicants.length === 1 ? 'applicant' : 'applicants'} found`}
+            </p>
+          </div>
+          <button onClick={loadApplications} className="flex items-center gap-2 text-xs font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
         </header>
 
         {/* Filter Toolbar */}
@@ -152,10 +137,26 @@ export default function CompanyApplicants() {
           </div>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
+            <Loader2 size={24} className="animate-spin" />
+            <span className="font-bold text-sm uppercase tracking-widest font-sans">Loading applicants...</span>
+          </div>
+        )}
+
         {/* Applicants List */}
+        {!loading && (
         <div className="space-y-4">
           <AnimatePresence mode="popLayout">
-            {filteredApplicants.map((applicant) => (
+            {filteredApplicants.map((applicant) => {
+              const workerName = applicant.worker?.displayName || applicant.name || 'Unknown Worker';
+              const jobTitle = applicant.job?.title || applicant.job || 'Unknown Job';
+              const avatarLetters = workerName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+              const isVerified = applicant.worker?.verificationStatus === 'verified' || applicant.verified;
+              const trustScore = applicant.worker?.trustScore || applicant.trustScore || 0;
+              const workerLocation = applicant.worker?.location || applicant.location || 'Kigali';
+              return (
               <motion.div 
                 key={applicant.id} 
                 layout
@@ -169,9 +170,9 @@ export default function CompanyApplicants() {
                   <div className="flex items-center gap-6">
                     <div className="relative">
                       <div className="h-16 w-16 bg-blue-100 rounded-[1.5rem] flex items-center justify-center text-blue-600 font-black font-sans text-xl">
-                        {applicant.avatar}
+                        {avatarLetters}
                       </div>
-                      {applicant.verified && (
+                      {isVerified && (
                         <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-1 rounded-lg border-2 border-white">
                           <Shield size={10} fill="currentColor" />
                         </div>
@@ -179,8 +180,8 @@ export default function CompanyApplicants() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{applicant.name}</h3>
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-0.5 rounded-full">Score: {applicant.trustScore}</span>
+                        <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{workerName}</h3>
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-0.5 rounded-full">Score: {trustScore}</span>
                         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
                           applicant.status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' :
                           applicant.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' :
@@ -190,19 +191,15 @@ export default function CompanyApplicants() {
                         </span>
                       </div>
                       <p className="text-sm font-bold text-gray-500 font-sans flex items-center gap-2 mb-2">
-                         Applied for <span className="text-gray-900 italic underline decoration-blue-600/30">{applicant.job}</span>
+                         Applied for <span className="text-gray-900 italic underline decoration-blue-600/30">{jobTitle}</span>
                       </p>
                       <div className="flex flex-wrap items-center gap-4 text-gray-400">
                         <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
                           <MapPin size={12} />
-                          {applicant.location}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
-                          <Star size={12} fill="currentColor" className="text-yellow-400 border-none" />
-                          4.9 (24 reviews)
+                          {workerLocation}
                         </div>
                         <div className="text-[10px] font-bold text-gray-400 italic">
-                          Last active: {applicant.lastActive}
+                          Applied {applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString() : 'recently'}
                         </div>
                       </div>
                     </div>
@@ -219,17 +216,18 @@ export default function CompanyApplicants() {
                       <>
                         <button 
                           onClick={() => handleStatusChange(applicant.id, 'rejected')}
-                          className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all"
+                          disabled={processingId === applicant.id}
+                          className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all disabled:opacity-50"
                           title="Reject Application"
                         >
-                          <XCircle size={18} />
+                          {processingId === applicant.id ? <Loader2 size={18} className="animate-spin" /> : <XCircle size={18} />}
                         </button>
                         <button 
                           onClick={() => handleStatusChange(applicant.id, 'accepted')}
-                          className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-sans font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 transition-all flex items-center gap-2"
+                          disabled={processingId === applicant.id}
+                          className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-sans font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
-                          Hire Now
-                          <ChevronRight size={16} />
+                          {processingId === applicant.id ? <><Loader2 size={14} className="animate-spin" /> Hiring...</> : <>Hire Now <ChevronRight size={16} /></>}
                         </button>
                       </>
                     )}
@@ -246,17 +244,18 @@ export default function CompanyApplicants() {
                   </div>
                 </div>
               </motion.div>
-            ))}
+            );
+            })}
           </AnimatePresence>
 
           {filteredApplicants.length === 0 && (
             <div className="bg-white rounded-[3rem] border border-dashed border-gray-200 py-16 text-center">
               <Users className="text-gray-300 mx-auto mb-4" size={36} />
               <p className="font-sans font-black text-gray-900 uppercase">No applicants found</p>
-              <p className="text-gray-400 font-sans text-xs mt-1">Try resetting search parameters or checking other statuses.</p>
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Applicant Details Modal */}
@@ -370,6 +369,22 @@ export default function CompanyApplicants() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-4 rounded-2xl shadow-2xl bg-gray-900 text-white font-sans font-bold text-sm flex items-center gap-3"
+          >
+            <CheckCircle2 size={18} className="text-green-400" />
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
+
   );
 }

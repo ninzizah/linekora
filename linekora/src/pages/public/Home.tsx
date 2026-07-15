@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
+import { useLanguage } from '../../lib/LanguageContext';
 
 export default function Home() {
+  const { t } = useLanguage();
+
   const categories = [
     { name: 'Office jobs', icon: Building },
     { name: 'Construction', icon: Briefcase },
@@ -18,10 +21,10 @@ export default function Home() {
   ];
 
   const stats = [
-    { label: 'Active jobs', value: '1,200+' },
-    { label: 'Verified workers', value: '8,500+' },
-    { label: 'Verified companies', value: '450+' },
-    { label: 'Completed hires', value: '12,000+' },
+    { label: t('active_jobs'), value: '1,200+' },
+    { label: t('verified_workers'), value: '8,500+' },
+    { label: t('verified_companies'), value: '450+' },
+    { label: t('completed_hires'), value: '12,000+' },
   ];
 
   return (
@@ -42,19 +45,18 @@ export default function Home() {
                 <span className="font-sans text-sm font-bold tracking-tight">Biometric Verification Enabled</span>
               </div>
               <h1 className="mt-6 font-sans text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-gray-900 leading-tight">
-                Find trusted work. <br/>
-                <span className="text-blue-600">Hire trusted people.</span>
+                {t('hero_title')}
               </h1>
               <p className="mt-5 font-sans text-base sm:text-xl text-gray-600 leading-relaxed max-w-xl">
-                LINEKORA is Africa's most secure marketplace connecting verified workers with vetted employers. Escrow payments, verified identities, and total peace of mind.
+                {t('hero_subtitle')}
               </p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <Link to="/register" className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-8 py-4 font-sans text-lg font-bold text-white shadow-xl shadow-blue-200 transition-all hover:bg-blue-700 hover:-translate-y-1">
-                  Find Jobs
+                  {t('find_jobs')}
                   <ChevronRight size={20} />
                 </Link>
                 <Link to="/register" className="flex items-center justify-center gap-2 rounded-2xl bg-white border-2 border-gray-100 px-8 py-4 font-sans text-lg font-bold text-gray-900 transition-all hover:border-blue-600 hover:text-blue-600">
-                  Hire Workers
+                  {t('hire_workers')}
                 </Link>
               </div>
               <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">

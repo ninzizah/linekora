@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
+import { createJob } from '../../lib/api';
 
 // Recommended range lookup and custom tags for each category
 const CATEGORY_METADATA: Record<string, { range: string; min: number; max: number; tags: string[] }> = {
@@ -180,51 +181,63 @@ export default function EmployerPostTask() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setLoading(true);
+
+    if (!profile?.id) {
+      addToast('Please sign in to post a task.', 'error');
+      setLoading(false);
+      return;
+    }
     
-    // Enriching tags directly into the target payload
     const finalDescription = description.trim() + 
       (selectedTags.length > 0 ? `\n\n[TASK SUB-SCOPES: ${selectedTags.join(', ')}]` : '');
 
-    const newTask = {
-      id: Date.now(),
-      title: title || 'Urgent Short task',
-      description: finalDescription,
-      salary: `RWF ${Number(budget).toLocaleString()} / ${paymentType}`,
-      location: location || 'Kigali',
-      category: category,
-      type: isUrgent ? 'Urgent task' : 'Direct Task',
-      verified: true,
-      postedAt: 'Just now',
-      urgent: isUrgent,
-      company: profile?.displayName || 'Individual Client',
-      photos: attachedPhotos,
-      tags: selectedTags
-    };
+    try {
+      // ✅ Write to real PostgreSQL database
+      const dbJob = await createJob({
+        title: title || 'Urgent Short task',
+        description: finalDescription,
+        salary: `RWF ${Number(budget).toLocaleString()} / ${paymentType}`,
+        location: location || 'Kigali',
+        category: category,
+        status: 'open',
+        urgent: isUrgent,
+        employerId: profile.id,
+      });
 
-    // Store in localStorage arrays so components read unified items
-    if (isUrgent) {
-      const existingUrgent = localStorage.getItem('urgent_jobs');
-      const urgentList = existingUrgent ? JSON.parse(existingUrgent) : [];
-      localStorage.setItem('urgent_jobs', JSON.stringify([newTask, ...urgentList]));
-    }
+      // Cache locally too
+      const localTask = {
+        ...dbJob,
+        company: profile.displayName,
+        postedAt: new Date(dbJob.createdAt).toISOString(),
+        type: isUrgent ? 'Urgent task' : 'Direct Task',
+        verified: true,
+        photos: attachedPhotos,
+        tags: selectedTags
+      };
 
-    const existingJobs = localStorage.getItem('all_jobs');
-    const jobsList = existingJobs ? JSON.parse(existingJobs) : [];
-    localStorage.setItem('all_jobs', JSON.stringify([newTask, ...jobsList]));
+      if (isUrgent) {
+        const existingUrgent = localStorage.getItem('urgent_jobs');
+        const urgentList = existingUrgent ? JSON.parse(existingUrgent) : [];
+        localStorage.setItem('urgent_jobs', JSON.stringify([localTask, ...urgentList]));
+      }
+      const existingJobs = localStorage.getItem('all_jobs');
+      const jobsList = existingJobs ? JSON.parse(existingJobs) : [];
+      localStorage.setItem('all_jobs', JSON.stringify([localTask, ...jobsList]));
 
-    setTimeout(() => {
       setLoading(false);
       setShowSuccessBlast(true);
-      addToast('Global task dispatch successful!', 'success');
-      setTimeout(() => {
-        navigate('/dashboard/employer');
-      }, 2500);
-    }, 1800);
+      addToast('Task dispatched to database! Workers can now find it.', 'success');
+    } catch (err: any) {
+      setLoading(false);
+      addToast(err.message || 'Server error. Please try again.', 'error');
+    }
   };
 
   const activeCategoryMeta = CATEGORY_METADATA[category] || CATEGORY_METADATA['Domestic Cleaning'];
+
+
 
   return (
     <DashboardLayout>

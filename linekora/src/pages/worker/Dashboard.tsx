@@ -3,11 +3,22 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, Search, TrendingUp, CheckCircle2, Clock, 
   ChevronRight, MapPin, DollarSign, Star, Zap, Shield, Wallet, Briefcase, MessageSquare,
-  Bell, AlertCircle, Smartphone, X, Phone, Info, Bookmark, Check
+  Bell, AlertCircle, Smartphone, X, Phone, Info, Bookmark, Check, Loader2, RefreshCw
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
+import { getJobs, createApplication, createNotification, Job } from '../../lib/api';
+import { formatDistanceToNow } from 'date-fns';
+
+function getRelativeTime(dateStr?: string): string {
+  if (!dateStr) return 'Just now';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Just now';
+    return formatDistanceToNow(d, { addSuffix: true });
+  } catch { return 'Just now'; }
+}
 
 export default function WorkerDashboard() {
   const { profile } = useAuth();
@@ -132,71 +143,121 @@ export default function WorkerDashboard() {
     localStorage.setItem('worker_saved_jobs', JSON.stringify(updated));
   };
 
-  const handleApplyFromModal = (job: any) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      // Read current applications
-      let currentApps: any[] = [];
-      const cachedApps = localStorage.getItem('worker_applications');
-      if (cachedApps) {
-        try {
-          currentApps = JSON.parse(cachedApps);
-        } catch (e) {
-          currentApps = [];
-        }
-      }
+  const [applyingId, setApplyingId] = useState<number | null>(null);
+  const [appliedIds, setAppliedIds] = useState<Set<number>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('applied_job_ids') || '[]')); }
+    catch { return new Set(); }
+  });
+  const [dbUrgentJobs, setDbUrgentJobs] = useState<Job[]>([]);
+  const [recommendedJobs, setRecommendedJobs] = useState<Job[]>([]);
+  const [nearbyJobs, setNearbyJobs] = useState<Job[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [jobToast, setJobToast] = useState<{ msg: string; type: 'success'|'error'|'info' } | null>(null);
 
-      // Check if limit is reached or already applied
-      const isAlreadyApplied = currentApps.some(app => app.jobTitle === job.title);
-      if (isAlreadyApplied) {
-        setIsProcessing(false);
-        setModalFeedback({
-          type: 'already',
-          title: 'Already Applied ℹ',
-          message: `You have already applied for "${job.title}". You can track response milestones live inside My Applications.`
-        });
-        return;
-      }
-
-      const unverifiedLimit = !profile?.verificationStatus || profile.verificationStatus === 'unverified';
-      if (unverifiedLimit && currentApps.length >= 2) {
-        setIsProcessing(false);
-        setModalFeedback({
-          type: 'limit',
-          title: 'Limit Reached ⚠️',
-          message: "Free account application limit reached! Please verify your profile in order to enjoy unlimited job matches & client access."
-        });
-        return;
-      }
-
-      // Create a new application
-      const newApp = {
-        id: Date.now(),
-        jobTitle: job.title,
-        company: job.company || 'Private Client',
-        location: job.location,
-        salary: job.salary,
-        status: 'pending' as const,
-        date: 'Applied today',
-        logo: (job.company || 'PJ').substring(0, 2).toUpperCase(),
-        phone: job.phone || '+250 780 000 000',
-        description: job.description || 'Milestone-based professional opportunity nearby.'
-      };
-
-      const updatedApps = [newApp, ...currentApps];
-      localStorage.setItem('worker_applications', JSON.stringify(updatedApps));
-      setIsProcessing(false);
-      setModalFeedback({
-        type: 'apply',
-        title: 'Applied Successfully! 🚀',
-        message: `Your credentials and trust score have been linked securely. ${job.company || 'The client'} has been notified of your application!`
-      });
-    }, 1200);
+  const showJobToast = (msg: string, type: 'success'|'error'|'info' = 'success') => {
+    setJobToast({ msg, type });
+    setTimeout(() => setJobToast(null), 4000);
   };
 
-  const stats: any[] = [];
-  const recommendedJobs: any[] = [];
-  const nearbyJobs: any[] = [];
+  const loadAllJobs = async () => {
+    setJobsLoading(true);
+    try {
+      const [urgent, all] = await Promise.all([
+        getJobs({ urgent: true, status: 'open' }),
+        getJobs({ status: 'open' }),
+      ]);
+      setDbUrgentJobs(urgent);
+      // Merge: recommended = non-urgent open jobs, nearby = first 4 of all
+      const nonUrgent = all.filter(j => !j.urgent);
+      setRecommendedJobs(nonUrgent.slice(0, 6));
+      setNearbyJobs(all.slice(0, 4));
+    } catch (err) {
+      console.error('Failed to load jobs', err);
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  const handleApplyFromModal = async (job: any) => {
+    if (!profile?.id) return;
+    if (appliedIds.has(job.id)) {
+      setModalFeedback({ type: 'already', title: 'Already Applied ℹ', message: `You already applied for "${job.title}".` });
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      await createApplication({ jobId: job.id, workerId: profile.id });
+      if (job.employerId) {
+        await createNotification({
+          userId: job.employerId,
+          title: '📥 New Application Received',
+          body: `${profile.displayName} applied for "${job.title}". Review in Applicants.`,
+          type: 'info',
+        });
+      }
+      const newApplied = new Set(appliedIds);
+      newApplied.add(job.id);
+      setAppliedIds(newApplied);
+      localStorage.setItem('applied_job_ids', JSON.stringify([...newApplied]));
+      setIsProcessing(false);
+      setModalFeedback({ type: 'apply', title: 'Applied Successfully! 🚀', message: `Your credentials and trust score have been linked. ${job.employer?.displayName || 'The client'} has been notified!` });
+    } catch (err: any) {
+      setIsProcessing(false);
+      if (err.message?.includes('Already applied')) {
+        const newApplied = new Set(appliedIds);
+        newApplied.add(job.id);
+        setAppliedIds(newApplied);
+        setModalFeedback({ type: 'already', title: 'Already Applied ℹ', message: `You already applied for "${job.title}".` });
+      } else {
+        showJobToast(err.message || 'Failed to apply.', 'error');
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadAllJobs();
+    // Also sync localStorage urgentJobs (employer hot tasks from their session)
+    const local = localStorage.getItem('urgent_jobs');
+    if (local) {
+      try { setUrgentJobs(JSON.parse(local)); } catch { /* ignore */ }
+    }
+    try {
+      const cached = JSON.parse(localStorage.getItem('applied_job_ids') || '[]');
+      setAppliedIds(new Set(cached));
+    } catch { /* ignore */ }
+  }, []);
+
+  const stats = [
+    {
+      icon: Briefcase,
+      label: 'Jobs Applied',
+      value: appliedIds.size || 0,
+      color: 'bg-blue-600',
+      trend: appliedIds.size > 0 ? '+Active' : 'Start',
+    },
+    {
+      icon: CheckCircle2,
+      label: 'Status',
+      value: profile?.verificationStatus === 'verified' ? '✓ Verified' : 'Unverified',
+      color: profile?.verificationStatus === 'verified' ? 'bg-green-600' : 'bg-gray-400',
+      trend: profile?.verificationStatus === 'verified' ? 'Active' : 'Upgrade',
+    },
+    {
+      icon: Star,
+      label: 'Trust Score',
+      value: profile?.trustScore || 50,
+      color: 'bg-yellow-500',
+      trend: (profile?.trustScore || 50) > 80 ? 'High' : 'Grow',
+    },
+    {
+      icon: Zap,
+      label: 'Account Tier',
+      value: profile?.tier || 'Free',
+      color: 'bg-purple-600',
+      trend: 'Active',
+    },
+  ];
+
 
   return (
     <DashboardLayout>
@@ -283,14 +344,14 @@ export default function WorkerDashboard() {
                 </div>
               </div>
 
-              {urgentJobs.length === 0 ? (
+              {([...dbUrgentJobs, ...urgentJobs]).length === 0 ? (
                 <div className="text-center py-6 bg-white/40 rounded-2xl border border-red-100/30">
                   <p className="font-sans font-bold text-red-900 text-sm">All urgent tasks matching your area have been claimed.</p>
                   <p className="text-[10px] text-red-600/70 uppercase tracking-widest font-black mt-1">Ready for incoming cell towers...</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {urgentJobs.map((job) => (
+                  {[...dbUrgentJobs, ...urgentJobs].map((job) => (
                     <div 
                       key={job.id} 
                       onClick={() => setSelectedJob(job)}
@@ -299,9 +360,9 @@ export default function WorkerDashboard() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <span className="bg-red-100 text-red-600 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded">
-                            {job.category}
+                            {job.category || 'Urgent'}
                           </span>
-                          <span className="text-[10px] text-gray-400 font-sans font-medium">{job.postedAt} </span>
+                          <span className="text-[10px] text-gray-400 font-sans font-medium">{getRelativeTime(job.createdAt || job.postedAt)} </span>
                         </div>
                         <h3 className="font-sans font-black text-gray-950 text-base leading-tight">
                           {job.title}
@@ -356,7 +417,18 @@ export default function WorkerDashboard() {
                 </button>
               </div>
               <div className="space-y-4">
-                {recommendedJobs.map((job) => (
+                {jobsLoading ? (
+                  <div className="flex items-center justify-center py-8 gap-3 text-gray-400">
+                    <Loader2 size={20} className="animate-spin" />
+                    <span className="text-sm font-bold uppercase tracking-widest font-sans">Loading jobs...</span>
+                  </div>
+                ) : recommendedJobs.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <Briefcase size={32} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest font-sans">No jobs available yet</p>
+                    <p className="text-xs text-gray-300 mt-1 font-sans">Check back soon — new jobs are posted daily!</p>
+                  </div>
+                ) : recommendedJobs.map((job) => (
                   <div 
                     key={job.id} 
                     onClick={() => setSelectedJob(job)}
@@ -370,10 +442,10 @@ export default function WorkerDashboard() {
                         <div>
                           <h3 className="font-sans font-bold text-gray-900 flex flex-wrap items-center gap-2">
                             {job.title}
-                            {job.verified && <CheckCircle2 size={16} className="text-blue-600" />}
+                            <CheckCircle2 size={16} className="text-blue-600" />
                           </h3>
-                          <p className="font-sans text-sm text-gray-500 font-medium">{job.company}</p>
-                          <div className="flex items-center gap-4 mt-3">
+                          <p className="font-sans text-sm text-gray-500 font-medium">{job.employer?.displayName || 'Private Client'}</p>
+                          <div className="flex flex-wrap items-center gap-4 mt-3">
                             <span className="flex items-center gap-1 text-xs font-bold text-gray-400 font-sans uppercase">
                               <MapPin size={12} />
                               {job.location}
@@ -381,6 +453,10 @@ export default function WorkerDashboard() {
                             <span className="flex items-center gap-1 text-xs font-bold text-gray-400 font-sans uppercase">
                               <DollarSign size={12} />
                               {job.salary}
+                            </span>
+                            <span className="flex items-center gap-1 text-xs font-bold text-gray-400 font-sans">
+                              <Clock size={12} />
+                              {getRelativeTime(job.createdAt)}
                             </span>
                           </div>
                         </div>
@@ -418,7 +494,12 @@ export default function WorkerDashboard() {
                 </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {nearbyJobs.map((job) => (
+                {nearbyJobs.length === 0 && !jobsLoading ? (
+                  <div className="col-span-2 text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <MapPin size={28} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-sans">No nearby jobs at the moment</p>
+                  </div>
+                ) : nearbyJobs.map((job) => (
                   <div 
                     key={job.id} 
                     onClick={() => setSelectedJob(job)}
@@ -427,6 +508,7 @@ export default function WorkerDashboard() {
                     <div>
                       <h4 className="font-sans font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{job.title}</h4>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{job.location} • {job.salary}</p>
+                      <p className="text-[10px] text-gray-300 mt-0.5 font-sans">{getRelativeTime(job.createdAt)}</p>
                     </div>
                     <div className="h-8 w-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0">
                       <ChevronRight size={16} />

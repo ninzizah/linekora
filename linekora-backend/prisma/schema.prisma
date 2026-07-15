@@ -27,6 +27,7 @@ model User {
   reviewsGiven    Review[]      @relation("ReviewGiver")
   messagesSent    Message[]     @relation("MessageSender")
   messagesReceived Message[]    @relation("MessageReceiver")
+  notifications   Notification[]
 }
 
 model Job {
@@ -77,6 +78,17 @@ model Message {
   receiverId String
   receiver   User     @relation("MessageReceiver", fields: [receiverId], references: [id])
   createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  type      String   @default("info") // info, success, urgent, warning
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 enum Role {
