@@ -68,13 +68,21 @@ app.post('/api/users', async (req, res) => {
 
 app.patch('/api/users/:id', async (req, res) => {
   try {
+    const { id } = req.params;
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ id }, { firebaseUid: id }] },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     const user = await prisma.user.update({
-      where: { id: req.params.id },
+      where: { id: existing.id },
       data: req.body,
     });
     res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update user' });
+  } catch (error: any) {
+    console.error('Failed to update user:', error);
+    res.status(500).json({ error: error.message || 'Failed to update user' });
   }
 });
 
