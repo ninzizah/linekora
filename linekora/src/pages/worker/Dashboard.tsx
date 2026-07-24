@@ -407,8 +407,9 @@ export default function WorkerDashboard() {
                     </div>
                   ))}
                 </div>
-              )}
-            </section>
+              );
+            })()}
+          </section>
 
             {/* Recommended Jobs */}
             <section>
