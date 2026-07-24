@@ -44,6 +44,14 @@ export default function WorkerProfile() {
     return saved !== null ? saved : "CV_Shema_Honore_2024.pdf";
   });
 
+  const [portfolioList, setPortfolioList] = useState<string[]>(() => {
+    const saved = localStorage.getItem('worker_profile_portfolio');
+    if (saved) {
+      try { return JSON.parse(saved); } catch(e) {}
+    }
+    return ["Project Alpha - Hospital Sterilization", "Residential Complex Management"];
+  });
+
   const [isFavorited, setIsFavorited] = useState<boolean>(() => {
     return localStorage.getItem('worker_profile_is_favorited') === 'true';
   });
@@ -80,6 +88,10 @@ export default function WorkerProfile() {
   }, [cvName]);
 
   useEffect(() => {
+    localStorage.setItem('worker_profile_portfolio', JSON.stringify(portfolioList));
+  }, [portfolioList]);
+
+  useEffect(() => {
     localStorage.setItem('worker_profile_is_favorited', isFavorited.toString());
   }, [isFavorited]);
 
@@ -101,10 +113,12 @@ export default function WorkerProfile() {
   const [editBio, setEditBio] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editSkills, setEditSkills] = useState('');
+  const [editPortfolio, setEditPortfolio] = useState('');
 
   // CV action states
   const [isUploadingCV, setIsUploadingCV] = useState(false);
   const [showConfirmCVRemove, setShowConfirmCVRemove] = useState(false);
+  const cvFileInputRef = useState<any>(null)[0] || { current: null };
 
   // Static Details for display values
   const profileDetails = {
@@ -116,7 +130,7 @@ export default function WorkerProfile() {
       { degree: "Specialized Maintenance Certificate", school: "Technical Institute of Kigali", year: "2018" }
     ],
     certificates: ["OSHA Safety Certified", "Eco-Friendly Cleaning Specialist"],
-    portfolio: ["Project Alpha - Hospital Sterilization", "Residential Complex Management"],
+    portfolio: portfolioList,
     rating: 4.9,
     reviewsCount: 124,
     jobsCompleted: 342,
@@ -156,6 +170,12 @@ export default function WorkerProfile() {
       .filter(Boolean);
     setSkillsList(parsedSkills);
 
+    const parsedPortfolio = editPortfolio
+      .split(',')
+      .map(p => p.trim())
+      .filter(Boolean);
+    setPortfolioList(parsedPortfolio);
+
     // Sync back to demo_user local storage if exist to persist on reload cleanly
     const demoUserStr = localStorage.getItem('demo_user');
     if (demoUserStr) {
@@ -171,19 +191,35 @@ export default function WorkerProfile() {
     addNotification('success', 'Profile Updated 🚀', 'Your verified specifications saved successfully. Secure trust score unaffected.');
   };
 
-  // Simulate file upload CV 
+  // Real device file selection for CV
+  const handleCVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setIsUploadingCV(true);
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setIsUploadingCV(false);
+        setCvName(file.name);
+        if (event.target?.result) {
+          localStorage.setItem('worker_profile_cv_data', event.target.result as string);
+        }
+        addNotification('success', 'CV Synchronized 📄', `Uploaded "${file.name}" successfully. Employer views synchronized.`);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Trigger file dialog
   const handleUploadCVClick = () => {
-    setIsUploadingCV(true);
-    setTimeout(() => {
-      setIsUploadingCV(false);
-      setCvName('CV_Updated_Shema_2026.pdf');
-      addNotification('success', 'CV Synchronized 📄', 'Uploaded "CV_Updated_Shema_2026.pdf" successfully. Employer views synchronized.');
-    }, 1200);
+    const input = document.getElementById('cv-file-picker-input') as HTMLInputElement;
+    input?.click();
   };
 
   // Remove CV
   const handleRemoveCV = () => {
     setCvName('');
+    localStorage.removeItem('worker_profile_cv_data');
     setShowConfirmCVRemove(false);
     addNotification('info', 'CV File Removed', 'Your curriculum vitae file has been cleared from employer indices.');
   };
@@ -275,6 +311,7 @@ export default function WorkerProfile() {
                       setEditBio(bio);
                       setEditLocation(locationOverride);
                       setEditSkills(skillsList.join(', '));
+                      setEditPortfolio(portfolioList.join(', '));
                       setShowEditModal(true);
                     }}
                     className="px-8 py-3.5 bg-blue-600 text-white border border-transparent rounded-2xl font-sans font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 cursor-pointer"
@@ -572,6 +609,26 @@ export default function WorkerProfile() {
                   />
                   <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">Combine skills with commas (e.g. Team Leadership, Clean-up, Security)</p>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Portfolio Projects (Comma Separated)</label>
+                  <input 
+                    type="text" 
+                    value={editPortfolio}
+                    onChange={(e) => setEditPortfolio(e.target.value)}
+                    placeholder="e.g. Hospital Sterilization, Residential Complex"
+                    className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900" 
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">Combine projects with commas (e.g. Office Design, Garden Landscaping)</p>
+                </div>
+
+                <input 
+                  id="cv-file-picker-input" 
+                  type="file" 
+                  accept="application/pdf,image/*,.doc,.docx" 
+                  className="hidden" 
+                  onChange={handleCVFileChange} 
+                />
 
                 <div className="flex gap-3 pt-4">
                   <button 

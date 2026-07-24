@@ -344,14 +344,22 @@ export default function WorkerDashboard() {
                 </div>
               </div>
 
-              {([...dbUrgentJobs, ...urgentJobs]).length === 0 ? (
-                <div className="text-center py-6 bg-white/40 rounded-2xl border border-red-100/30">
-                  <p className="font-sans font-bold text-red-900 text-sm">All urgent tasks matching your area have been claimed.</p>
-                  <p className="text-[10px] text-red-600/70 uppercase tracking-widest font-black mt-1">Ready for incoming cell towers...</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {[...dbUrgentJobs, ...urgentJobs].map((job) => (
+              {(() => {
+                const combined = [...dbUrgentJobs, ...urgentJobs];
+                const uniqueHotJobs = Array.from(
+                  new Map(combined.map(j => [j.id || j.title, j])).values()
+                );
+                if (uniqueHotJobs.length === 0) {
+                  return (
+                    <div className="text-center py-6 bg-white/40 rounded-2xl border border-red-100/30">
+                      <p className="font-sans font-bold text-red-900 text-sm">All urgent tasks matching your area have been claimed.</p>
+                      <p className="text-[10px] text-red-600/70 uppercase tracking-widest font-black mt-1">Ready for incoming cell towers...</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-4">
+                    {uniqueHotJobs.map((job) => (
                     <div 
                       key={job.id} 
                       onClick={() => setSelectedJob(job)}

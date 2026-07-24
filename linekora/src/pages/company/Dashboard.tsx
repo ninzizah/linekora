@@ -60,26 +60,6 @@ export default function CompanyDashboard() {
     localStorage.setItem('company_bids', JSON.stringify(companyBids));
   }, [companyBids]);
 
-  // Commission settings
-  const [unpaidCommission, setUnpaidCommission] = useState(() => 
-    Number(localStorage.getItem('company_unpaid_commission') || '0')
-  );
-  const [showPayModal, setShowPayModal] = useState(false);
-  const [payPhone, setPayPhone] = useState('+250 788 ');
-  const [isProcessingPay, setIsProcessingPay] = useState(false);
-
-  const handlePayCorporateFee = () => {
-    setIsProcessingPay(true);
-    setTimeout(() => {
-      localStorage.setItem('company_unpaid_commission', '0');
-      localStorage.setItem('company_completed_jobs_since_last_payment', '0');
-      setUnpaidCommission(0);
-      setIsProcessingPay(false);
-      setShowPayModal(false);
-      addNotification('success', 'Corporate Invoice Cleared ✅', 'Your RWF 5,000 corporate commission of Job Placement has been verified.');
-    }, 1200);
-  };
-
   // Dynamic state for Stats
   const [activeJobsCount, setActiveJobsCount] = useState(() => {
     const saved = localStorage.getItem('company_active_jobs_count');
@@ -241,26 +221,6 @@ export default function CompanyDashboard() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto">
-        {/* ⚠️ OUTSTANDING INVOICE WARNER */}
-        {unpaidCommission > 0 && (
-          <div className="mb-10 bg-gradient-to-r from-red-650 to-orange-600 p-6 rounded-[2.5rem] border border-red-200 text-white shadow-xl shadow-red-100 flex flex-col md:flex-row md:items-center justify-between gap-6 animate-pulse">
-            <div className="space-y-1">
-              <h3 className="text-lg font-black uppercase tracking-tight font-sans flex items-center gap-2">
-                🔒 Placement Functions Restricted
-              </h3>
-              <p className="text-xs font-bold text-red-50/90 leading-relaxed font-sans max-w-2xl">
-                Your company profile has an unpaid LINEKORA placement fee of <span className="font-extrabold underline">RWF {unpaidCommission}</span> due on active completed contracts. While shifts remain active, you are blocked from posting new jobs until this invoice is cleared.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowPayModal(true)}
-              className="bg-white text-red-600 px-6 py-3.5 rounded-2xl hover:bg-red-50 transition-all font-sans font-black uppercase tracking-widest text-xs shrink-0 shadow-lg"
-            >
-              Resolve Invoice (RWF {unpaidCommission})
-            </button>
-          </div>
-        )}
-
         <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight flex items-center gap-2 uppercase">

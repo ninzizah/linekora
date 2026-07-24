@@ -9,6 +9,7 @@ import { auth } from '../../lib/firebase';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
 import { upsertUser } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage, Language } from '../../lib/LanguageContext';
 
 type Role = 'WORKER' | 'COMPANY' | 'EMPLOYER' | null;
 
@@ -20,6 +21,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { refreshProfile } = useAuth();
+  const { language, setLanguage } = useLanguage();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -127,13 +129,26 @@ export default function Register() {
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl" />
       </div>
 
-      {/* Logo */}
-      <Link to="/" className="relative flex items-center gap-3 mb-10 mt-10">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xl shadow-blue-900/50">
-          <Shield size={24} strokeWidth={2.5} />
-        </div>
-        <span className="font-sans text-2xl font-black tracking-tight text-white">LINEKORA</span>
-      </Link>
+      {/* Logo + Language Selector */}
+      <div className="relative flex flex-col items-center gap-4 mb-10 mt-10">
+        <Link to="/" className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xl shadow-blue-900/50">
+            <Shield size={24} strokeWidth={2.5} />
+          </div>
+          <span className="font-sans text-2xl font-black tracking-tight text-white">LINEKORA</span>
+        </Link>
+        {/* Language Switcher */}
+        <select
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as Language)}
+          className="bg-white/10 border border-white/20 text-white text-xs font-bold py-1.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer backdrop-blur-sm"
+        >
+          <option value="en" className="text-gray-900">English (EN)</option>
+          <option value="rw" className="text-gray-900">Kinyarwanda (RW)</option>
+          <option value="fr" className="text-gray-900">Français (FR)</option>
+          <option value="sw" className="text-gray-900">Kiswahili (SW)</option>
+        </select>
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

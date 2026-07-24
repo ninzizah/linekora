@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   PlusSquare, MapPin, DollarSign, Clock, 
   ChevronRight, ChevronLeft, Calendar, Info, Shield, 
-  Sparkles, Camera, AlertCircle, Check, X, Plus, Trash, CheckCircle
+  Sparkles, Camera, AlertCircle, Check, X, Plus, Trash, CheckCircle, Phone
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
@@ -89,6 +89,7 @@ export default function EmployerPostTask() {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Domestic Cleaning');
   const [location, setLocation] = useState('');
+  const [phone, setPhone] = useState('');
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('8000');
   const [paymentType, setPaymentType] = useState('Per Task');
@@ -204,11 +205,13 @@ export default function EmployerPostTask() {
         status: 'open',
         urgent: isUrgent,
         employerId: profile.id,
+        phone: phone || undefined,
       });
 
       // Cache locally too
       const localTask = {
         ...dbJob,
+        phone: phone || undefined,
         company: profile.displayName,
         postedAt: new Date(dbJob.createdAt).toISOString(),
         type: isUrgent ? 'Urgent task' : 'Direct Task',
@@ -372,6 +375,20 @@ export default function EmployerPostTask() {
                       </div>
                     </div>
 
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">Contact Phone Number (WhatsApp / Direct Call)</label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <input 
+                          type="tel" 
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="e.g. +250 788 123 456" 
+                          className="w-full pl-11 pr-4 py-4 rounded-xl bg-gray-50 border border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all"
+                        />
+                      </div>
+                    </div>
+
                     {/* DYNAMIC SUB-TAG SELECTOR */}
                     <div className="space-y-3 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
                       <div className="flex justify-between items-center">
@@ -488,12 +505,12 @@ export default function EmployerPostTask() {
                         </div>
                         <div 
                           onClick={() => setIsUrgent(!isUrgent)}
-                          className={`w-12 h-7 rounded-full p-1 cursor-pointer transition-colors flex items-center shrink-0 self-center md:self-start ${isUrgent ? 'bg-red-600' : 'bg-gray-200'}`}
+                          className={`w-14 h-8 rounded-full p-1 cursor-pointer transition-colors flex items-center shrink-0 self-center md:self-start border ${isUrgent ? 'bg-red-600 border-red-700' : 'bg-slate-300 border-slate-400'}`}
                         >
                           <motion.div 
                             layout
-                            animate={{ x: isUrgent ? 20 : 0 }}
-                            className="h-5 w-5 bg-white rounded-full shadow-sm"
+                            animate={{ x: isUrgent ? 24 : 0 }}
+                            className="h-6 w-6 bg-white rounded-full shadow-md border border-slate-300"
                           />
                         </div>
                       </div>

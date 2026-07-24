@@ -12,6 +12,23 @@ type VerificationStep = 'intro' | 'documents' | 'address' | 'otp' | 'completed';
 export default function CompanyVerification() {
   const [step, setStep] = useState<VerificationStep>('intro');
   const [isUploading, setIsUploading] = useState(false);
+  const [tinNumber, setTinNumber] = useState('');
+  const [certFile, setCertFile] = useState<string | null>(null);
+  const [certFileName, setCertFileName] = useState('');
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setCertFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setCertFile(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleNext = () => {
     setIsUploading(true);
@@ -31,6 +48,14 @@ export default function CompanyVerification() {
           user.trustScore = 95;
           localStorage.setItem('demo_user', JSON.stringify(user));
         }
+        
+        // Save to localStorage for admin preview
+        localStorage.setItem('company_verification_docs', JSON.stringify({
+          tinNumber,
+          certFile,
+          certFileName,
+          date: new Date().toLocaleString()
+        }));
       }
 
       if (nextIdx < steps.length) setStep(steps[nextIdx]);
@@ -108,23 +133,48 @@ export default function CompanyVerification() {
                     <input 
                       type="text" 
                       placeholder="e.g. 102345678"
+                      value={tinNumber}
+                      onChange={(e) => setTinNumber(e.target.value)}
                       className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm"
                     />
                   </div>
 
-                  <div className="border-2 border-dashed border-gray-100 rounded-[2rem] p-10 flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-600 transition-colors group bg-gray-50/50">
-                    <div className="h-14 w-14 bg-white rounded-2xl flex items-center justify-center text-gray-400 mb-4 group-hover:text-blue-600 shadow-sm transition-all">
+                  <label 
+                    htmlFor="company-cert-upload"
+                    className={`border-2 border-dashed rounded-[2rem] p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-colors group ${
+                      certFile ? 'border-green-500 bg-green-50/10' : 'border-gray-100 hover:border-blue-600 bg-gray-50/50'
+                    }`}
+                  >
+                    <input 
+                      id="company-cert-upload"
+                      type="file" 
+                      accept="image/*,application/pdf" 
+                      className="hidden" 
+                      onChange={handleFileChange} 
+                    />
+                    <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-4 shadow-sm transition-all ${
+                      certFile ? 'bg-green-100 text-green-600' : 'bg-white text-gray-400 group-hover:text-blue-600'
+                    }`}>
                       <Upload size={28} />
                     </div>
-                    <p className="text-xs font-black text-gray-900 uppercase tracking-widest italic">Upload Certificate (PDF/Image)</p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-2">Max size: 5MB</p>
-                  </div>
+                    <p className="text-xs font-black text-gray-900 uppercase tracking-widest italic">
+                      {certFileName ? `Selected: ${certFileName}` : 'Upload Certificate (PDF/Image)'}
+                    </p>
+                    {certFile && (
+                      <p className="text-[10px] text-green-600 font-bold mt-2">✓ Certificate Attached Successfully</p>
+                    )}
+                    <p className="text-[10px] text-gray-400 font-medium mt-2">Max size: 5MB — click here to browse</p>
+                  </label>
                 </div>
 
                 <button 
-                  disabled={isUploading}
+                  disabled={isUploading || !tinNumber.trim() || !certFile}
                   onClick={handleNext} 
-                  className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center gap-2"
+                  className={`w-full py-5 rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2 ${
+                    (tinNumber.trim() && certFile)
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 hover:translate-y-[-2px] shadow-xl shadow-blue-200 cursor-pointer' 
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
                 >
                   {isUploading ? <Loader2 size={24} className="animate-spin" /> : 'Confirm & Proceed'}
                   {!isUploading && <ChevronRight size={20} />}

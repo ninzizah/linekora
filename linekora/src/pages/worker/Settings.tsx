@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, Bell, Shield, 
   CreditCard, EyeOff, ChevronRight,
-  Save, LogOut, Trash2, Camera, X
+  Save, LogOut, Trash2, Camera, X, FileText, Upload, CheckCircle2, Loader2, Download, File
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
-import { signOut } from 'firebase/auth';
+import { signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,6 +15,7 @@ export default function WorkerSettings() {
   const [activeTab, setActiveTab] = useState('profile');
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cvInputRef = useRef<HTMLInputElement>(null);
 
   // Inputs State
   const [displayName, setDisplayName] = useState('');
@@ -23,6 +24,20 @@ export default function WorkerSettings() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
+  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
+
+  // CV & Portfolio upload states
+  const [cvFile, setCvFile] = useState<{ name: string; size: string; dataUrl: string; date: string } | null>(() => {
+    const cached = localStorage.getItem('worker_cv_data');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) { return null; }
+    }
+    return null;
+  });
+  const [isUploadingCv, setIsUploadingCv] = useState(false);
+  const [cvUploadProgress, setCvUploadProgress] = useState(0);
+  const [cvError, setCvError] = useState('');
 
   useEffect(() => {
     if (profile) {
@@ -36,8 +51,15 @@ export default function WorkerSettings() {
   }, [profile]);
 
   const handleLogout = async () => {
-    await signOut(auth);
-    navigate('/');
+    try {
+      localStorage.removeItem('demo_user');
+      await signOut(auth);
+    } catch (err) {
+      console.error('Error signing out:', err);
+      localStorage.removeItem('demo_user');
+    } finally {
+      navigate('/');
+    }
   };
 
   // Handle photo file selection
@@ -86,8 +108,56 @@ export default function WorkerSettings() {
     setTimeout(() => setIsSaved(false), 3000);
   };
 
+  const handleCvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setCvError('File size must be under 5MB.');
+      return;
+    }
+    setCvError('');
+    setIsUploadingCv(true);
+    setCvUploadProgress(10);
+
+    const interval = setInterval(() => {
+      setCvUploadProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(interval);
+          return 90;
+        }
+        return prev + 20;
+      });
+    }, 150);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setTimeout(() => {
+        clearInterval(interval);
+        setCvUploadProgress(100);
+        const cvObj = {
+          name: file.name,
+          size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+          dataUrl,
+          date: new Date().toLocaleDateString()
+        };
+        setCvFile(cvObj);
+        localStorage.setItem('worker_cv_data', JSON.stringify(cvObj));
+        setIsUploadingCv(false);
+      }, 800);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveCv = () => {
+    setCvFile(null);
+    localStorage.removeItem('worker_cv_data');
+  };
+
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
+    { id: 'portfolio', label: 'CV & Portfolio', icon: FileText },
     { id: 'notifications', label: 'Alerts', icon: Bell },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'payments', label: 'Billing', icon: CreditCard },
@@ -247,6 +317,90 @@ export default function WorkerSettings() {
             </div>
           )}
 
+          {activeTab === 'portfolio' && (
+            <div className="space-y-8 font-sans">
+              <div>
+                <h3 className="text-xl font-black text-gray-900 font-sans mb-1">CV & Work Portfolio</h3>
+                <p className="text-xs text-gray-500 font-sans italic">Upload your Curriculum Vitae (CV), certifications, or work portfolio to show prospective employers.</p>
+              </div>
+
+              <input 
+                ref={cvInputRef}
+                type="file" 
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" 
+                className="hidden" 
+                onChange={handleCvChange}
+              />
+
+              <div className="space-y-6">
+                <div 
+                  onClick={() => cvInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-200 hover:border-blue-600 rounded-[2.5rem] p-8 text-center cursor-pointer transition-all bg-gray-50/60 hover:bg-blue-50/30 group"
+                >
+                  <div className="h-16 w-16 bg-white border border-gray-150 rounded-2xl flex items-center justify-center mx-auto text-gray-400 group-hover:text-blue-600 group-hover:border-blue-200 shadow-sm transition-all mb-4">
+                    {isUploadingCv ? <Loader2 size={32} className="animate-spin text-blue-600" /> : <Upload size={32} />}
+                  </div>
+                  <h4 className="text-base font-black text-gray-900 uppercase tracking-tight font-sans">
+                    {isUploadingCv ? 'Uploading Document...' : 'Upload CV or Portfolio Document'}
+                  </h4>
+                  <p className="text-xs text-gray-400 font-sans mt-1">PDF, DOC, DOCX, PNG, or JPG (Max 5MB)</p>
+                  
+                  {isUploadingCv && (
+                    <div className="w-full max-w-md mx-auto bg-gray-200 h-2 rounded-full overflow-hidden mt-4">
+                      <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${cvUploadProgress}%` }} />
+                    </div>
+                  )}
+                </div>
+
+                {cvError && (
+                  <p className="text-xs text-red-500 font-bold text-center bg-red-50 py-2 rounded-xl border border-red-100">{cvError}</p>
+                )}
+
+                {cvFile ? (
+                  <div className="bg-blue-50/60 border-2 border-blue-200 rounded-3xl p-6 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200 shrink-0">
+                        <FileText size={24} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-sans font-black text-sm text-gray-900 leading-tight">{cvFile.name}</h5>
+                          <span className="bg-green-100 text-green-700 text-[8px] font-black uppercase px-2 py-0.5 rounded">Active CV</span>
+                        </div>
+                        <p className="text-xs text-gray-500 font-sans font-medium mt-0.5">Size: {cvFile.size} • Uploaded: {cvFile.date}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <a 
+                        href={cvFile.dataUrl} 
+                        download={cvFile.name}
+                        className="p-3 bg-white text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl border border-blue-200 shadow-sm transition-all"
+                        title="Download CV"
+                      >
+                        <Download size={16} />
+                      </a>
+                      <button 
+                        type="button"
+                        onClick={handleRemoveCv}
+                        className="p-3 bg-white text-red-500 hover:bg-red-500 hover:text-white rounded-xl border border-red-100 shadow-sm transition-all"
+                        title="Remove CV"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <File size={28} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-sans">No CV Uploaded Yet</p>
+                    <p className="text-[10px] text-gray-400 mt-1 font-sans italic">Click above to select and upload your resume file.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'notifications' && (
             <div className="space-y-8">
               <h3 className="text-xl font-black text-gray-900 font-sans mb-8">Notification Preferences</h3>
@@ -275,18 +429,49 @@ export default function WorkerSettings() {
             <div className="space-y-8">
               <h3 className="text-xl font-black text-gray-900 font-sans mb-8">Security & Privacy</h3>
               <div className="space-y-6">
-                <button className="w-full flex items-center justify-between p-5 sm:p-6 bg-gray-50 rounded-[2rem] border border-gray-100 hover:border-blue-600 transition-all group text-left">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm shrink-0">
-                      <EyeOff size={20} />
+                <div className="space-y-3">
+                  <button 
+                    type="button"
+                    onClick={async () => {
+                      setPasswordResetSent(false);
+                      setPasswordResetError(null);
+                      if (auth.currentUser?.email) {
+                        try {
+                          await sendPasswordResetEmail(auth, auth.currentUser.email);
+                          setPasswordResetSent(true);
+                        } catch (err: any) {
+                          setPasswordResetError(err.message || "Failed to trigger reset email.");
+                        }
+                      } else {
+                        setPasswordResetError("No authenticated email address found.");
+                      }
+                    }}
+                    className="w-full flex items-center justify-between p-5 sm:p-6 bg-gray-50 rounded-[2rem] border border-gray-100 hover:border-blue-600 transition-all group text-left cursor-pointer"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm shrink-0">
+                        <EyeOff size={20} />
+                      </div>
+                      <div>
+                        <p className="font-sans font-black text-sm text-gray-900">Change Password</p>
+                        <p className="font-sans text-xs text-gray-500 font-medium tracking-tight">Triggers a secure password reset email</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-sans font-black text-sm text-gray-900">Change Password</p>
-                      <p className="font-sans text-xs text-gray-500 font-medium tracking-tight">Last changed 3 months ago</p>
+                    <ChevronRight size={18} className="text-gray-300 group-hover:text-blue-600 shrink-0" />
+                  </button>
+
+                  {passwordResetSent && (
+                    <div className="p-4 bg-green-50 text-green-600 rounded-2xl text-xs font-bold font-sans border border-green-150 text-center animate-fade-in">
+                      ✓ Password reset link sent to {auth.currentUser?.email}! Check your inbox.
                     </div>
-                  </div>
-                  <ChevronRight size={18} className="text-gray-300 group-hover:text-blue-600 shrink-0" />
-                </button>
+                  )}
+
+                  {passwordResetError && (
+                    <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-xs font-bold font-sans border border-red-150 text-center animate-fade-in">
+                      ❌ {passwordResetError}
+                    </div>
+                  )}
+                </div>
 
                 <button className="w-full flex items-center justify-between p-5 sm:p-6 bg-gray-50 rounded-[2rem] border border-gray-100 hover:border-blue-600 transition-all group text-left">
                   <div className="flex items-center gap-4">

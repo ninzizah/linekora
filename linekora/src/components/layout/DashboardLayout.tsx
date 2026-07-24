@@ -69,46 +69,82 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     if (!user?.id) return;
 
+    const readLocalSystemAlerts = (): WebAlert[] => {
+      try {
+        const raw = localStorage.getItem('system_alerts');
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return parsed.map((a: any) => ({
+          id: `local_${a.id}`,
+          category: (a.category === 'urgent' ? 'urgent' : a.category === 'success' ? 'success' : 'general') as WebAlert['category'],
+          title: a.title,
+          details: a.details,
+          time: a.time || 'Just now',
+          read: a.read || false,
+        }));
+      } catch {
+        return [];
+      }
+    };
+
     const loadNotifications = async () => {
+      // Always pull local system_alerts (written by contracts, applicants, etc.)
+      const localAlerts = readLocalSystemAlerts();
+
       try {
         const dbNotifs = await getNotifications(user.id);
         if (dbNotifs.length > 0) {
-          setAlerts(dbNotifs.map(n => ({
+          const dbAlerts = dbNotifs.map(n => ({
             id: String(n.id),
             category: (n.type === 'urgent' ? 'urgent' : n.type === 'success' ? 'success' : n.type === 'warning' ? 'alert' : 'general') as WebAlert['category'],
             title: n.title,
             details: n.body,
             time: formatDistanceToNow(new Date(n.createdAt), { addSuffix: true }),
             read: n.read,
-          })));
+          }));
+          // Merge: local alerts first (most recent events), then DB
+          const merged = [...localAlerts, ...dbAlerts].reduce((acc: WebAlert[], cur) => {
+            if (!acc.find(x => x.title === cur.title && x.details === cur.details)) acc.push(cur);
+            return acc;
+          }, []);
+          setAlerts(merged);
         } else {
-          // Fallback static alerts by role
+          // Fallback static alerts by role, supplemented with local alerts
+          let staticAlerts: WebAlert[] = [];
           if (roleKey === 'worker') {
-            setAlerts([
+            staticAlerts = [
               { id: 'a1', category: 'urgent', title: '🚨 Emergency Gig Alert', details: 'Hospitality assistant required at Gishushu, Kigali. RWF 14,000/day.', time: '5m ago', read: false },
               { id: 'a2', category: 'success', title: '✅ Application Approved', details: 'SafeGuard Sec approved your shift credentials.', time: '1h ago', read: false },
               { id: 'a3', category: 'alert', title: '⭐ Premium Badge Earned', details: 'Congrats! You are now fully verified as Expert Plumber.', time: '1d ago', read: true },
-            ]);
+            ];
           } else if (roleKey === 'company') {
-            setAlerts([
+            staticAlerts = [
               { id: 'c1', category: 'urgent', title: '👤 New Worker Application', details: 'John Musoke (CCTV Specialist) applied for Night Guard.', time: '3m ago', read: false },
               { id: 'c2', category: 'success', title: '🛡️ Business Verified', details: 'Your corporate license was approved. Premium badge active.', time: '4h ago', read: false },
-            ]);
+            ];
           } else {
-            setAlerts([
+            staticAlerts = [
               { id: 'e1', category: 'success', title: '🚗 Worker Arriving Soon', details: 'Alex Karekezi marked transit status to your backyard.', time: '8m ago', read: false },
               { id: 'e2', category: 'general', title: '🧹 Booking Completed', details: '"Professional Cleaners" received your Escrow authorization fee.', time: '2h ago', read: false }
-            ]);
+            ];
           }
+          // Prepend real local events before static fallbacks
+          const merged = [...localAlerts, ...staticAlerts].reduce((acc: WebAlert[], cur) => {
+            if (!acc.find(x => x.id === cur.id)) acc.push(cur);
+            return acc;
+          }, []);
+          setAlerts(merged);
         }
       } catch (err) {
         console.error('Failed to load notifications', err);
+        // Even on failure, show local alerts
+        if (localAlerts.length > 0) setAlerts(localAlerts);
       }
     };
 
     loadNotifications();
-    // Poll for new notifications every 15 seconds
-    const pollInterval = setInterval(loadNotifications, 15000);
+    // Poll for new notifications every 8 seconds (faster for better UX)
+    const pollInterval = setInterval(loadNotifications, 8000);
     return () => clearInterval(pollInterval);
   }, [user?.id, roleKey]);
 

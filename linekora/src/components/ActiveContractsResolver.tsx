@@ -40,6 +40,14 @@ export default function ActiveContractsResolver() {
   const [isSubmitingAction, setIsSubmitingAction] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
 
+  // MVP: platform commission fees disabled — verification fees only
+  useEffect(() => {
+    localStorage.removeItem('worker_unpaid_commission');
+    localStorage.removeItem('company_unpaid_commission');
+    localStorage.setItem('worker_completed_jobs_since_last_payment', '0');
+    localStorage.setItem('company_completed_jobs_since_last_payment', '0');
+  }, []);
+
   useEffect(() => {
     loadContracts();
 
@@ -175,31 +183,7 @@ export default function ActiveContractsResolver() {
       const currentCount = Number(localStorage.getItem('worker_completed_jobs_count') || '342');
       localStorage.setItem('worker_completed_jobs_count', String(currentCount + 1));
 
-      // 3. Worker Commission Check (after 3 completed jobs, charge 2000)
-      const workerJobsSincePayment = Number(localStorage.getItem('worker_completed_jobs_since_last_payment') || '2') + 1;
-      localStorage.setItem('worker_completed_jobs_since_last_payment', String(workerJobsSincePayment));
-      
-      if (workerJobsSincePayment >= 3) {
-        localStorage.setItem('worker_unpaid_commission', '2000');
-        logSystemAlert(
-          'urgent',
-          '🔒 Platform Commission Triggered',
-          'Worker Shema Honore has hit completion cycle. RWF 2,000 commission has been charged before further applications.'
-        );
-      }
-
-      // 4. Employer (Company) Commission Check (after 3 completed jobs, charge 5000)
-      const companyJobsSincePayment = Number(localStorage.getItem('company_completed_jobs_since_last_payment') || '2') + 1;
-      localStorage.setItem('company_completed_jobs_since_last_payment', String(companyJobsSincePayment));
-
-      if (companyJobsSincePayment >= 3) {
-        localStorage.setItem('company_unpaid_commission', '5000');
-        logSystemAlert(
-          'urgent',
-          '🔒 Corporate Placement Fee Invoiced',
-          'Company RDB Plaza Offices has hit 3 completed jobs. Professional commission of RWF 5,000 is due for continuation.'
-        );
-      }
+      // 3–4. Platform commission fees disabled for MVP (verification fees only)
 
       // 5. Save everything and refresh states
       updateContractInDatabase(updatedContracts);

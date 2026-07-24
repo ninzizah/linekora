@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   ShieldCheck, ArrowLeft, Send, Sparkles, 
   MapPin, DollarSign, Calendar, FileText, CheckCircle2,
-  AlertCircle, Star, Users, Clock, Plus, X, MessageSquare, Briefcase, Zap, Loader2, Bookmark
+  AlertCircle, Star, Users, Clock, Plus, X, MessageSquare, Briefcase, Zap, Loader2, Bookmark, Phone
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { Link, useNavigate } from 'react-router-dom';
@@ -38,6 +38,7 @@ export default function PostJob() {
     description: '',
     salary: '',
     location: '',
+    phone: '',
     category: 'Construction',
     deadline: '',
     requirements: '',
@@ -135,6 +136,7 @@ export default function PostJob() {
         status: 'open',
         urgent: isUrgent,
         employerId: profile.id,
+        phone: formData.phone || undefined,
       });
 
       // Also cache locally for offline use
@@ -307,6 +309,21 @@ export default function PostJob() {
                 </div>
               </div>
 
+              {/* Contact Phone */}
+              <div>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Contact Phone Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-450" size={18} />
+                  <input 
+                    type="tel"
+                    placeholder="e.g. +250 788 123 456" 
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all focus:ring-4 focus:ring-blue-50"
+                    value={formData.phone}
+                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Category</label>
@@ -372,12 +389,12 @@ export default function PostJob() {
                   </div>
                   <div 
                     onClick={() => setIsUrgent(!isUrgent)}
-                    className={`w-14 h-8 rounded-full p-1 cursor-pointer transition-colors flex items-center shrink-0 self-center md:self-start ${isUrgent ? 'bg-red-650' : 'bg-gray-205'}`}
+                    className={`w-14 h-8 rounded-full p-1 cursor-pointer transition-colors flex items-center shrink-0 self-center md:self-start border ${isUrgent ? 'bg-red-600 border-red-700' : 'bg-slate-300 border-slate-400'}`}
                   >
                     <motion.div 
                       layout
                       animate={{ x: isUrgent ? 24 : 0 }}
-                      className="h-6 w-6 bg-white rounded-full shadow-sm"
+                      className="h-6 w-6 bg-white rounded-full shadow-md border border-slate-300"
                     />
                   </div>
                 </div>

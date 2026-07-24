@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
-import { signOut } from 'firebase/auth';
+import { signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -45,6 +45,8 @@ export default function EmployerSettings() {
   // Saving state
   const [saving, setSaving] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
+  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
 
   // Initialize from context state
   useEffect(() => {
@@ -336,6 +338,60 @@ export default function EmployerSettings() {
                 </button>
               </div>
             )}
+          </section>
+
+          {/* ACCOUNT SECURITY */}
+          <section className="pt-8 border-t border-gray-50 space-y-6">
+            <h3 className="text-lg font-black text-gray-905 font-sans tracking-tight flex items-center gap-2.5 uppercase border-b border-gray-50 pb-3">
+              <Shield size={20} className="text-blue-600" />
+              Account Security
+            </h3>
+
+            <div className="p-5 bg-gray-50 rounded-[2rem] flex flex-col gap-4 border border-transparent hover:border-blue-150 transition-all">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 group">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm shrink-0">
+                    <Shield size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-sans font-black text-gray-900 text-sm">Change Account Password</h4>
+                    <p className="text-xs text-gray-500 font-medium">Sends a secure, validated password reset email instructions link to your registered address.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setPasswordResetSent(false);
+                    setPasswordResetError(null);
+                    if (auth.currentUser?.email) {
+                      try {
+                        await sendPasswordResetEmail(auth, auth.currentUser.email);
+                        setPasswordResetSent(true);
+                      } catch (err: any) {
+                        setPasswordResetError(err.message || "Failed to trigger reset email.");
+                      }
+                    } else {
+                      setPasswordResetError("No authenticated email address found.");
+                    }
+                  }}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md self-start md:self-auto shrink-0 cursor-pointer"
+                >
+                  Send Email Link
+                </button>
+              </div>
+
+              {passwordResetSent && (
+                <div className="p-4 bg-green-50 text-green-600 rounded-2xl text-xs font-bold font-sans border border-green-150 text-center animate-fade-in">
+                  ✓ Password reset link sent to {auth.currentUser?.email}! Check your inbox.
+                </div>
+              )}
+
+              {passwordResetError && (
+                <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-xs font-bold font-sans border border-red-150 text-center animate-fade-in">
+                  ❌ {passwordResetError}
+                </div>
+              )}
+            </div>
           </section>
 
           {/* NOTIFICATION PREFERENCES */}

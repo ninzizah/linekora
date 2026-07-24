@@ -27,13 +27,7 @@ export default function WorkerApplications() {
   const [modalFeedback, setModalFeedback] = useState<{ type: 'withdraw' | 'decline' | 'accept'; title: string; message: string } | null>(null);
   const [confirmingAction, setConfirmingAction] = useState<'withdraw' | 'decline' | null>(null);
 
-  // Mobile Money Commission Payment states
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentPhone, setPaymentPhone] = useState('+250 788 ');
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
-  const [unpaidCommission, setUnpaidCommission] = useState(() => 
-    Number(localStorage.getItem('worker_unpaid_commission') || '0')
-  );
+
 
   const [apps, setApps] = useState<any[]>(() => {
     // 1. Get raw applications
@@ -285,30 +279,7 @@ export default function WorkerApplications() {
     }, 1200);
   };
 
-  const handlePayWorkerCommissionReady = () => {
-    setPaymentProcessing(true);
-    setTimeout(() => {
-      localStorage.setItem('worker_unpaid_commission', '0');
-      localStorage.setItem('worker_completed_jobs_since_last_payment', '0');
-      setUnpaidCommission(0);
-      setPaymentProcessing(false);
-      setShowPaymentModal(false);
-      
-      // Dispatch success alert
-      const existingAlerts = localStorage.getItem('system_alerts') || '[]';
-      let alertsArr = [];
-      try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
-      alertsArr.push({
-        id: Date.now().toString(),
-        category: 'success',
-        title: '💳 Commission Paid',
-        details: 'You settled RWF 2,000 platform fee. Search indices updated.',
-        time: 'Just now',
-        read: false
-      });
-      localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
-    }, 1200);
-  };
+
 
   const filteredApps = filter === 'all' 
     ? apps 
@@ -351,26 +322,6 @@ export default function WorkerApplications() {
           <p className="text-gray-500 font-sans font-medium mt-1 italic">Track your job applications, active shift contracts, and completion handovers live.</p>
         </header>
 
-        {/* ⚠️ COMMISSION WARNING BANNER */}
-        {unpaidCommission > 0 && (
-          <div className="mb-10 bg-gradient-to-r from-red-650 to-orange-600 p-6 rounded-[2.5rem] border border-red-200 text-white shadow-xl shadow-red-100 flex flex-col md:flex-row md:items-center justify-between gap-6 animate-pulse">
-            <div className="space-y-1">
-              <h3 className="text-lg font-black uppercase tracking-tight font-sans flex items-center gap-2">
-                🔒 Application Restricted
-              </h3>
-              <p className="text-xs font-bold text-red-50/90 leading-relaxed font-sans max-w-2xl">
-                You have an accumulated unpaid LINEKORA commission fee of <span className="font-black underline">RWF {unpaidCommission.toLocaleString()}</span>. While accounts remain active, you are temporarily hidden from employer searches and blocked from applying to new jobs until this milestone commission is paid.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              className="bg-white text-red-600 px-6 py-3.5 rounded-2xl hover:bg-red-50 transition-all font-sans font-black uppercase tracking-widest text-xs shrink-0 shadow-lg shadow-red-900/10"
-            >
-              Pay RWF {unpaidCommission.toLocaleString()} Commission
-            </button>
-          </div>
-        )}
-
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
           <div className="flex bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto scrollbar-none">
             {['all', 'pending', 'accepted', 'completion_requested', 'completed'].map((f) => (
@@ -378,7 +329,7 @@ export default function WorkerApplications() {
                 key={f}
                 onClick={() => setFilter(f as any)}
                 className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest font-sans transition-all shrink-0 ${
-                  filter === f ? 'bg-blue-600 text-white shadow-lg shadow-blue-105' : 'text-gray-400 hover:text-gray-600'
+                  filter === f ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
                 {f === 'accepted' ? 'Active / In Progress' : f.replace('_', ' ')}
@@ -386,59 +337,6 @@ export default function WorkerApplications() {
             ))}
           </div>
         </div>
-
-        {/* 🔒 MOBILE MONEY PAYMENT POPUP */}
-        <AnimatePresence>
-          {showPaymentModal && (
-            <div className="fixed inset-0 bg-black/60 z-55 flex items-center justify-center p-4 backdrop-blur-sm">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-[3rem] border border-gray-150 p-8 w-full max-w-md relative shadow-2xl"
-              >
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={20} />
-                </button>
-                <div className="text-center p-4 space-y-4">
-                  <div className="h-16 w-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto text-2xl font-black">
-                    MTN
-                  </div>
-                  <h3 className="text-2xl font-black font-sans uppercase text-gray-900 tracking-tight">MTN MoMo Integration</h3>
-                  <p className="text-xs text-gray-400 font-sans leading-relaxed">
-                    Enter your active Mobile Money subscriber number below. A secure payment push prompt will be sent instantly onto your handset device.
-                  </p>
-                  
-                  <div className="text-left space-y-1 mt-4">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-gray-400 font-sans">Payment Phone Number</label>
-                    <input
-                      type="text"
-                      className="w-full text-sm font-black font-sans tracking-widest p-4 rounded-xl border border-gray-200 outline-none focus:border-blue-600"
-                      value={paymentPhone}
-                      onChange={(e) => setPaymentPhone(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex justify-between text-xs font-bold text-gray-600 mt-6 font-mono">
-                    <span>Commission Owed</span>
-                    <span>RWF {unpaidCommission.toLocaleString()}</span>
-                  </div>
-
-                  <button
-                    onClick={handlePayWorkerCommissionReady}
-                    disabled={paymentProcessing}
-                    className="w-full mt-6 py-4 bg-yellow-405 hover:bg-yellow-500 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs transition-transform hover:scale-[1.02] shadow-lg disabled:opacity-50"
-                  >
-                    {paymentProcessing ? 'Processing Transaction...' : `Authorize Push Prompt (RWF ${unpaidCommission.toLocaleString()})`}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
 
         <div className="space-y-4">
           <AnimatePresence mode="popLayout">

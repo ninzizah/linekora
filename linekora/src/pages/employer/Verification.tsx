@@ -455,7 +455,7 @@ export default function EmployerVerification() {
                       onClick={startCamera} 
                       className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2"
                     >
-                      <RefreshCw size={16} className="animate-spin" />
+                      <Camera size={16} />
                       Open Camera Sandbox
                     </button>
                   ) : cameraActive ? (

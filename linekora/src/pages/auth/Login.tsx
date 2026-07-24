@@ -3,9 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Mail, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import { auth } from '../../lib/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
 import { getUser } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage, Language } from '../../lib/LanguageContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -14,8 +15,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { refreshProfile } = useAuth();
+  const { language, setLanguage } = useLanguage();
 
   const handleAfterAuth = async (uid: string) => {
     try {
@@ -76,6 +83,27 @@ export default function Login() {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) {
+      setResetError("Please enter your email address.");
+      return;
+    }
+    setResetLoading(true);
+    setResetMessage(null);
+    setResetError(null);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail.trim());
+      setResetMessage("Password reset email sent! Check your inbox.");
+      setResetEmail('');
+    } catch (err: any) {
+      console.error(err);
+      setResetError(err.message || "Failed to send password reset email. Please try again.");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4">
       {/* Background glow */}
@@ -84,13 +112,26 @@ export default function Login() {
         <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl" />
       </div>
 
-      {/* Logo */}
-      <Link to="/" className="relative flex items-center gap-3 mb-10">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xl shadow-blue-900/50">
-          <Shield size={24} strokeWidth={2.5} />
-        </div>
-        <span className="font-sans text-2xl font-black tracking-tight text-white">LINEKORA</span>
-      </Link>
+      {/* Logo + Language Selector */}
+      <div className="relative flex flex-col items-center gap-4 mb-10">
+        <Link to="/" className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xl shadow-blue-900/50">
+            <Shield size={24} strokeWidth={2.5} />
+          </div>
+          <span className="font-sans text-2xl font-black tracking-tight text-white">LINEKORA</span>
+        </Link>
+        {/* Language Switcher */}
+        <select
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as Language)}
+          className="bg-white/10 border border-white/20 text-white text-xs font-bold py-1.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer backdrop-blur-sm"
+        >
+          <option value="en" className="text-gray-900">English (EN)</option>
+          <option value="rw" className="text-gray-900">Kinyarwanda (RW)</option>
+          <option value="fr" className="text-gray-900">Français (FR)</option>
+          <option value="sw" className="text-gray-900">Kiswahili (SW)</option>
+        </select>
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
@@ -185,6 +226,19 @@ export default function Login() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            <div className="flex justify-end mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setResetMessage(null);
+                  setResetError(null);
+                  setShowResetModal(true);
+                }}
+                className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Forgot Password?
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -218,6 +272,61 @@ export default function Login() {
           Join LINEKORA
         </Link>
       </p>
+
+      {/* Forgot Password Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md bg-slate-900 border border-white/10 rounded-3xl p-8 relative shadow-2xl"
+          >
+            <button
+              onClick={() => setShowResetModal(false)}
+              className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors"
+            >
+              &times;
+            </button>
+            <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tight">Reset Password</h3>
+            <p className="text-white/60 text-xs mb-6 leading-relaxed">
+              Enter your registered email address and we'll send you link instructions to reset your password.
+            </p>
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 outline-none font-sans text-sm text-white"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                />
+              </div>
+
+              {resetMessage && (
+                <div className="p-3 bg-green-500/10 text-green-400 rounded-xl text-xs font-bold border border-green-500/20 text-center">
+                  {resetMessage}
+                </div>
+              )}
+
+              {resetError && (
+                <div className="p-3 bg-red-500/10 text-red-400 rounded-xl text-xs font-bold border border-red-500/20 text-center">
+                  {resetError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all disabled:opacity-60"
+              >
+                {resetLoading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

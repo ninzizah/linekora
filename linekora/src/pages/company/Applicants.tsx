@@ -58,6 +58,40 @@ export default function CompanyApplicants() {
     setProcessingId(appId);
     try {
       await updateApplication(appId, { status: newStatus });
+      
+      // If hired, record active contract in local store for escrow/review workflow
+      if (newStatus === 'accepted') {
+        let contractList: any[] = [];
+        const cachedContracts = localStorage.getItem('linekora_contracts');
+        if (cachedContracts) {
+          try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
+        }
+        const exists = contractList.some(c => c.id === app.id);
+        if (!exists) {
+          contractList.push({
+            id: app.id,
+            jobTitle: app.job?.title || 'Contract Gig',
+            company: profile?.displayName || 'Employer',
+            salary: app.job?.salary || 'RWF 20,000 / Task',
+            location: app.job?.location || 'Kigali',
+            status: 'accepted',
+            workerId: app.workerId || 'worker_demo_1',
+            workerName: app.worker?.displayName || 'Worker',
+            employerId: profile?.id,
+            employerName: profile?.displayName || 'Employer',
+            daysSinceRequest: 0,
+            rating: 0,
+            review: '',
+            commissionPaidWorker: false,
+            commissionPaidEmployer: false,
+            date: 'Active Shift Contract',
+            logo: 'PJ',
+            phone: app.worker?.phone || '+250 780 000 000'
+          });
+          localStorage.setItem('linekora_contracts', JSON.stringify(contractList));
+        }
+      }
+
       // Notify the worker
       if (app.workerId) {
         await createNotification({
@@ -71,7 +105,7 @@ export default function CompanyApplicants() {
       }
       setApplicants(prev => prev.map(a => a.id === appId ? { ...a, status: newStatus } : a));
       if (selectedApplicant?.id === appId) setSelectedApplicant((prev: any) => ({ ...prev, status: newStatus }));
-      showToast(newStatus === 'accepted' ? `✅ Worker accepted and notified!` : `Candidate rejected.`);
+      showToast(newStatus === 'accepted' ? `✅ Candidate hired & contract initiated!` : `Candidate rejected.`);
     } catch (err) {
       showToast('Failed to update application status.');
     } finally {

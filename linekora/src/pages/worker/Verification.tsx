@@ -15,7 +15,7 @@ type VerificationStep = 'intro' | 'tier_select' | 'documents' | 'selfie' | 'otp'
 export default function WorkerVerification() {
   const { profile } = useAuth();
   const [step, setStep] = useState<VerificationStep>('intro');
-  const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
+  const [selectedTier, setSelectedTier] = useState<Tier>('bronze');
   const [isUploading, setIsUploading] = useState(false);
 
   // Functional ID document upload states
@@ -302,10 +302,19 @@ export default function WorkerVerification() {
                     </div>
                   </div>
                 </div>
+                {!selectedTier && (
+                  <p className="text-center text-sm text-amber-600 font-bold mb-4 bg-amber-50 py-2 rounded-xl border border-amber-200">
+                    👆 Please select a verification level above to continue
+                  </p>
+                )}
                 <button 
                   disabled={!selectedTier}
                   onClick={() => setStep('documents')} 
-                  className="w-full py-5 bg-blue-600 disabled:bg-gray-200 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all flex items-center justify-center gap-2"
+                  className={`w-full py-5 rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2 ${
+                    selectedTier 
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 hover:translate-y-[-2px] shadow-xl shadow-blue-200 cursor-pointer' 
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
                 >
                   Confirm Choice & Next
                   <ChevronRight size={20} />
@@ -476,7 +485,7 @@ export default function WorkerVerification() {
                       onClick={startCamera} 
                       className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2"
                     >
-                      <RefreshCw size={16} className="animate-spin" />
+                      <Camera size={16} />
                       Open Camera Sandbox
                     </button>
                   ) : cameraActive ? (

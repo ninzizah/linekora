@@ -39,8 +39,7 @@ export default function CompanyMessages() {
   const [activeChat, setActiveChat] = useState<number | null>(1);
   const [message, setMessage] = useState('');
 
-  // Stateful chats list
-  const [chatsList, setChatsList] = useState<ChatItem[]>([
+  const DEFAULT_CHATS = [
     { 
       id: 1, 
       name: 'John Mweru', 
@@ -77,10 +76,9 @@ export default function CompanyMessages() {
       pinned: false,
       muted: false
     }
-  ]);
+  ];
 
-  // Messages database keyed by chatId
-  const [messagesDB, setMessagesDB] = useState<Record<number, MessageItem[]>>({
+  const DEFAULT_MESSAGES = {
     1: [
       { id: 1, text: "Hello John, we reviewed your application for the Office Cleaner role.", sent: true, time: '11:00 AM' },
       { id: 2, text: "Thank you for the update. I am very interested.", sent: false, time: '11:05 AM' },
@@ -93,7 +91,34 @@ export default function CompanyMessages() {
     3: [
       { id: 1, text: "Welcome to LINEKORA! Your registration process in Kigali registry database has been greenlisted.", sent: false, time: 'Tuesday' }
     ]
+  };
+
+  // Stateful chats list
+  const [chatsList, setChatsList] = useState<ChatItem[]>(() => {
+    const cached = localStorage.getItem('linekora_company_chats');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) {}
+    }
+    return DEFAULT_CHATS;
   });
+
+  // Messages database keyed by chatId
+  const [messagesDB, setMessagesDB] = useState<Record<number, MessageItem[]>>(() => {
+    const cached = localStorage.getItem('linekora_company_messages');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) {}
+    }
+    return DEFAULT_MESSAGES;
+  });
+
+  // Sync to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('linekora_company_chats', JSON.stringify(chatsList));
+  }, [chatsList]);
+
+  React.useEffect(() => {
+    localStorage.setItem('linekora_company_messages', JSON.stringify(messagesDB));
+  }, [messagesDB]);
 
   // UI Interactive States
   const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false);

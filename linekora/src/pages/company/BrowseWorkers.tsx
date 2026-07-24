@@ -7,6 +7,8 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { getUsers } from '../../lib/api';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../lib/AuthContext';
 
 interface WorkerItem {
   id: string | number;
@@ -29,6 +31,8 @@ interface Toast {
 }
 
 export default function BrowseWorkers() {
+  const navigate = useNavigate();
+  const { profile } = useAuth();
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
@@ -213,6 +217,30 @@ export default function BrowseWorkers() {
             const existingContracts = localStorage.getItem('active_contracts_history');
             const parsedContracts = existingContracts ? JSON.parse(existingContracts) : [];
             localStorage.setItem('active_contracts_history', JSON.stringify([newContract, ...parsedContracts]));
+
+            // Save to active resolver contracts to be displayable in Dashboard
+            const contractForResolver = {
+              id: Date.now(),
+              jobTitle: draftObj?.title || 'Custom Direct Task',
+              company: 'LINEKORA Tasks',
+              salary: `RWF ${Number(offeredBudget).toLocaleString()}`,
+              location: hiringWorker.location,
+              status: 'completion_requested' as const,
+              workerId: String(hiringWorker.id),
+              workerName: hiringWorker.name,
+              employerId: 'current-employer',
+              employerName: 'Kigali Landlord',
+              daysSinceRequest: 3,
+              rating: 0,
+              review: '',
+              commissionPaidWorker: false,
+              commissionPaidEmployer: false,
+              date: 'Waiting for resolution'
+            };
+
+            const existingResolverContracts = localStorage.getItem('linekora_contracts');
+            const parsedResolverContracts = existingResolverContracts ? JSON.parse(existingResolverContracts) : [];
+            localStorage.setItem('linekora_contracts', JSON.stringify([contractForResolver, ...parsedResolverContracts]));
 
             addToast(
               'Escrow Locked & Dispatched 🛫',
@@ -464,7 +492,45 @@ export default function BrowseWorkers() {
                   <button 
                     type="button"
                     onClick={() => {
-                      addToast('Ferrying Chat Stream...', `Initializing cryptographically encrypted live dialogue frame with ${worker.name}`, 'info');
+                      const key = profile?.role === 'EMPLOYER' ? 'linekora_employer_chats' : 'linekora_company_chats';
+                      const msgKey = profile?.role === 'EMPLOYER' ? 'linekora_employer_messages' : 'linekora_company_messages';
+                      
+                      const existingChatsStr = localStorage.getItem(key);
+                      let existingChats = [];
+                      if (existingChatsStr) {
+                        try { existingChats = JSON.parse(existingChatsStr); } catch (e) {}
+                      }
+                      
+                      const exists = existingChats.some((c: any) => c.name === worker.name);
+                      const targetId = exists ? existingChats.find((c: any) => c.name === worker.name).id : Date.now();
+                      
+                      if (!exists) {
+                        const newChat = {
+                          id: targetId,
+                          name: worker.name,
+                          role: `Worker (${worker.role})`,
+                          lastMsg: "Let's discuss the job details.",
+                          time: 'Just now',
+                          unread: 0,
+                          online: true,
+                          avatar: worker.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+                        };
+                        existingChats.unshift(newChat);
+                        localStorage.setItem(key, JSON.stringify(existingChats));
+
+                        const existingMsgsStr = localStorage.getItem(msgKey);
+                        let existingMsgs: any = {};
+                        if (existingMsgsStr) {
+                          try { existingMsgs = JSON.parse(existingMsgsStr); } catch (e) {}
+                        }
+                        existingMsgs[targetId] = [
+                          { id: Date.now(), text: `Hello ${worker.name}, I would like to chat about a job.`, sent: true, time: 'Just now' }
+                        ];
+                        localStorage.setItem(msgKey, JSON.stringify(existingMsgs));
+                      }
+                      
+                      const dest = profile?.role === 'EMPLOYER' ? '/dashboard/employer/messages' : '/dashboard/company/messages';
+                      navigate(dest);
                     }}
                     className="px-4 py-3 bg-blue-50 text-blue-600 hover:bg-blue-105 rounded-xl font-sans font-bold text-sm transition-all flex items-center justify-center cursor-pointer"
                   >
