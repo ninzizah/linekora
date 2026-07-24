@@ -7,7 +7,7 @@ import { useLanguage, Language } from '../../lib/LanguageContext';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -35,6 +35,15 @@ export default function Navbar() {
             <Link to="/pricing" className="font-sans text-sm font-medium text-gray-600 hover:text-blue-600">{t('pricing')}</Link>
             <Link to="/contact" className="font-sans text-sm font-medium text-gray-600 hover:text-blue-600">{t('contact')}</Link>
             <Link to="/scams" className="font-sans text-sm font-medium text-gray-600 hover:text-blue-600">{t('safety')}</Link>
+
+            {profile?.role === 'ADMIN' && (
+              <Link 
+                to="/admin" 
+                className="flex items-center gap-1.5 rounded-full bg-red-950/10 border border-red-900/30 px-3.5 py-1.5 font-sans text-xs font-black text-red-600 hover:bg-red-600 hover:text-white transition-all uppercase tracking-wider shadow-sm"
+              >
+                Admin Portal 🛡️
+              </Link>
+            )}
 
             {/* Language Switcher */}
             <select
@@ -94,6 +103,11 @@ export default function Navbar() {
             </select>
 
             <div className="h-px bg-gray-100" />
+            {profile?.role === 'ADMIN' && (
+              <Link to="/admin" className="font-sans text-base font-bold text-red-600 flex items-center gap-2">
+                Admin Portal 🛡️
+              </Link>
+            )}
             {user ? (
               <Link to="/dashboard" className="font-sans text-base font-medium text-blue-600">{t('dashboard')}</Link>
             ) : (

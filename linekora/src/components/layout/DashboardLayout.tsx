@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Search, FileText, MessageSquare, 
   ShieldCheck, Star, Wallet, Settings, LogOut, Menu, X, 
   Briefcase, PlusSquare, Users, ShieldAlert, Shield, User, TrendingUp,
-  Bell, Trash, Inbox, ChevronRight, Sparkles,
+  Bell, Trash, Inbox, ChevronRight, Sparkles, Lock,
   Home
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
@@ -388,6 +388,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-3 ml-auto">
+            {user?.role?.toUpperCase() === 'ADMIN' && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/10 text-red-600 hover:bg-red-600 hover:text-white rounded-lg text-xs font-black border border-red-900/30 transition-all uppercase tracking-wider shadow-sm"
+              >
+                <Lock size={13} />
+                Admin Portal 🛡️
+              </Link>
+            )}
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-bold border border-yellow-100">
               <ShieldAlert size={14} />
               Trust Score: {user?.trustScore || 0}%
