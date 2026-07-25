@@ -322,6 +322,27 @@ export default function WorkerApplications() {
           <p className="text-gray-500 font-sans font-medium mt-1 italic">Track your job applications, active shift contracts, and completion handovers live.</p>
         </header>
 
+        {/* BILINGUAL HIGH-CONTRAST STATUS NOTICE */}
+        <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-2 border-amber-500/40 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-md">
+              🔒
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-sans font-black text-slate-950 text-sm uppercase tracking-wide flex items-center gap-2">
+                APPLICATION & PROFILE STATUS / AMABWIRIZA Y'UMWIRONDORO
+                <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Notice</span>
+              </h3>
+              <p className="font-sans text-xs font-bold text-slate-900 leading-relaxed">
+                <span className="font-extrabold text-amber-900">[RW]</span> Umwirondoro wawe urakora kandi uragaragara ku bakoresha bose kuri LINEKORA bidasaba amafaranga yandi. Verification na komisiyo biba ari uguhitamo kwawe.
+              </p>
+              <p className="font-sans text-[11px] font-semibold text-slate-800 leading-relaxed italic">
+                <span className="font-extrabold text-amber-900">[EN]</span> Your profile remains fully active and visible to employers across LINEKORA at zero mandatory cost. Verification and optional badges enhance visibility without locking free features.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
           <div className="flex bg-white p-1.5 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto scrollbar-none">
             {['all', 'pending', 'accepted', 'completion_requested', 'completed'].map((f) => (

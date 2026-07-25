@@ -25,6 +25,12 @@ export default function WorkerVerification() {
   const frontInputRef = useRef<HTMLInputElement | null>(null);
   const backInputRef = useRef<HTMLInputElement | null>(null);
 
+  const handleAutoFillSampleDocs = () => {
+    setNationalIdNum('1 1998 8 0012345 0 88');
+    setFrontId('https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop');
+    setBackId('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=400&auto=format&fit=crop');
+  };
+
   const saveVerificationToApi = async () => {
     try {
       // Save full verification artifacts to localStorage so admin has access to view them
@@ -324,7 +330,16 @@ export default function WorkerVerification() {
 
             {step === 'documents' && (
               <motion.div key="docs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight">Identity Security</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight">Identity Security</h3>
+                  <button
+                    type="button"
+                    onClick={handleAutoFillSampleDocs}
+                    className="text-xs font-bold text-blue-600 hover:underline font-sans cursor-pointer bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100"
+                  >
+                    ⚡ Autofill Sample IDs
+                  </button>
+                </div>
                 <p className="text-gray-500 font-sans mb-8 text-sm italic">Verification keeps LINEKORA safe for everyone.</p>
                 
                 <div className="space-y-6 mb-10">

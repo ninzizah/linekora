@@ -503,16 +503,24 @@ export default function EmployerPostTask() {
                             </p>
                           </div>
                         </div>
-                        <div 
+                        <button
+                          type="button" 
                           onClick={() => setIsUrgent(!isUrgent)}
-                          className={`w-14 h-8 rounded-full p-1 cursor-pointer transition-colors flex items-center shrink-0 self-center md:self-start border ${isUrgent ? 'bg-red-600 border-red-700' : 'bg-slate-300 border-slate-400'}`}
+                          className={`w-16 h-9 rounded-full p-1 cursor-pointer transition-all flex items-center justify-between shrink-0 self-center md:self-start border-2 shadow-inner ${
+                            isUrgent ? 'bg-red-600 border-red-700' : 'bg-slate-800 border-slate-900'
+                          }`}
+                          aria-label="Toggle Urgent Gig"
                         >
+                          <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${isUrgent ? 'text-white opacity-100' : 'opacity-0'}`}>ON</span>
                           <motion.div 
                             layout
-                            animate={{ x: isUrgent ? 24 : 0 }}
-                            className="h-6 w-6 bg-white rounded-full shadow-md border border-slate-300"
-                          />
-                        </div>
+                            animate={{ x: isUrgent ? 0 : 0 }}
+                            className="h-6 w-6 bg-white rounded-full shadow-lg border border-slate-300 flex items-center justify-center font-black text-[9px] text-slate-900"
+                          >
+                            {isUrgent ? '✓' : '✕'}
+                          </motion.div>
+                          <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${!isUrgent ? 'text-slate-300 opacity-100' : 'opacity-0'}`}>OFF</span>
+                        </button>
                       </div>
                     </div>
 

@@ -540,6 +540,15 @@ export default function WorkerProfile() {
         </div>
       </div>
 
+      {/* Hidden CV file input available at page level */}
+      <input 
+        id="cv-file-picker-input" 
+        type="file" 
+        accept="application/pdf,image/*,.doc,.docx" 
+        className="hidden" 
+        onChange={handleCVFileChange} 
+      />
+
       {/* EDIT PROFILE MODAL */}
       <AnimatePresence>
         {showEditModal && (

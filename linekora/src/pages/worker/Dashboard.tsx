@@ -40,7 +40,10 @@ export default function WorkerDashboard() {
   const [urgentJobs, setUrgentJobs] = useState<any[]>(() => {
     const local = localStorage.getItem('urgent_jobs');
     if (local) {
-      try { return JSON.parse(local); } catch (e) { return []; }
+      try {
+        const parsed = JSON.parse(local);
+        return Array.from(new Map(parsed.map((item: any) => [item.id, item])).values());
+      } catch (e) { return []; }
     }
     return [];
   });
@@ -50,7 +53,11 @@ export default function WorkerDashboard() {
     const syncJobs = () => {
       const local = localStorage.getItem('urgent_jobs');
       if (local) {
-        setUrgentJobs(JSON.parse(local));
+        try {
+          const parsed = JSON.parse(local);
+          const unique = Array.from(new Map(parsed.map((item: any) => [item.id, item])).values());
+          setUrgentJobs(unique);
+        } catch (e) {}
       }
     };
     window.addEventListener('storage', syncJobs);

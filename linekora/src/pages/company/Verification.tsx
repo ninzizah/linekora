@@ -16,6 +16,12 @@ export default function CompanyVerification() {
   const [certFile, setCertFile] = useState<string | null>(null);
   const [certFileName, setCertFileName] = useState('');
 
+  const handleAutoFillSampleCompanyDocs = () => {
+    setTinNumber('109876543');
+    setCertFileName('RDB_Business_Registration_2026.pdf');
+    setCertFile('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=400&auto=format&fit=crop');
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -124,8 +130,17 @@ export default function CompanyVerification() {
 
             {step === 'documents' && (
               <motion.div key="docs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight text-center">Business Registration</h3>
-                <p className="text-gray-500 font-sans mb-10 text-sm italic text-center">Upload your official RDB certificate or Business License.</p>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight">Business Registration</h3>
+                  <button
+                    type="button"
+                    onClick={handleAutoFillSampleCompanyDocs}
+                    className="text-xs font-bold text-blue-600 hover:underline font-sans cursor-pointer bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100"
+                  >
+                    ⚡ Autofill Sample Docs
+                  </button>
+                </div>
+                <p className="text-gray-500 font-sans mb-10 text-sm italic">Upload your official RDB certificate or Business License.</p>
                 
                 <div className="space-y-6 mb-10">
                   <div className="space-y-2 px-1">

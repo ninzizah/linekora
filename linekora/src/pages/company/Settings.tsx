@@ -24,6 +24,7 @@ export default function CompanySettings() {
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('Construction & Engineering');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('+250 788 123 456');
   const [headquarters, setHeadquarters] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [isSaved, setIsSaved] = useState(false);
@@ -35,6 +36,7 @@ export default function CompanySettings() {
       setCompanyName(localStorage.getItem('company_display_name_override') || profile.displayName || 'Kigali Builders');
       setIndustry(localStorage.getItem('company_industry_override') || 'Real Estate & Construction');
       setEmail(localStorage.getItem('company_email_override') || profile.email || 'contact@kigalibuilders.rw');
+      setPhone(localStorage.getItem('company_phone_override') || profile.phone || '+250 788 123 456');
       setHeadquarters(localStorage.getItem('company_location_override') || profile.location || 'Kigali, Rwanda');
       setSelectedAvatar(
         localStorage.getItem(`linekora_profile_picture_${profile.uid || 'guest'}`) || 
@@ -53,6 +55,7 @@ export default function CompanySettings() {
     localStorage.setItem('company_display_name_override', companyName);
     localStorage.setItem('company_industry_override', industry);
     localStorage.setItem('company_email_override', email);
+    localStorage.setItem('company_phone_override', phone);
     localStorage.setItem('company_location_override', headquarters);
     
     if (profile?.uid) {
@@ -68,6 +71,7 @@ export default function CompanySettings() {
         const parsed = JSON.parse(demoUserStr);
         parsed.displayName = companyName;
         parsed.location = headquarters;
+        parsed.phone = phone;
         localStorage.setItem('demo_user', JSON.stringify(parsed));
       } catch (err) {}
     }
@@ -158,6 +162,19 @@ export default function CompanySettings() {
                   onChange={(e) => setHeadquarters(e.target.value)}
                   className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all"
                 />
+              </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Telephone Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input 
+                    type="tel" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+250..."
+                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all"
+                  />
+                </div>
               </div>
             </div>
           </section>

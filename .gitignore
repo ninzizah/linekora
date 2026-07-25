@@ -37,3 +37,4 @@ linekora-backend/generated/
 
 # Coverage
 coverage/
+.vercel
