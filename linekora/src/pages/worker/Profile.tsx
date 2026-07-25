@@ -17,83 +17,64 @@ interface NotificationMsg {
 
 export default function WorkerProfile() {
   const { profile } = useAuth();
+  const uid = profile?.id || profile?.uid || 'guest';
+  const sk = (key: string) => `${key}_${uid}`;
 
-  // Load from localStorage or defaults
+  // Load from localStorage scoped to this user or defaults
   const [nameOverride, setNameOverride] = useState<string>(() => {
-    return localStorage.getItem('worker_profile_name') || profile?.displayName || 'Shema Honore';
+    return localStorage.getItem(sk('worker_profile_name')) || profile?.displayName || '';
   });
 
   const [locationOverride, setLocationOverride] = useState<string>(() => {
-    return localStorage.getItem('worker_profile_location') || profile?.location || 'Kigali, Rwanda';
+    return localStorage.getItem(sk('worker_profile_location')) || profile?.location || '';
   });
 
   const [bio, setBio] = useState<string>(() => {
-    return localStorage.getItem('worker_profile_bio') || "Passionate professional with over 5 years of experience in high-quality facility management and specialized cleaning services. Dedicated to providing safe, clean, and organized environments for businesses and homes alike.";
+    return localStorage.getItem(sk('worker_profile_bio')) || '';
   });
 
   const [skillsList, setSkillsList] = useState<string[]>(() => {
-    const saved = localStorage.getItem('worker_profile_skills');
+    const saved = localStorage.getItem(sk('worker_profile_skills'));
     if (saved) {
       try { return JSON.parse(saved); } catch(e) {}
     }
-    return ["Industrial Cleaning", "HVAC Maintenance", "Team Leadership", "Waste Management"];
+    return [];
   });
 
   const [cvName, setCvName] = useState<string>(() => {
-    const saved = localStorage.getItem('worker_profile_cv_filename');
-    return saved !== null ? saved : "CV_Shema_Honore_2024.pdf";
+    return localStorage.getItem(sk('worker_profile_cv_filename')) || '';
   });
 
   const [portfolioList, setPortfolioList] = useState<string[]>(() => {
-    const saved = localStorage.getItem('worker_profile_portfolio');
+    const saved = localStorage.getItem(sk('worker_profile_portfolio'));
     if (saved) {
       try { return JSON.parse(saved); } catch(e) {}
     }
-    return ["Project Alpha - Hospital Sterilization", "Residential Complex Management"];
+    return [];
   });
 
   const [isFavorited, setIsFavorited] = useState<boolean>(() => {
-    return localStorage.getItem('worker_profile_is_favorited') === 'true';
+    return localStorage.getItem(sk('worker_profile_is_favorited')) === 'true';
   });
 
   // Sync profile data once loaded if NOT edited before
   useEffect(() => {
-    if (profile?.displayName && !localStorage.getItem('worker_profile_name')) {
+    if (profile?.displayName && !localStorage.getItem(sk('worker_profile_name'))) {
       setNameOverride(profile.displayName);
     }
-    if (profile?.location && !localStorage.getItem('worker_profile_location')) {
+    if (profile?.location && !localStorage.getItem(sk('worker_profile_location'))) {
       setLocationOverride(profile.location);
     }
   }, [profile]);
 
   // Sync to local storage for persistence
-  useEffect(() => {
-    localStorage.setItem('worker_profile_name', nameOverride);
-  }, [nameOverride]);
-
-  useEffect(() => {
-    localStorage.setItem('worker_profile_location', locationOverride);
-  }, [locationOverride]);
-
-  useEffect(() => {
-    localStorage.setItem('worker_profile_bio', bio);
-  }, [bio]);
-
-  useEffect(() => {
-    localStorage.setItem('worker_profile_skills', JSON.stringify(skillsList));
-  }, [skillsList]);
-
-  useEffect(() => {
-    localStorage.setItem('worker_profile_cv_filename', cvName);
-  }, [cvName]);
-
-  useEffect(() => {
-    localStorage.setItem('worker_profile_portfolio', JSON.stringify(portfolioList));
-  }, [portfolioList]);
-
-  useEffect(() => {
-    localStorage.setItem('worker_profile_is_favorited', isFavorited.toString());
-  }, [isFavorited]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_name'), nameOverride); }, [nameOverride]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_location'), locationOverride); }, [locationOverride]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_bio'), bio); }, [bio]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_skills'), JSON.stringify(skillsList)); }, [skillsList]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_cv_filename'), cvName); }, [cvName]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_portfolio'), JSON.stringify(portfolioList)); }, [portfolioList]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_is_favorited'), isFavorited.toString()); }, [isFavorited]);
 
   // Notifications system state
   const [notifications, setNotifications] = useState<NotificationMsg[]>([]);
@@ -202,7 +183,7 @@ export default function WorkerProfile() {
         setIsUploadingCV(false);
         setCvName(file.name);
         if (event.target?.result) {
-          localStorage.setItem('worker_profile_cv_data', event.target.result as string);
+          localStorage.setItem(sk('worker_profile_cv_data'), event.target.result as string);
         }
         addNotification('success', 'CV Synchronized 📄', `Uploaded "${file.name}" successfully. Employer views synchronized.`);
       };
@@ -219,7 +200,7 @@ export default function WorkerProfile() {
   // Remove CV
   const handleRemoveCV = () => {
     setCvName('');
-    localStorage.removeItem('worker_profile_cv_data');
+    localStorage.removeItem(sk('worker_profile_cv_data'));
     setShowConfirmCVRemove(false);
     addNotification('info', 'CV File Removed', 'Your curriculum vitae file has been cleared from employer indices.');
   };

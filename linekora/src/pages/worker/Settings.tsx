@@ -16,6 +16,9 @@ export default function WorkerSettings() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cvInputRef = useRef<HTMLInputElement>(null);
+  
+  const uid = profile?.id || profile?.uid || 'guest';
+  const sk = (key: string) => `${key}_${uid}`;
 
   // Inputs State
   const [displayName, setDisplayName] = useState('');
@@ -29,7 +32,7 @@ export default function WorkerSettings() {
 
   // CV & Portfolio upload states
   const [cvFile, setCvFile] = useState<{ name: string; size: string; dataUrl: string; date: string } | null>(() => {
-    const cached = localStorage.getItem('worker_cv_data');
+    const cached = localStorage.getItem(sk('worker_cv_data'));
     if (cached) {
       try { return JSON.parse(cached); } catch (e) { return null; }
     }
@@ -41,14 +44,14 @@ export default function WorkerSettings() {
 
   useEffect(() => {
     if (profile) {
-      setDisplayName(localStorage.getItem('worker_profile_name') || profile.displayName || '');
-      setLocation(localStorage.getItem('worker_profile_location') || profile.location || 'Kigali, Rwanda');
-      setBio(localStorage.getItem('worker_profile_bio') || "Passionate professional with over 5 years of experience.");
+      setDisplayName(localStorage.getItem(sk('worker_profile_name')) || profile.displayName || '');
+      setLocation(localStorage.getItem(sk('worker_profile_location')) || profile.location || '');
+      setBio(localStorage.getItem(sk('worker_profile_bio')) || '');
       setAvatarUrl(
-        localStorage.getItem(`linekora_profile_picture_${profile.uid || 'guest'}`) || ''
+        localStorage.getItem(`linekora_profile_picture_${profile.uid || profile.id || 'guest'}`) || ''
       );
     }
-  }, [profile]);
+  }, [profile?.id]);
 
   const handleLogout = async () => {
     try {
@@ -83,25 +86,17 @@ export default function WorkerSettings() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    localStorage.setItem(sk('worker_profile_name'), displayName);
+    localStorage.setItem(sk('worker_profile_location'), location);
+    localStorage.setItem(sk('worker_profile_bio'), bio);
+    // Keep legacy key for DashboardLayout display name
     localStorage.setItem('worker_profile_name', displayName);
-    localStorage.setItem('worker_profile_location', location);
-    localStorage.setItem('worker_profile_bio', bio);
 
-    const key = profile?.uid ? `linekora_profile_picture_${profile.uid}` : `linekora_profile_picture_guest`;
+    const avatarKey = `linekora_profile_picture_${profile?.uid || profile?.id || 'guest'}`;
     if (avatarUrl) {
-      localStorage.setItem(key, avatarUrl);
+      localStorage.setItem(avatarKey, avatarUrl);
     } else {
-      localStorage.removeItem(key);
-    }
-    
-    const demoUserStr = localStorage.getItem('demo_user');
-    if (demoUserStr) {
-      try {
-        const parsed = JSON.parse(demoUserStr);
-        parsed.displayName = displayName;
-        parsed.location = location;
-        localStorage.setItem('demo_user', JSON.stringify(parsed));
-      } catch (e) {}
+      localStorage.removeItem(avatarKey);
     }
 
     setIsSaved(true);
@@ -143,7 +138,7 @@ export default function WorkerSettings() {
           date: new Date().toLocaleDateString()
         };
         setCvFile(cvObj);
-        localStorage.setItem('worker_cv_data', JSON.stringify(cvObj));
+        localStorage.setItem(sk('worker_cv_data'), JSON.stringify(cvObj));
         setIsUploadingCv(false);
       }, 800);
     };
@@ -152,7 +147,7 @@ export default function WorkerSettings() {
 
   const handleRemoveCv = () => {
     setCvFile(null);
-    localStorage.removeItem('worker_cv_data');
+    localStorage.removeItem(sk('worker_cv_data'));
   };
 
   const tabs = [

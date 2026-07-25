@@ -22,28 +22,32 @@ export default function CompanySettings() {
 
   // Controlled states
   const [companyName, setCompanyName] = useState('');
-  const [industry, setIndustry] = useState('Construction & Engineering');
+  const [industry, setIndustry] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('+250 788 123 456');
+  const [phone, setPhone] = useState('');
   const [headquarters, setHeadquarters] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [isSaved, setIsSaved] = useState(false);
+  const [strictHiring, setStrictHiring] = useState(false);
   const [passwordResetSent, setPasswordResetSent] = useState(false);
   const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
 
+  const storageKey = (key: string) => `${key}_${profile?.id || profile?.uid || 'guest'}`;
+
   useEffect(() => {
     if (profile) {
-      setCompanyName(localStorage.getItem('company_display_name_override') || profile.displayName || 'Kigali Builders');
-      setIndustry(localStorage.getItem('company_industry_override') || 'Real Estate & Construction');
-      setEmail(localStorage.getItem('company_email_override') || profile.email || 'contact@kigalibuilders.rw');
-      setPhone(localStorage.getItem('company_phone_override') || profile.phone || '+250 788 123 456');
-      setHeadquarters(localStorage.getItem('company_location_override') || profile.location || 'Kigali, Rwanda');
+      setCompanyName(localStorage.getItem(storageKey('company_name')) || profile.displayName || '');
+      setIndustry(localStorage.getItem(storageKey('company_industry')) || '');
+      setEmail(localStorage.getItem(storageKey('company_email')) || profile.email || '');
+      setPhone(localStorage.getItem(storageKey('company_phone')) || profile.phone || '');
+      setHeadquarters(localStorage.getItem(storageKey('company_location')) || profile.location || '');
+      setStrictHiring(localStorage.getItem(storageKey('company_strict_hiring')) === 'true');
       setSelectedAvatar(
-        localStorage.getItem(`linekora_profile_picture_${profile.uid || 'guest'}`) || 
+        localStorage.getItem(`linekora_profile_picture_${profile.uid || profile.id || 'guest'}`) || 
         COMPANY_AVATAR_PRESETS[0]
       );
     }
-  }, [profile]);
+  }, [profile?.id]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -52,34 +56,20 @@ export default function CompanySettings() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    localStorage.setItem(storageKey('company_name'), companyName);
+    localStorage.setItem(storageKey('company_industry'), industry);
+    localStorage.setItem(storageKey('company_email'), email);
+    localStorage.setItem(storageKey('company_phone'), phone);
+    localStorage.setItem(storageKey('company_location'), headquarters);
+    localStorage.setItem(storageKey('company_strict_hiring'), strictHiring.toString());
+    // Keep legacy key for DashboardLayout display name
     localStorage.setItem('company_display_name_override', companyName);
-    localStorage.setItem('company_industry_override', industry);
-    localStorage.setItem('company_email_override', email);
-    localStorage.setItem('company_phone_override', phone);
-    localStorage.setItem('company_location_override', headquarters);
     
-    if (profile?.uid) {
-      localStorage.setItem(`linekora_profile_picture_${profile.uid}`, selectedAvatar);
-    } else {
-      localStorage.setItem(`linekora_profile_picture_guest`, selectedAvatar);
-    }
-
-    // Update demo user if applicable
-    const demoUserStr = localStorage.getItem('demo_user');
-    if (demoUserStr) {
-      try {
-        const parsed = JSON.parse(demoUserStr);
-        parsed.displayName = companyName;
-        parsed.location = headquarters;
-        parsed.phone = phone;
-        localStorage.setItem('demo_user', JSON.stringify(parsed));
-      } catch (err) {}
-    }
+    const avatarKey = `linekora_profile_picture_${profile?.uid || profile?.id || 'guest'}`;
+    if (selectedAvatar) localStorage.setItem(avatarKey, selectedAvatar);
 
     setIsSaved(true);
-    setTimeout(() => {
-      setIsSaved(false);
-    }, 3000);
+    setTimeout(() => setIsSaved(false), 3000);
   };
 
   return (
@@ -200,9 +190,13 @@ export default function CompanySettings() {
                     <p className="text-xs text-gray-500 font-medium">Only verified workers can apply to our jobs.</p>
                   </div>
                 </div>
-                <button type="button" className="h-6 w-12 rounded-full bg-blue-600 p-1">
-                  <div className="h-4 w-4 bg-white rounded-full translate-x-6 shadow-sm" />
-                </button>
+              <button 
+                type="button" 
+                onClick={() => setStrictHiring(v => !v)}
+                className={`h-6 w-12 rounded-full p-1 transition-colors relative shrink-0 ${strictHiring ? 'bg-blue-600' : 'bg-gray-300'}`}
+              >
+                <div className={`h-4 w-4 bg-white rounded-full shadow-sm transition-transform ${strictHiring ? 'translate-x-6' : 'translate-x-0'}`} />
+              </button>
               </div>
 
               <div className="p-6 bg-gray-50 rounded-[2rem] flex flex-col gap-4 border border-transparent hover:border-blue-100 transition-all">

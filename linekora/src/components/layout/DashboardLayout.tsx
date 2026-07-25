@@ -109,31 +109,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           }, []);
           setAlerts(merged);
         } else {
-          // Fallback static alerts by role, supplemented with local alerts
-          let staticAlerts: WebAlert[] = [];
-          if (roleKey === 'worker') {
-            staticAlerts = [
-              { id: 'a1', category: 'urgent', title: '🚨 Emergency Gig Alert', details: 'Hospitality assistant required at Gishushu, Kigali. RWF 14,000/day.', time: '5m ago', read: false },
-              { id: 'a2', category: 'success', title: '✅ Application Approved', details: 'SafeGuard Sec approved your shift credentials.', time: '1h ago', read: false },
-              { id: 'a3', category: 'alert', title: '⭐ Premium Badge Earned', details: 'Congrats! You are now fully verified as Expert Plumber.', time: '1d ago', read: true },
-            ];
-          } else if (roleKey === 'company') {
-            staticAlerts = [
-              { id: 'c1', category: 'urgent', title: '👤 New Worker Application', details: 'John Musoke (CCTV Specialist) applied for Night Guard.', time: '3m ago', read: false },
-              { id: 'c2', category: 'success', title: '🛡️ Business Verified', details: 'Your corporate license was approved. Premium badge active.', time: '4h ago', read: false },
-            ];
-          } else {
-            staticAlerts = [
-              { id: 'e1', category: 'success', title: '🚗 Worker Arriving Soon', details: 'Alex Karekezi marked transit status to your backyard.', time: '8m ago', read: false },
-              { id: 'e2', category: 'general', title: '🧹 Booking Completed', details: '"Professional Cleaners" received your Escrow authorization fee.', time: '2h ago', read: false }
-            ];
-          }
-          // Prepend real local events before static fallbacks
-          const merged = [...localAlerts, ...staticAlerts].reduce((acc: WebAlert[], cur) => {
-            if (!acc.find(x => x.id === cur.id)) acc.push(cur);
-            return acc;
-          }, []);
-          setAlerts(merged);
+          // No DB notifications yet - show only real local events
+          setAlerts(localAlerts);
         }
       } catch (err) {
         console.error('Failed to load notifications', err);
@@ -148,26 +125,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return () => clearInterval(pollInterval);
   }, [user?.id, roleKey]);
 
-  // Static chats by role
+  // Load real chats from localStorage (set by the messaging pages)
   useEffect(() => {
-    if (!user?.role) return;
-    if (roleKey === 'worker') {
-      setChats([
-        { id: 'w1', sender: 'Sarah Musoke', role: 'Property Owner', body: 'Can you come in at 9AM tomorrow for the garden cleaning?', time: '2m ago', unread: true },
-        { id: 'w2', sender: 'SafeGuard Sec', role: 'Company Admin', body: 'Your shifts for next week have been approved.', time: '3h ago', unread: false },
-      ]);
-    } else if (roleKey === 'company') {
-      setChats([
-        { id: 'cp1', sender: 'John Mweru', role: 'Applicant (Office Cleaner)', body: 'I have 3 years experience in office cleaning.', time: '5m ago', unread: true },
-        { id: 'cp2', sender: 'Sarah Nakato', role: 'Applicant', body: 'When can we schedule the interview?', time: '2h ago', unread: false },
-      ]);
-    } else {
-      setChats([
-        { id: 'em1', sender: 'Alex Karekezi', role: 'Gardener Specialist', body: "I'll be there by 8:30 AM tomorrow with tools.", time: '1h ago', unread: true },
-        { id: 'em2', sender: 'Professional Cleaners', role: 'Agency Office', body: 'Thank you for booking our premium sanitation package.', time: '2d ago', unread: false }
-      ]);
+    if (!user?.id) return;
+    try {
+      const raw = localStorage.getItem(`linekora_chats_${user.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setChats(parsed);
+      } else {
+        setChats([]);
+      }
+    } catch {
+      setChats([]);
     }
-  }, [user?.role]);
+  }, [user?.id]);
 
 
   // Handle click outside to close the notifications panel

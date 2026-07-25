@@ -311,60 +311,88 @@ export default function CompanyApplicants() {
 
               <div className="flex items-start gap-4 mb-6">
                 <div className="h-16 w-16 bg-blue-100 text-blue-600 font-sans font-black text-xl rounded-2xl flex items-center justify-center">
-                  {selectedApplicant.avatar}
+                  {(selectedApplicant.worker?.displayName || selectedApplicant.name || 'W').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-2xl font-black text-gray-950 font-sans uppercase tracking-tight">{selectedApplicant.name}</h3>
-                    {selectedApplicant.verified && <Shield size={16} className="text-green-500" fill="currentColor" />}
+                    <h3 className="text-2xl font-black text-gray-950 font-sans uppercase tracking-tight">
+                      {selectedApplicant.worker?.displayName || selectedApplicant.name || 'Worker'}
+                    </h3>
+                    {(selectedApplicant.worker?.verificationStatus === 'verified' || selectedApplicant.verified) && (
+                      <Shield size={16} className="text-green-500" fill="currentColor" />
+                    )}
                   </div>
-                  <p className="text-xs font-black text-blue-600 uppercase tracking-widest font-sans mt-0.5">Trust Score: {selectedApplicant.trustScore}</p>
+                  <p className="text-xs font-black text-blue-600 uppercase tracking-widest font-sans mt-0.5">
+                    Trust Score: {selectedApplicant.worker?.trustScore || selectedApplicant.trustScore || 0}
+                  </p>
+                  {selectedApplicant.worker?.email && (
+                    <p className="text-xs text-gray-500 font-bold mt-0.5">{selectedApplicant.worker.email}</p>
+                  )}
+                  <span className={`mt-1 inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
+                    selectedApplicant.status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' :
+                    selectedApplicant.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' :
+                    'bg-yellow-50 text-yellow-600 border-yellow-100'
+                  }`}>{selectedApplicant.status}</span>
                 </div>
               </div>
 
               <div className="space-y-6 mb-8 font-sans">
                 <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Applying For Position</p>
-                  <p className="text-base font-bold text-gray-900 italic">"{selectedApplicant.job}"</p>
+                  <p className="text-base font-bold text-gray-900 italic">"{selectedApplicant.job?.title || selectedApplicant.job || 'N/A'}"</p>
                 </div>
 
-                <div>
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                    <Award size={12} className="text-blue-500" />
-                    Professional Experience
-                  </h4>
-                  <p className="text-sm font-bold text-gray-800 leading-relaxed bg-blue-50/20 p-4 rounded-xl border border-blue-50/50">
-                    {selectedApplicant.experience}
-                  </p>
-                </div>
+                {selectedApplicant.coverLetter && (
+                  <div>
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                      <Info size={12} className="text-blue-500" />
+                      Cover Letter
+                    </h4>
+                    <p className="text-sm text-gray-600 leading-relaxed italic bg-blue-50/20 p-4 rounded-xl border border-blue-50/50">
+                      "{selectedApplicant.coverLetter}"
+                    </p>
+                  </div>
+                )}
 
-                <div>
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                    <Info size={12} className="text-blue-500" />
-                    Candidate Bio / Statement
-                  </h4>
-                  <p className="text-sm text-gray-600 leading-relaxed italic">
-                    "{selectedApplicant.bio}"
-                  </p>
-                </div>
+                {selectedApplicant.worker?.bio && (
+                  <div>
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                      <Award size={12} className="text-blue-500" />
+                      Worker Bio
+                    </h4>
+                    <p className="text-sm font-bold text-gray-800 leading-relaxed bg-blue-50/20 p-4 rounded-xl border border-blue-50/50">
+                      {selectedApplicant.worker.bio}
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Contact Line</span>
-                    <span className="font-bold text-gray-900">{selectedApplicant.phone}</span>
+                    <span className="font-bold text-gray-900">{selectedApplicant.worker?.phone || selectedApplicant.phone || 'Not provided'}</span>
                   </div>
                   <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Work Location</span>
-                    <span className="font-bold text-gray-900 truncate block">{selectedApplicant.location}</span>
+                    <span className="font-bold text-gray-900 truncate block">{selectedApplicant.worker?.location || selectedApplicant.location || 'Kigali'}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Applied On</span>
+                    <span className="font-bold text-gray-900">{selectedApplicant.createdAt ? new Date(selectedApplicant.createdAt).toLocaleDateString() : 'Recently'}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Verification</span>
+                    <span className={`font-black ${selectedApplicant.worker?.verificationStatus === 'verified' ? 'text-green-600' : 'text-yellow-600'}`}>
+                      {selectedApplicant.worker?.verificationStatus || 'Unverified'}
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-150 rounded-2xl">
-                  <CheckCircle2 size={16} className="text-green-600 shrink-0" />
-                  <p className="text-[11px] font-black text-green-900 uppercase tracking-wide">
-                    National ID Registration Verified with RDB
-                  </p>
-                </div>
+                {selectedApplicant.worker?.verificationStatus === 'verified' && (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-100 rounded-2xl">
+                    <CheckCircle2 size={16} className="text-green-600 shrink-0" />
+                    <p className="text-[11px] font-black text-green-900 uppercase tracking-wide">National ID Registration Verified with RDB</p>
+                  </div>
+                )}
               </div>
 
               {/* Action State inside details */}
