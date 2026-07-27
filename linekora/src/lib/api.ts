@@ -74,6 +74,7 @@ export interface Job {
   urgent: boolean;
   status: string;
   employerId: string;
+  phone?: string;
   employer?: Pick<UserProfile, 'id' | 'displayName' | 'email' | 'phone'>;
   createdAt: string;
 }

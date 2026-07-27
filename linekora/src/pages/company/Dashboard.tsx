@@ -101,6 +101,25 @@ export default function CompanyDashboard() {
   const [showShortlistModal, setShowShortlistModal] = useState(false);
   const [renewingJobId, setRenewingJobId] = useState<number | null>(null);
 
+  // Corporate Pay Modal state
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [payPhone, setPayPhone] = useState('');
+  const [isProcessingPay, setIsProcessingPay] = useState(false);
+  const [unpaidCommission, setUnpaidCommission] = useState('150,000');
+
+  const handlePayCorporateFee = () => {
+    if (!payPhone.trim()) {
+      addNotification('error', 'Missing Phone', 'Please enter your MoMo phone number.');
+      return;
+    }
+    setIsProcessingPay(true);
+    setTimeout(() => {
+      setIsProcessingPay(false);
+      setShowPayModal(false);
+      addNotification('success', 'Payment Processed 💳', `RWF ${unpaidCommission} corporate fee settled from ${payPhone}.`);
+    }, 2000);
+  };
+
   // Sync state to local storage
   useEffect(() => {
     localStorage.setItem('company_active_jobs_count', activeJobsCount.toString());
