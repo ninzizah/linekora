@@ -24,43 +24,12 @@ interface MessageItem {
 }
 
 export default function EmployerMessages() {
-  const [activeChat, setActiveChat] = useState<number | null>(1);
+  const [activeChat, setActiveChat] = useState<number | null>(null);
   const [message, setMessage] = useState('');
 
-  const DEFAULT_CHATS: ChatItem[] = [
-    { 
-      id: 1, 
-      name: 'Alex Karekezi', 
-      role: 'Worker (Gardener)', 
-      lastMsg: "I'll be there by 8:30 AM tomorrow.", 
-      time: '1h ago', 
-      unread: 0, 
-      online: true,
-      avatar: 'AK'
-    },
-    { 
-      id: 2, 
-      name: 'Professional Cleaners', 
-      role: 'Cleaning Company', 
-      lastMsg: "Thank you for booking our service.", 
-      time: '3h ago', 
-      unread: 1, 
-      online: false,
-      avatar: 'PC'
-    }
-  ];
+  const DEFAULT_CHATS: ChatItem[] = [];
 
-  const DEFAULT_MESSAGES: Record<number, MessageItem[]> = {
-    1: [
-      { id: 1, text: "Hi Alex, can you come help with the garden tomorrow?", sent: true, time: '2:00 PM' },
-      { id: 2, text: "Yes sure! What time works for you?", sent: false, time: '2:15 PM' },
-      { id: 3, text: "Around 9:00 AM would be perfect.", sent: true, time: '2:20 PM' },
-      { id: 4, text: "I'll be there by 8:30 AM tomorrow.", sent: false, time: '2:45 PM' },
-    ],
-    2: [
-      { id: 1, text: "Welcome to LINEKORA! Thank you for booking our service.", sent: false, time: '3:00 PM' }
-    ]
-  };
+  const DEFAULT_MESSAGES: Record<number, MessageItem[]> = {};
 
   const [chatsList, setChatsList] = useState<ChatItem[]>(() => {
     const cached = localStorage.getItem('linekora_employer_chats');

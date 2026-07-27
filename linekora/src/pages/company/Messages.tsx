@@ -36,62 +36,12 @@ interface ToastAlert {
 }
 
 export default function CompanyMessages() {
-  const [activeChat, setActiveChat] = useState<number | null>(1);
+  const [activeChat, setActiveChat] = useState<number | null>(null);
   const [message, setMessage] = useState('');
 
-  const DEFAULT_CHATS = [
-    { 
-      id: 1, 
-      name: 'John Mweru', 
-      role: 'Applicant (Office Cleaner)', 
-      lastMsg: "I have 3 years experience in office cleaning.", 
-      time: '5m ago', 
-      unread: 1, 
-      online: true,
-      avatar: 'JM',
-      pinned: false,
-      muted: false
-    },
-    { 
-      id: 2, 
-      name: 'Sarah Nakato', 
-      role: 'Applicant (Office Cleaner)', 
-      lastMsg: "When can we schedule the interview?", 
-      time: '2h ago', 
-      unread: 0, 
-      online: false,
-      avatar: 'SN',
-      pinned: false,
-      muted: false
-    },
-    { 
-      id: 3, 
-      name: 'LINEKORA Support', 
-      role: 'System Support', 
-      lastMsg: "Your company verification is successful.", 
-      time: '1d ago', 
-      unread: 0, 
-      online: true,
-      avatar: 'LK',
-      pinned: false,
-      muted: false
-    }
-  ];
+  const DEFAULT_CHATS: ChatItem[] = [];
 
-  const DEFAULT_MESSAGES = {
-    1: [
-      { id: 1, text: "Hello John, we reviewed your application for the Office Cleaner role.", sent: true, time: '11:00 AM' },
-      { id: 2, text: "Thank you for the update. I am very interested.", sent: false, time: '11:05 AM' },
-      { id: 3, text: "I have 3 years experience in office cleaning.", sent: false, time: '11:06 AM' }
-    ],
-    2: [
-      { id: 1, text: "Greetings Sarah, when are you open next week for a face-to-face meet?", sent: true, time: 'Yesterday' },
-      { id: 2, text: "When can we schedule the interview? Anytime Tuesday or Thursday works.", sent: false, time: 'Yesterday' }
-    ],
-    3: [
-      { id: 1, text: "Welcome to LINEKORA! Your registration process in Kigali registry database has been greenlisted.", sent: false, time: 'Tuesday' }
-    ]
-  };
+  const DEFAULT_MESSAGES: Record<number, MessageItem[]> = {};
 
   // Stateful chats list
   const [chatsList, setChatsList] = useState<ChatItem[]>(() => {

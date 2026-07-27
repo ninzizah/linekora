@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  User, Bell, Shield, CreditCard, LogOut, Save, CheckCircle, 
-  X, AlertTriangle, AlertCircle, Sparkles, Check, Phone, FileCheck, Camera
+  User, Shield, LogOut, Save, CheckCircle, 
+  X, AlertTriangle, FileCheck, Camera, Phone
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
-import { signOut, sendPasswordResetEmail } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -36,17 +36,9 @@ export default function EmployerSettings() {
   const [nationalId, setNationalId] = useState('');
   const [showVerifyModal, setShowVerifyModal] = useState(false);
 
-  // Notification states
-  const [notifyApps, setNotifyApps] = useState(true);
-  const [notifyMsgs, setNotifyMsgs] = useState(true);
-  const [notifyEscrow, setNotifyEscrow] = useState(true);
-  const [notifyAlerts, setNotifyAlerts] = useState(false);
-
   // Saving state
   const [saving, setSaving] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [passwordResetSent, setPasswordResetSent] = useState(false);
-  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
 
   // Initialize from context state
   useEffect(() => {
@@ -64,10 +56,6 @@ export default function EmployerSettings() {
         if (parsed.phone) setPhone(parsed.phone);
         if (parsed.bio) setBio(parsed.bio);
         if (parsed.isVerified) setIsVerified(parsed.isVerified);
-        if (parsed.notifyApps !== undefined) setNotifyApps(parsed.notifyApps);
-        if (parsed.notifyMsgs !== undefined) setNotifyMsgs(parsed.notifyMsgs);
-        if (parsed.notifyEscrow !== undefined) setNotifyEscrow(parsed.notifyEscrow);
-        if (parsed.notifyAlerts !== undefined) setNotifyAlerts(parsed.notifyAlerts);
       } catch (e) {
         console.error('Error parsing profile settings overrides', e);
       }
@@ -113,8 +101,7 @@ export default function EmployerSettings() {
 
     setSaving(true);
     const payload = {
-      displayName, location, phone, bio, isVerified,
-      notifyApps, notifyMsgs, notifyEscrow, notifyAlerts
+      displayName, location, phone, bio, isVerified
     };
     localStorage.setItem('employer_profile_overrides', JSON.stringify(payload));
     localStorage.setItem('current_username', displayName);
@@ -152,11 +139,7 @@ export default function EmployerSettings() {
         location,
         phone,
         bio,
-        isVerified: true,
-        notifyApps,
-        notifyMsgs,
-        notifyEscrow,
-        notifyAlerts
+        isVerified: true
       };
       localStorage.setItem('employer_profile_overrides', JSON.stringify(payload));
       
@@ -338,99 +321,6 @@ export default function EmployerSettings() {
                 </button>
               </div>
             )}
-          </section>
-
-          {/* ACCOUNT SECURITY */}
-          <section className="pt-8 border-t border-gray-50 space-y-6">
-            <h3 className="text-lg font-black text-gray-905 font-sans tracking-tight flex items-center gap-2.5 uppercase border-b border-gray-50 pb-3">
-              <Shield size={20} className="text-blue-600" />
-              Account Security
-            </h3>
-
-            <div className="p-5 bg-gray-50 rounded-[2rem] flex flex-col gap-4 border border-transparent hover:border-blue-150 transition-all">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 group">
-                <div className="flex items-start gap-4">
-                  <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm shrink-0">
-                    <Shield size={20} />
-                  </div>
-                  <div>
-                    <h4 className="font-sans font-black text-gray-900 text-sm">Change Account Password</h4>
-                    <p className="text-xs text-gray-500 font-medium">Sends a secure, validated password reset email instructions link to your registered address.</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setPasswordResetSent(false);
-                    setPasswordResetError(null);
-                    if (auth.currentUser?.email) {
-                      try {
-                        await sendPasswordResetEmail(auth, auth.currentUser.email);
-                        setPasswordResetSent(true);
-                      } catch (err: any) {
-                        setPasswordResetError(err.message || "Failed to trigger reset email.");
-                      }
-                    } else {
-                      setPasswordResetError("No authenticated email address found.");
-                    }
-                  }}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md self-start md:self-auto shrink-0 cursor-pointer"
-                >
-                  Send Email Link
-                </button>
-              </div>
-
-              {passwordResetSent && (
-                <div className="p-4 bg-green-50 text-green-600 rounded-2xl text-xs font-bold font-sans border border-green-150 text-center animate-fade-in">
-                  ✓ Password reset link sent to {auth.currentUser?.email}! Check your inbox.
-                </div>
-              )}
-
-              {passwordResetError && (
-                <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-xs font-bold font-sans border border-red-150 text-center animate-fade-in">
-                  ❌ {passwordResetError}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* NOTIFICATION PREFERENCES */}
-          <section className="pt-8 border-t border-gray-50 space-y-6">
-            <h3 className="text-lg font-black text-gray-905 font-sans tracking-tight flex items-center gap-2.5 uppercase border-b border-gray-50 pb-3">
-              <Bell size={20} className="text-blue-600" />
-              Notifications Configuration
-            </h3>
-            
-            <div className="space-y-3">
-              {[
-                { label: 'New Worker Applications', desc: 'Alert me instantly upon nearby candidates bidding on my dispatched tasks.', state: notifyApps, setState: setNotifyApps },
-                { label: 'Messages from Workers', desc: 'Receive prompt banner alerts for active interview message pings in chat.', state: notifyMsgs, setState: setNotifyMsgs },
-                { label: 'Escrow Account status', desc: 'Secure alerts for payment locking and validation updates.', state: notifyEscrow, setState: setNotifyEscrow },
-                { label: 'Platform Security Alerts', desc: 'Optional updates regarding administrative registry policies.', state: notifyAlerts, setState: setNotifyAlerts }
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-gray-50/50 hover:bg-gray-50 rounded-2xl border border-gray-100/50 transition-colors">
-                  <div className="pr-4">
-                    <p className="font-sans font-black text-gray-800 text-xs uppercase tracking-wide leading-none">{item.label}</p>
-                    <p className="text-[10px] text-gray-400 mt-1 font-sans font-medium">{item.desc}</p>
-                  </div>
-                  
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      item.setState(!item.state);
-                      addToast('Config Alert 🎛️', `Toggled "${item.label}" preference. Click Save on bottom to enforce.`, 'info');
-                    }}
-                    className={`h-6 w-11 rounded-full p-0.5 cursor-pointer transition-colors flex items-center shrink-0 ${
-                      item.state ? 'bg-blue-600' : 'bg-gray-250'
-                    }`}
-                  >
-                    <div className={`h-5 w-5 bg-white rounded-full shadow-sm transition-transform ${
-                      item.state ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-              ))}
-            </div>
           </section>
 
           {/* ACTIONS AND OUT */}

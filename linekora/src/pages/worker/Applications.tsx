@@ -35,35 +35,6 @@ export default function WorkerApplications() {
     const cachedApps = localStorage.getItem('worker_applications');
     if (cachedApps) {
       try { workerApps = JSON.parse(cachedApps); } catch (e) { workerApps = []; }
-    } else {
-      const defaultApps = [
-        { 
-          id: 1, 
-          jobTitle: 'Office Cleaner', 
-          company: 'Tech Hub Solutions', 
-          location: 'Kigali, Kimihurura', 
-          salary: 'RWF 30,005/day',
-          status: 'pending',
-          date: 'Applied 2 days ago',
-          logo: 'TH',
-          phone: '+250 788 450 111',
-          description: 'Requires cleaning client workspaces, sanitizing meeting rooms, and refilling lounge refreshments thrice weekly.'
-        },
-        { 
-          id: 3, 
-          jobTitle: 'Construction Laborer', 
-          company: 'BuildRight Ltd', 
-          location: 'Kigali, Nyamirambo', 
-          salary: 'RWF 25,000/day',
-          status: 'rejected',
-          date: 'Applied 3 days ago',
-          logo: 'BR',
-          phone: '+250 783 600 333',
-          description: 'Mixing masonry mortar, lifting cement block shipments, and cleaning raw build materials onsite.'
-        }
-      ];
-      localStorage.setItem('worker_applications', JSON.stringify(defaultApps));
-      workerApps = defaultApps;
     }
 
     // 2. Merge with contracts from linekora_contracts database

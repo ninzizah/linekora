@@ -5,12 +5,6 @@ import { motion } from 'motion/react';
 
 export default function WorkerReviews() {
   const [reviews, setReviews] = useState<any[]>(() => {
-    const defaultReviews = [
-      { id: 1, author: 'Jane Nabirye', company: 'Tech Hub', rating: 5, comment: 'Excellent worker, very reliable and punctual. The office was spotless.', date: '2 days ago', task: 'Office Cleaning' },
-      { id: 2, author: 'Mark Ssemambo', company: 'Individual', rating: 4, comment: 'Good job overall, though he arrived 10 mins late. Very professional conduct.', date: '1 week ago', task: 'Gardening' },
-      { id: 3, author: 'Security Solutions', company: 'SafeGuard', rating: 5, comment: 'Highly recommended for night shifts. Very professional and reliable.', date: '2 weeks ago', task: 'Night Guard' },
-    ];
-
     let contractList: any[] = [];
     const cachedContracts = localStorage.getItem('linekora_contracts');
     if (cachedContracts) {
@@ -28,7 +22,7 @@ export default function WorkerReviews() {
       task: c.jobTitle
     }));
 
-    return [...convertedReviews, ...defaultReviews];
+    return convertedReviews;
   });
 
   return (
@@ -43,22 +37,22 @@ export default function WorkerReviews() {
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm text-center">
             <p className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Average Rating</p>
             <div className="flex items-center justify-center gap-2 mb-2">
-              <h3 className="text-5xl font-black text-gray-900 font-sans">4.8</h3>
+              <h3 className="text-5xl font-black text-gray-900 font-sans">{reviews.length > 0 ? (reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length).toFixed(1) : '0.0'}</h3>
               <Star className="text-yellow-500 fill-current" size={32} />
             </div>
-            <p className="text-xs font-bold text-gray-400 font-sans">Based on 14 reviews</p>
+            <p className="text-xs font-bold text-gray-400 font-sans">Based on {reviews.length} review{reviews.length !== 1 ? 's' : ''}</p>
           </div>
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm text-center">
-            <p className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Completion Rate</p>
-            <h3 className="text-5xl font-black text-gray-900 font-sans">98%</h3>
-            <p className="text-xs font-bold text-gray-400 font-sans mt-2">Highly Reliable</p>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Reviews</p>
+            <h3 className="text-5xl font-black text-gray-900 font-sans">{reviews.length}</h3>
+            <p className="text-xs font-bold text-gray-400 font-sans mt-2">{reviews.length > 0 ? 'Active' : 'No reviews yet'}</p>
           </div>
           <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-[2.5rem] border border-blue-100 shadow-sm text-center text-white">
-            <p className="text-xs font-black text-white/60 uppercase tracking-widest font-sans mb-2">Trust Points</p>
-            <h3 className="text-5xl font-black font-sans">720</h3>
+            <p className="text-xs font-black text-white/60 uppercase tracking-widest font-sans mb-2">Reputation</p>
+            <h3 className="text-5xl font-black font-sans">{reviews.length}</h3>
             <p className="text-xs font-bold text-white/80 font-sans mt-2 flex items-center justify-center gap-1">
               <ShieldCheck size={12} />
-              Gold Tier
+              {reviews.length >= 10 ? 'Gold Tier' : 'New Member'}
             </p>
           </div>
         </div>

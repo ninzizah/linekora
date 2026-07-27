@@ -36,66 +36,14 @@ interface ToastAlert {
 }
 
 export default function WorkerMessages() {
-  const [activeChat, setActiveChat] = useState<number | null>(1);
+  const [activeChat, setActiveChat] = useState<number | null>(null);
   const [message, setMessage] = useState('');
 
   // Stateful chats list
-  const [chatsList, setChatsList] = useState<ChatItem[]>([
-    { 
-      id: 1, 
-      name: 'Sarah Musoke', 
-      role: 'Property Owner', 
-      lastMsg: "Can you come in at 9AM tomorrow for the garden cleaning?", 
-      time: '2m ago', 
-      unread: 2, 
-      online: true,
-      avatar: 'SM',
-      pinned: false,
-      muted: false
-    },
-    { 
-      id: 2, 
-      name: 'SafeGuard Sec', 
-      role: 'Company Admin', 
-      lastMsg: "Your shifts for next week have been approved.", 
-      time: '1h ago', 
-      unread: 0, 
-      online: false,
-      avatar: 'SG',
-      pinned: false,
-      muted: false
-    },
-    { 
-      id: 3, 
-      name: 'Tech Hub Solutions', 
-      role: 'HR Manager', 
-      lastMsg: "We viewed your profile and would like to interview you.", 
-      time: '3h ago', 
-      unread: 0, 
-      online: true,
-      avatar: 'TH',
-      pinned: false,
-      muted: false
-    }
-  ]);
+  const [chatsList, setChatsList] = useState<ChatItem[]>([]);
 
   // Messages database keyed by chatId
-  const [messagesDB, setMessagesDB] = useState<Record<number, MessageItem[]>>({
-    1: [
-      { id: 1, text: "Hello! I saw your job posting for garden cleaning.", sent: true, time: '10:00 AM' },
-      { id: 2, text: "Hi! Yes, we need someone urgently for this weekend.", sent: false, time: '10:05 AM' },
-      { id: 3, text: "I am available on Saturday morning. Would that work?", sent: true, time: '10:10 AM' },
-      { id: 4, text: "Can you come in at 9AM tomorrow for the garden cleaning?", sent: false, time: '10:12 AM' },
-    ],
-    2: [
-      { id: 1, text: "Hello SafeGuard, is my shift schedule uploaded yet?", sent: true, time: 'Yesterday' },
-      { id: 2, text: "Yes, your shifts for next week have been approved. Look at your grid dashboard.", sent: false, time: 'Yesterday' }
-    ],
-    3: [
-      { id: 1, text: "Greetings, I noticed your opening. I uploaded my certificate.", sent: true, time: 'Tuesday' },
-      { id: 2, text: "We viewed your profile and would like to interview you next Monday.", sent: false, time: 'Tuesday' }
-    ]
-  });
+  const [messagesDB, setMessagesDB] = useState<Record<number, MessageItem[]>>({});
 
   // UI Interactive States
   const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false);

@@ -31,17 +31,17 @@ export default function CompanyWallet() {
   // Stateful financial values
   const [balance, setBalance] = useState<number>(() => {
     const saved = localStorage.getItem('company_available_balance');
-    return saved ? parseInt(saved, 10) : 1250000;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [escrowBalance, setEscrowBalance] = useState<number>(() => {
     const saved = localStorage.getItem('company_escrow_balance');
-    return saved ? parseInt(saved, 10) : 450000;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [totalSpent, setTotalSpent] = useState<number>(() => {
     const saved = localStorage.getItem('company_total_spent');
-    return saved ? parseInt(saved, 10) : 5890000;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   // Stateful transactions
@@ -54,11 +54,7 @@ export default function CompanyWallet() {
         // Fallback
       }
     }
-    return [
-      { id: 1, type: 'payment', amount: 'RWF 50,000', recipient: 'John Mweru', status: 'completed', date: 'April 25, 2026', role: 'Worker', refCode: 'TX-PAY-9812A' },
-      { id: 2, type: 'escrow', amount: 'RWF 35,000', recipient: 'Sarah Nakato', status: 'pending', date: 'April 22, 2026', role: 'Worker', refCode: 'TX-ESC-3321B' },
-      { id: 3, type: 'deposit', amount: 'RWF 500,000', recipient: 'MTN Mobile Money', status: 'completed', date: 'April 20, 2026', role: 'Inbound', refCode: 'TX-DEP-4491X' },
-    ];
+    return [];
   });
 
   // Synchronize localStorage

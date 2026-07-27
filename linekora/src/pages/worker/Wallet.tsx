@@ -26,17 +26,17 @@ export default function WorkerWallet() {
   // Stateful financial values
   const [balance, setBalance] = useState<number>(() => {
     const saved = localStorage.getItem('worker_available_balance');
-    return saved ? parseInt(saved, 10) : 45000;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [pendingBalance, setPendingBalance] = useState<number>(() => {
     const saved = localStorage.getItem('worker_pending_balance');
-    return saved ? parseInt(saved, 10) : 15000;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [totalWithdrawn, setTotalWithdrawn] = useState<number>(() => {
     const saved = localStorage.getItem('worker_total_withdrawn');
-    return saved ? parseInt(saved, 10) : 280000;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   // Stateful transactions loaded from localStorage
@@ -49,49 +49,7 @@ export default function WorkerWallet() {
         // Fallback
       }
     }
-    const defaultTxs: Transaction[] = [
-      { 
-        id: 1, 
-        type: 'withdraw', 
-        amount: 'RWF 10,000', 
-        method: 'MTN Mobile Money', 
-        status: 'completed', 
-        date: 'May 25, 2026',
-        description: 'Standard safe payout requested via MTN MoMo mobile tower integration. Settled instantly.',
-        refCode: 'TXN-MTN-25801X3'
-      },
-      { 
-        id: 2, 
-        type: 'payment', 
-        amount: 'RWF 7,550', 
-        method: 'Job: Office Cleaning', 
-        status: 'completed', 
-        date: 'May 22, 2026',
-        description: 'Milestone payout unlocked by Tech Hub Solutions for sanitization services verified alignment.',
-        refCode: 'TXN-CL-301-44B'
-      },
-      { 
-        id: 3, 
-        type: 'escrow', 
-        amount: 'RWF 15,000', 
-        method: 'Job: Security Shift', 
-        status: 'pending', 
-        date: 'May 21, 2026',
-        description: 'Funds currently held in secure LINEKORA Vault escrow. Will be automatically unlocked on shift confirmation.',
-        refCode: 'ESC-SG-302-99F'
-      },
-      { 
-        id: 4, 
-        type: 'withdraw', 
-        amount: 'RWF 25,000', 
-        method: 'Airtel Money', 
-        status: 'completed', 
-        date: 'May 15, 2026',
-        description: 'Corporate mobile withdrawal aligned with verified Airtel operator desk.',
-        refCode: 'TXN-AIR-10492S2'
-      },
-    ];
-    return defaultTxs;
+    return [];
   });
 
   // Keep localStorage sync'd

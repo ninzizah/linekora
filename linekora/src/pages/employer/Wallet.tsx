@@ -31,17 +31,17 @@ export default function EmployerWallet() {
   // Sourced states
   const [balance, setBalance] = useState<number>(() => {
     const saved = localStorage.getItem('employer_available_balance');
-    return saved ? parseInt(saved, 10) : 85000;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [escrowBalance, setEscrowBalance] = useState<number>(() => {
     const saved = localStorage.getItem('employer_escrow_balance');
-    return saved ? parseInt(saved, 10) : 15000;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [totalSpent, setTotalSpent] = useState<number>(() => {
     const saved = localStorage.getItem('employer_total_spent');
-    return saved ? parseInt(saved, 10) : 45000;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [transactions, setTransactions] = useState<EmployerTransaction[]>(() => {
@@ -53,11 +53,7 @@ export default function EmployerWallet() {
         // Fallback
       }
     }
-    return [
-      { id: 1, type: 'payment', amount: 'RWF 15,000', recipient: 'Alex Karekezi', status: 'completed', date: 'May 26, 2026', task: 'Garden Work', refCode: 'TX-EM-7751' },
-      { id: 2, type: 'escrow', amount: 'RWF 10,000', recipient: 'Nanny Service', status: 'pending', date: 'May 25, 2026', task: 'Weekend Care', refCode: 'TX-EM-3091' },
-      { id: 3, type: 'deposit', amount: 'RWF 100,000', recipient: 'MTN Mobile Money', status: 'completed', date: 'May 15, 2026', task: 'Top-up', refCode: 'TX-EM-1100' },
-    ];
+    return [];
   });
 
   // Sync state

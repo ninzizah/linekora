@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  User, Bell, Shield, 
-  CreditCard, EyeOff, ChevronRight,
-  Save, LogOut, Trash2, Camera, X, FileText, Upload, CheckCircle2, Loader2, Download, File
+  User, CreditCard,
+  Save, LogOut, Trash2, Camera, X, FileText, Upload, Loader2, Download, File
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
-import { signOut, sendPasswordResetEmail } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,8 +26,6 @@ export default function WorkerSettings() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [passwordResetSent, setPasswordResetSent] = useState(false);
-  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
 
   // CV & Portfolio upload states
   const [cvFile, setCvFile] = useState<{ name: string; size: string; dataUrl: string; date: string } | null>(() => {
@@ -153,8 +150,6 @@ export default function WorkerSettings() {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'portfolio', label: 'CV & Portfolio', icon: FileText },
-    { id: 'notifications', label: 'Alerts', icon: Bell },
-    { id: 'security', label: 'Security', icon: Shield },
     { id: 'payments', label: 'Billing', icon: CreditCard },
   ];
 
@@ -392,101 +387,6 @@ export default function WorkerSettings() {
                     <p className="text-[10px] text-gray-400 mt-1 font-sans italic">Click above to select and upload your resume file.</p>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'notifications' && (
-            <div className="space-y-8">
-              <h3 className="text-xl font-black text-gray-900 font-sans mb-8">Notification Preferences</h3>
-              <div className="space-y-4">
-                {[
-                  { title: 'Job Matches', desc: 'Get notified when new jobs match your skills.', active: true },
-                  { title: 'Message Alerts', desc: 'Receive alerts when an employer sends you a message.', active: true },
-                  { title: 'Payment Updates', desc: 'Alerts for deposits, escrow and successful withdrawals.', active: false },
-                  { title: 'Marketing', desc: 'Occasional updates about new LINEKORA features and tips.', active: false },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 sm:p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
-                    <div className="pr-4">
-                      <p className="font-sans font-black text-sm text-gray-900 mb-0.5">{item.title}</p>
-                      <p className="font-sans text-xs text-gray-500 font-medium">{item.desc}</p>
-                    </div>
-                    <button className={`w-12 h-6 rounded-full p-1 transition-colors relative shrink-0 ${item.active ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                      <div className={`h-4 w-4 bg-white rounded-full shadow-sm transition-transform ${item.active ? 'translate-x-6' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'security' && (
-            <div className="space-y-8">
-              <h3 className="text-xl font-black text-gray-900 font-sans mb-8">Security & Privacy</h3>
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <button 
-                    type="button"
-                    onClick={async () => {
-                      setPasswordResetSent(false);
-                      setPasswordResetError(null);
-                      if (auth.currentUser?.email) {
-                        try {
-                          await sendPasswordResetEmail(auth, auth.currentUser.email);
-                          setPasswordResetSent(true);
-                        } catch (err: any) {
-                          setPasswordResetError(err.message || "Failed to trigger reset email.");
-                        }
-                      } else {
-                        setPasswordResetError("No authenticated email address found.");
-                      }
-                    }}
-                    className="w-full flex items-center justify-between p-5 sm:p-6 bg-gray-50 rounded-[2rem] border border-gray-100 hover:border-blue-600 transition-all group text-left cursor-pointer"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm shrink-0">
-                        <EyeOff size={20} />
-                      </div>
-                      <div>
-                        <p className="font-sans font-black text-sm text-gray-900">Change Password</p>
-                        <p className="font-sans text-xs text-gray-500 font-medium tracking-tight">Triggers a secure password reset email</p>
-                      </div>
-                    </div>
-                    <ChevronRight size={18} className="text-gray-300 group-hover:text-blue-600 shrink-0" />
-                  </button>
-
-                  {passwordResetSent && (
-                    <div className="p-4 bg-green-50 text-green-600 rounded-2xl text-xs font-bold font-sans border border-green-150 text-center animate-fade-in">
-                      ✓ Password reset link sent to {auth.currentUser?.email}! Check your inbox.
-                    </div>
-                  )}
-
-                  {passwordResetError && (
-                    <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-xs font-bold font-sans border border-red-150 text-center animate-fade-in">
-                      ❌ {passwordResetError}
-                    </div>
-                  )}
-                </div>
-
-                <button className="w-full flex items-center justify-between p-5 sm:p-6 bg-gray-50 rounded-[2rem] border border-gray-100 hover:border-blue-600 transition-all group text-left">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm shrink-0">
-                      <Shield size={20} />
-                    </div>
-                    <div>
-                      <p className="font-sans font-black text-sm text-gray-900">Two-Factor Authentication</p>
-                      <p className="font-sans text-xs text-gray-500 font-medium tracking-tight">Currently Disabled</p>
-                    </div>
-                  </div>
-                  <ChevronRight size={18} className="text-gray-300 group-hover:text-blue-600 shrink-0" />
-                </button>
-
-                <div className="pt-6 mt-4 border-t border-gray-50">
-                  <button className="flex items-center gap-2 text-red-500 font-sans font-black text-xs uppercase tracking-widest hover:underline">
-                    <Trash2 size={14} />
-                    Deactivate Account
-                  </button>
-                </div>
               </div>
             </div>
           )}

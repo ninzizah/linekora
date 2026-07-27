@@ -235,8 +235,15 @@ export default function WorkerProfile() {
           
           <div className="bg-white rounded-[3rem] p-8 md:p-12 border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-end gap-8">
             <div className="relative">
-              <div className="h-32 w-32 md:h-40 md:w-40 rounded-[3rem] bg-blue-100 flex items-center justify-center text-blue-600 font-extrabold text-5xl border-8 border-white shadow-2xl uppercase">
-                {nameOverride?.[0] || 'U'}
+              <div className="h-32 w-32 md:h-40 md:w-40 rounded-[3rem] overflow-hidden bg-blue-100 flex items-center justify-center text-blue-600 font-extrabold text-5xl border-8 border-white shadow-2xl uppercase">
+                {(() => {
+                  const avatar = localStorage.getItem(`linekora_profile_picture_${uid}`);
+                  return avatar ? (
+                    <img src={avatar} alt={nameOverride} className="h-full w-full object-cover" />
+                  ) : (
+                    nameOverride?.[0] || 'U'
+                  );
+                })()}
               </div>
               <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-2 rounded-2xl shadow-lg border-4 border-white">
                 <CheckCircle2 size={24} />

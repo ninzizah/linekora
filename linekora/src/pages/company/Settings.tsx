@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Building, Mail, Phone, MapPin, 
-  ShieldCheck, Bell, CreditCard, Save, CheckCircle2, LogOut
+  Building, Phone, 
+  ShieldCheck, Save, CheckCircle2, LogOut
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
-import { signOut, sendPasswordResetEmail } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -29,8 +29,6 @@ export default function CompanySettings() {
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [strictHiring, setStrictHiring] = useState(false);
-  const [passwordResetSent, setPasswordResetSent] = useState(false);
-  const [passwordResetError, setPasswordResetError] = useState<string | null>(null);
 
   const storageKey = (key: string) => `${key}_${profile?.id || profile?.uid || 'guest'}`;
 
@@ -179,71 +177,23 @@ export default function CompanySettings() {
                 <p className="text-sm font-medium text-gray-500 font-sans mt-1">Manage who can interact with your company.</p>
               </div>
             </div>
-            <div className="space-y-4">
-              <div className="p-6 bg-gray-50 rounded-[2rem] flex items-center justify-between border border-transparent hover:border-blue-100 transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm border border-gray-100 group-hover:scale-110 transition-transform">
-                    <CheckCircle2 size={20} />
-                  </div>
-                  <div>
-                    <h4 className="font-sans font-black text-gray-900 text-sm">Strict Hiring Only</h4>
-                    <p className="text-xs text-gray-500 font-medium">Only verified workers can apply to our jobs.</p>
-                  </div>
+            <div className="p-6 bg-gray-50 rounded-[2rem] flex items-center justify-between border border-transparent hover:border-blue-100 transition-all group">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-blue-600 shadow-sm border border-gray-100 group-hover:scale-110 transition-transform">
+                  <CheckCircle2 size={20} />
                 </div>
-              <button 
-                type="button" 
-                onClick={() => setStrictHiring(v => !v)}
-                className={`h-6 w-12 rounded-full p-1 transition-colors relative shrink-0 ${strictHiring ? 'bg-blue-600' : 'bg-gray-300'}`}
-              >
-                <div className={`h-4 w-4 bg-white rounded-full shadow-sm transition-transform ${strictHiring ? 'translate-x-6' : 'translate-x-0'}`} />
-              </button>
-              </div>
-
-              <div className="p-6 bg-gray-50 rounded-[2rem] flex flex-col gap-4 border border-transparent hover:border-blue-100 transition-all">
-                <div className="flex items-center justify-between group">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm shrink-0">
-                      <ShieldCheck size={20} />
-                    </div>
-                    <div>
-                      <h4 className="font-sans font-black text-gray-900 text-sm">Change Account Password</h4>
-                      <p className="text-xs text-gray-500 font-medium">Triggers a secure password reset email to your inbox.</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setPasswordResetSent(false);
-                      setPasswordResetError(null);
-                      if (auth.currentUser?.email) {
-                        try {
-                          await sendPasswordResetEmail(auth, auth.currentUser.email);
-                          setPasswordResetSent(true);
-                        } catch (err: any) {
-                          setPasswordResetError(err.message || "Failed to trigger reset email.");
-                        }
-                      } else {
-                        setPasswordResetError("No authenticated email address found.");
-                      }
-                    }}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md cursor-pointer shrink-0"
-                  >
-                    Send Email
-                  </button>
+                <div>
+                  <h4 className="font-sans font-black text-gray-900 text-sm">Strict Hiring Only</h4>
+                  <p className="text-xs text-gray-500 font-medium">Only verified workers can apply to our jobs.</p>
                 </div>
-
-                {passwordResetSent && (
-                  <div className="p-4 bg-green-50 text-green-600 rounded-2xl text-xs font-bold font-sans border border-green-150 text-center animate-fade-in">
-                    ✓ Password reset link sent to {auth.currentUser?.email}! Check your inbox.
-                  </div>
-                )}
-
-                {passwordResetError && (
-                  <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-xs font-bold font-sans border border-red-150 text-center animate-fade-in">
-                    ❌ {passwordResetError}
-                  </div>
-                )}
               </div>
+            <button 
+              type="button" 
+              onClick={() => setStrictHiring(v => !v)}
+              className={`h-6 w-12 rounded-full p-1 transition-colors relative shrink-0 ${strictHiring ? 'bg-blue-600' : 'bg-gray-300'}`}
+            >
+              <div className={`h-4 w-4 bg-white rounded-full shadow-sm transition-transform ${strictHiring ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
             </div>
           </section>
 
