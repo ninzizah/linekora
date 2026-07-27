@@ -257,14 +257,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const getAvatarUrl = () => {
     const saved = localStorage.getItem(`linekora_profile_picture_${user?.uid || 'guest'}`);
-    if (saved) return saved;
-    if (user?.role === 'worker') {
-      return 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&w=150&q=80';
-    } else if (user?.role === 'company') {
-      return 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=150&q=80';
-    } else {
-      return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80';
-    }
+    return saved || null;
   };
 
   if (loading) return null;
@@ -317,19 +310,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               onClick={() => setIsSidebarOpen(false)}
               className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl hover:bg-gray-50 transition-all group"
             >
-              <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-blue-100 shadow-sm shrink-0 group-hover:border-blue-400 transition-colors">
-                <img 
-                  src={getAvatarUrl()}
-                  alt={user?.displayName || 'Avatar'} 
-                  className="h-full w-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+              <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-blue-100 shadow-sm shrink-0 group-hover:border-blue-400 transition-colors bg-blue-50 flex items-center justify-center">
+                {getAvatarUrl() ? (
+                  <img 
+                    src={getAvatarUrl()!}
+                    alt={user?.displayName || 'Avatar'} 
+                    className="h-full w-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="text-sm font-black text-blue-600 uppercase">{(user?.displayName || 'U')[0]}</span>
+                )}
               </div>
               <div className="overflow-hidden flex-1">
                 <p className="text-sm font-bold text-gray-900 truncate font-sans">
-                  {roleKey === 'worker' ? (localStorage.getItem('worker_profile_name') || user?.displayName || 'User') :
-                   roleKey === 'company' ? (localStorage.getItem('company_display_name_override') || user?.displayName || 'User') :
-                   (user?.displayName || 'User')}
+                {roleKey === 'worker' ? (localStorage.getItem('worker_profile_name') || user?.displayName || 'User') :
+                 roleKey === 'company' ? (localStorage.getItem('company_display_name_override') || user?.displayName || 'User') :
+                 roleKey === 'individual' ? (localStorage.getItem('current_username') || user?.displayName || 'User') :
+                 (user?.displayName || 'User')}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-1.5 py-0.5 rounded ${

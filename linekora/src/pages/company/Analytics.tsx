@@ -8,20 +8,13 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 export default function CompanyAnalytics() {
-  const data = [
-    { name: 'Jan', views: 400, applicants: 240 },
-    { name: 'Feb', views: 300, applicants: 139 },
-    { name: 'Mar', views: 200, applicants: 980 },
-    { name: 'Apr', views: 278, applicants: 390 },
-    { name: 'May', views: 189, applicants: 480 },
-    { name: 'Jun', views: 239, applicants: 380 },
-  ];
+  const data: any[] = [];
 
   const stats = [
-    { label: 'Total Views', value: '12.4k', change: '+12%', up: true, icon: Eye },
-    { label: 'Conversion Rate', value: '4.2%', change: '-2%', up: false, icon: TrendingUp },
-    { label: 'Avg. Days to Hire', value: '18 Days', change: '-4 Days', up: true, icon: Clock },
-    { label: 'Quality Score', value: '92/100', change: '+5', up: true, icon: BarChart2 },
+    { label: 'Total Views', value: '0', change: '+0%', up: true, icon: Eye },
+    { label: 'Conversion Rate', value: '0%', change: '0%', up: true, icon: TrendingUp },
+    { label: 'Avg. Days to Hire', value: 'N/A', change: '', up: true, icon: Clock },
+    { label: 'Quality Score', value: 'N/A', change: '', up: true, icon: BarChart2 },
   ];
 
   return (
@@ -85,11 +78,11 @@ export default function CompanyAnalytics() {
              <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: 'Cleaning', count: 45 },
-                    { name: 'Security', count: 32 },
-                    { name: 'IT', count: 21 },
-                    { name: 'Admin', count: 18 },
-                    { name: 'Logistics', count: 28 },
+                    { name: 'Cleaning', count: 0 },
+                    { name: 'Security', count: 0 },
+                    { name: 'IT', count: 0 },
+                    { name: 'Admin', count: 0 },
+                    { name: 'Logistics', count: 0 },
                   ]}>
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#9ca3af' }} />
                     <Bar dataKey="count" fill="#2563eb" radius={[10, 10, 0, 0]} />

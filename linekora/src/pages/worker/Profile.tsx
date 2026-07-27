@@ -112,10 +112,10 @@ export default function WorkerProfile() {
     ],
     certificates: ["OSHA Safety Certified", "Eco-Friendly Cleaning Specialist"],
     portfolio: portfolioList,
-    rating: 4.9,
-    reviewsCount: 124,
-    jobsCompleted: 342,
-    tier: "Verified Bronze"
+    rating: 0,
+    reviewsCount: 0,
+    jobsCompleted: 0,
+    tier: profile?.tier || "Free Account"
   };
 
   // Heart toggle

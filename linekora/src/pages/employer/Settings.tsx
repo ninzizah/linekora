@@ -111,6 +111,8 @@ export default function EmployerSettings() {
     const key = profile?.uid ? `linekora_profile_picture_${profile.uid}` : `linekora_profile_picture_guest`;
     if (avatarUrl) {
       localStorage.setItem(key, avatarUrl);
+    } else {
+      localStorage.removeItem(key);
     }
 
     setTimeout(() => {

@@ -35,9 +35,9 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
   const displayName = user.displayName || user.name || 'User Profile';
   const roleName = user.role || 'Member';
   const isVerified = user.verificationStatus === 'verified' || user.verified;
-  const trustScore = user.trustScore || 85;
-  const location = user.location || 'Kigali, Rwanda';
-  const bio = user.bio || 'Verified platform member on LINEKORA.';
+  const trustScore = user.trustScore || 0;
+  const location = user.location || '';
+  const bio = user.bio || 'No bio provided.';
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
@@ -114,14 +114,14 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
             <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl text-center">
               <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest block mb-1">Rating</span>
               <span className="text-xl font-black text-blue-900">
-                {user.rating ? `${user.rating} / 5.0` : '4.9 ★'}
+                {user.rating ? `${user.rating} / 5.0` : 'N/A'}
               </span>
             </div>
 
             <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-2xl text-center">
               <span className="text-[9px] font-black text-purple-700 uppercase tracking-widest block mb-1">Completed</span>
               <span className="text-xl font-black text-purple-900">
-                {user.completedJobsCount || '12'} Gigs
+                {user.completedJobsCount || 0} Gigs
               </span>
             </div>
           </div>

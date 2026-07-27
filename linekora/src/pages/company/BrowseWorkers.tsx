@@ -42,19 +42,8 @@ export default function BrowseWorkers() {
   const [selectedExperience, setSelectedExperience] = useState<string | null>(null);
   const [onlyHighlyTrusted, setOnlyHighlyTrusted] = useState(false);
 
-  const DEMO_WORKERS: WorkerItem[] = [
-    { id: 'demo-1', name: 'John Musoke', role: 'Plumber', location: 'Kampala', rating: 4.8, jobs: 142, verified: true, skills: ['Pipe Fitting', 'Emergency Repair', 'Drainage'], trustScore: 850, experience: '5yrs+' },
-    { id: 'demo-2', name: 'Sarah Namono', role: 'Professional Cleaner', location: 'Entebbe', rating: 4.9, jobs: 86, verified: true, skills: ['Deep Cleaning', 'Office Sanitization', 'Laundry'], trustScore: 920, experience: '3-5yrs' },
-    { id: 'demo-3', name: 'Peter Okello', role: 'Security Guard', location: 'Mukono', rating: 4.5, jobs: 54, verified: true, skills: ['CCTV Monitoring', 'Crowd Control', 'Night Watch'], trustScore: 780, experience: '3-5yrs' },
-    { id: 'demo-4', name: 'Grace Akello', role: 'Nanny / Caretaker', location: 'Kira', rating: 5.0, jobs: 24, verified: true, skills: ['First Aid', 'Cooking', 'Early Learning'], trustScore: 950, experience: '1-2yrs' },
-    { id: 'demo-5', name: 'Emmanuel Sseunda', role: 'Mechanic', location: 'Kampala', rating: 4.7, jobs: 110, verified: false, skills: ['Engine Repair', 'Brake Systems', 'Electrical'], trustScore: 640, experience: '5yrs+' },
-    { id: 'demo-6', name: 'Fabrice Ndoli', role: 'Electrician', location: 'Kiyovu', rating: 4.9, jobs: 42, verified: true, skills: ['Breaker Repair', 'Wall Wiring', 'LED setup', 'AC install'], trustScore: 915, experience: '3-5yrs' },
-    { id: 'demo-7', name: 'Kevin Mutara', role: 'Painter', location: 'Kimihurura', rating: 4.6, jobs: 61, verified: true, skills: ['Varnish', 'Wall Stencil', 'Exterior Paint', 'Ceiling Scrape'], trustScore: 810, experience: '5yrs+' },
-    { id: 'demo-8', name: 'Allen Mugisha', role: 'Chef / House cook', location: 'Kiyovu', rating: 4.9, jobs: 19, verified: false, skills: ['Local Dishes', 'Continental Cookery', 'Kitchen Sanitizing'], trustScore: 710, experience: '1-2yrs' }
-  ];
-
   // Workers dataset
-  const [workers, setWorkers] = useState<WorkerItem[]>(DEMO_WORKERS);
+  const [workers, setWorkers] = useState<WorkerItem[]>([]);
 
   useEffect(() => {
     async function loadWorkers() {
@@ -74,8 +63,8 @@ export default function BrowseWorkers() {
             trustScore: u.trustScore,
             experience: (['1-2yrs', '3-5yrs', '5yrs+'])[idx % 3],
           }));
-        // Real workers first, then demo workers to fill the pool
-        setWorkers([...realWorkers, ...DEMO_WORKERS]);
+        // Set real workers
+        setWorkers(realWorkers);
       } catch (err) {
         console.error('Failed to load workers from DB', err);
         // Keep demo workers on failure
@@ -289,7 +278,7 @@ export default function BrowseWorkers() {
           <div className="flex gap-4 items-center shrink-0">
             <div className="bg-blue-50/50 border border-blue-100 px-4 py-2.5 rounded-2xl text-center shadow-sm">
               <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest block font-mono">Verified Pool</span>
-              <span className="text-lg font-black text-blue-900 font-sans leading-none mt-1 block">8 Active</span>
+              <span className="text-lg font-black text-blue-900 font-sans leading-none mt-1 block">{workers.length} Active</span>
             </div>
           </div>
         </header>

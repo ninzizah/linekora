@@ -26,38 +26,7 @@ interface ToastAlert {
 }
 
 export default function CompanyManageJobs() {
-  const [jobsList, setJobsList] = useState<JobItem[]>([
-    { 
-      id: 1, 
-      title: 'Office Cleaner Needed', 
-      location: 'Kampala', 
-      salary: 'RWF 30,000/day',
-      status: 'active',
-      applicants: 12,
-      posted: '2 days ago',
-      views: 145
-    },
-    { 
-      id: 2, 
-      title: 'Night Security Guard', 
-      location: 'Entebbe', 
-      salary: 'RWF 400,000/mo',
-      status: 'active',
-      applicants: 8,
-      posted: '1 week ago',
-      views: 89
-    },
-    { 
-      id: 3, 
-      title: 'Warehouse Helper', 
-      location: 'Mukono', 
-      salary: 'RWF 15,000/day',
-      status: 'closed',
-      applicants: 24,
-      posted: '2 weeks ago',
-      views: 312
-    }
-  ]);
+  const [jobsList, setJobsList] = useState<JobItem[]>([]);
 
   // Dropdown & Modal States
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);

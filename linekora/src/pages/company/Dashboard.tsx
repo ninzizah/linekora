@@ -37,12 +37,7 @@ export default function CompanyDashboard() {
   const [proposedTimeline, setProposedTimeline] = useState('3 Weeks');
 
   // Subcontracting leads list
-  const [subcontractLeads, setSubcontractLeads] = useState([
-    { id: 1001, title: 'Kigali Airport Passenger Terminal Assembly', poster: 'Chongqing Civil Eng Ltd', location: 'Kanombe, Kigali', budget: 'RWF 14,500,000', teamSizeNeeded: '15-20 workers', duration: '3 Months', scope: 'Requires professional masonry and structural steel teams to assist with airport terminal assembly. Certified supervisor mandatory.', category: 'Construction' },
-    { id: 1002, title: 'Remera Corporate Park Janitorial Subcontract', poster: 'Milestone Holdings', location: 'Remera, Kigali', budget: 'RWF 3,800,000', teamSizeNeeded: '8-10 cleaners', duration: '6 Months', scope: 'Complete facility sanitation, floor stripping & waxing, and glass washing. Must supply eco-safe detergents.', category: 'Cleaning' },
-    { id: 1003, title: 'Commercial Plaza Copper Piping Fit-out', poster: 'Legacy Real Estates RW', location: 'Nyarugenge, Kigali', budget: 'RWF 5,200,500', teamSizeNeeded: '5 plumbers', duration: '4 Weeks', scope: 'Retrofitting multi-unit residential piping, installing smart flow meters, and completing copper tube joints.', category: 'Plumbing' },
-    { id: 1004, title: 'High-Density Logistics Pallet Sorting', poster: 'SafeTransit Logistics', location: 'Magerwa Trade Complex', budget: 'RWF 2,400,000', teamSizeNeeded: '4 logistical handlers', duration: '2 Weeks', scope: 'Provide a structured workforce team to manage inventory sorting during peak customs clearance month.', category: 'Logistics' },
-  ]);
+  const [subcontractLeads, setSubcontractLeads] = useState<any[]>([]);
 
   // Saved corporate bids
   const [companyBids, setCompanyBids] = useState<any[]>(() => {
@@ -50,10 +45,7 @@ export default function CompanyDashboard() {
     if (cached) {
       try { return JSON.parse(cached); } catch (e) {}
     }
-    return [
-      { id: 2001, leadTitle: 'Kigali Airport Passenger Terminal Assembly', bidPrice: 13800000, teamSize: 15, timeline: '2.5 Months', status: 'pending', date: 'Submitted 1 day ago', details: 'Profound expertise in structural masonry and steel welding layouts.' },
-      { id: 2002, leadTitle: 'Remera Corporate Park Janitorial Subcontract', bidPrice: 3800000, teamSize: 8, timeline: '6 Months', status: 'accepted', date: 'Accepted 6 hours ago', details: 'Using top-tier industrial HEPA filters and professional green chemicals.' }
-    ];
+    return [];
   });
 
   useEffect(() => {
@@ -63,38 +55,27 @@ export default function CompanyDashboard() {
   // Dynamic state for Stats
   const [activeJobsCount, setActiveJobsCount] = useState(() => {
     const saved = localStorage.getItem('company_active_jobs_count');
-    return saved ? parseInt(saved, 10) : 4;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [expiredJobsCount, setExpiredJobsCount] = useState(() => {
     const saved = localStorage.getItem('company_expired_jobs_count');
-    return saved ? parseInt(saved, 10) : 2;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   const [shortlistCount, setShortlistCount] = useState(() => {
     const saved = localStorage.getItem('company_shortlist_count');
-    return saved ? parseInt(saved, 10) : 12;
+    return saved ? parseInt(saved, 10) : 0;
   });
 
   // Shortlisted workers database
-  const [shortlisted, setShortlisted] = useState([
-    { id: 301, name: 'John Musoke', role: 'Security Guard', avatar: 'J', verified: true },
-    { id: 302, name: 'Sarah Namono', role: 'Office Cleaner', avatar: 'S', verified: true },
-    { id: 303, name: 'Grace Akello', role: 'Nanny / Caretaker', avatar: 'G', verified: true }
-  ]);
+  const [shortlisted, setShortlisted] = useState<any[]>([]);
 
   // Expired Jobs database
-  const [expiredJobs, setExpiredJobs] = useState([
-    { id: 401, title: 'Temporary Warehouse Assistant', location: 'Remera, Kigali', expiredAt: '5 days ago', salary: 'RWF 18,000/day' },
-    { id: 402, title: 'Retail Stock Manager', location: 'Nyamirambo', expiredAt: '12 days ago', salary: 'RWF 250,000/mo' }
-  ]);
+  const [expiredJobs, setExpiredJobs] = useState<any[]>([]);
 
   // Recommended candidates pool
-  const recommendedCandidates = [
-    { name: 'Moses Byaruhanga', skill: 'Senior Mason', match: '98%', location: 'Kigali', verified: true },
-    { name: 'Aline Umutoni', skill: 'Logistics Manager', match: '95%', location: 'Remera', verified: true },
-    { name: 'Jean Bosco', skill: 'Plumbing Expert', match: '92%', location: 'Nyamirambo', verified: true },
-  ];
+  const recommendedCandidates: any[] = [];
 
   // Modals state
   const [showExpiredJobsModal, setShowExpiredJobsModal] = useState(false);
@@ -105,7 +86,7 @@ export default function CompanyDashboard() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [payPhone, setPayPhone] = useState('');
   const [isProcessingPay, setIsProcessingPay] = useState(false);
-  const [unpaidCommission, setUnpaidCommission] = useState('150,000');
+  const [unpaidCommission, setUnpaidCommission] = useState('0');
 
   const handlePayCorporateFee = () => {
     if (!payPhone.trim()) {
@@ -231,10 +212,10 @@ export default function CompanyDashboard() {
   const stats = [
     { label: 'Active Jobs', value: activeJobsCount.toString(), icon: Briefcase, color: 'bg-blue-600' },
     { label: 'Expired Jobs', value: expiredJobsCount.toString(), icon: Clock, color: 'bg-red-500' },
-    { label: 'Applications Count', value: '128', icon: Users, color: 'bg-indigo-600' },
+    { label: 'Applications Count', value: '0', icon: Users, color: 'bg-indigo-600' },
     { label: 'Shortlisted Workers', value: shortlistCount.toString(), icon: Star, color: 'bg-green-600' },
-    { label: 'Recommended Candidates', value: '3', icon: User, color: 'bg-purple-600' },
-    { label: 'Company Trust Score', value: profile?.trustScore || '96%', icon: ShieldCheck, color: 'bg-yellow-500' },
+    { label: 'Recommended Candidates', value: recommendedCandidates.length.toString(), icon: User, color: 'bg-purple-600' },
+    { label: 'Company Trust Score', value: profile?.trustScore ? `${profile.trustScore}%` : '0%', icon: ShieldCheck, color: 'bg-yellow-500' },
   ];
 
   return (
@@ -257,7 +238,7 @@ export default function CompanyDashboard() {
               )}
             </h1>
             <p className="text-gray-500 font-sans font-medium mt-1 italic leading-tight">
-              Trust Score: <span className="text-blue-600 font-black">{profile?.trustScore || '96'}%</span> • Status: <span className="text-gray-900 font-black">{profile?.verificationStatus === 'unverified' ? 'UNVERIFIED' : 'VERIFIED'}</span>
+              Trust Score: <span className="text-blue-600 font-black">{profile?.trustScore || 0}%</span> • Status: <span className="text-gray-900 font-black">{profile?.verificationStatus === 'unverified' ? 'UNVERIFIED' : 'VERIFIED'}</span>
             </p>
           </div>
           <Link to="/dashboard/company/post" id="dashboard-to-post-btn" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-sans font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
@@ -657,11 +638,11 @@ export default function CompanyDashboard() {
                   Did you know? Companies bidding with a <span className="font-bold text-green-400">Verified Business trust score above 95%</span> are 3 times more likely to win competitive corporate plumbing or mason contracts!
                 </p>
                 <div className="h-2 bg-indigo-950 rounded-full overflow-hidden">
-                  <div className="h-full w-[96%] bg-blue-500 rounded-full" />
+                  <div className="h-full bg-blue-500 rounded-full" style={{ width: profile?.trustScore ? `${profile.trustScore}%` : '0%' }} />
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-indigo-200 mt-2">
                   <span>Trust Level</span>
-                  <span>96% Optimal Rating</span>
+                  <span>{profile?.trustScore ? `${profile.trustScore}% Rating` : 'No Score Yet'}</span>
                 </div>
               </div>
 
