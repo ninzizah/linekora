@@ -136,7 +136,6 @@ export default function PostJob() {
         status: 'open',
         urgent: isUrgent,
         employerId: profile.id,
-        phone: formData.phone || undefined,
       });
 
       // Also cache locally for offline use

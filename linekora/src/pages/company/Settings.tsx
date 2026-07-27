@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Building, Phone, 
-  ShieldCheck, Save, CheckCircle2, LogOut
+  ShieldCheck, Save, CheckCircle2, LogOut, Camera, X, User
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
@@ -9,16 +9,10 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 
-const COMPANY_AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=150&q=80',
-  'https://images.unsplash.com/photo-1542744094-3a31f103e35f?auto=format&fit=crop&w=150&q=80',
-];
-
 export default function CompanySettings() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Controlled states
   const [companyName, setCompanyName] = useState('');
@@ -27,6 +21,7 @@ export default function CompanySettings() {
   const [phone, setPhone] = useState('');
   const [headquarters, setHeadquarters] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('');
+  const [uploadError, setUploadError] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [strictHiring, setStrictHiring] = useState(false);
 
@@ -41,11 +36,23 @@ export default function CompanySettings() {
       setHeadquarters(localStorage.getItem(storageKey('company_location')) || profile.location || '');
       setStrictHiring(localStorage.getItem(storageKey('company_strict_hiring')) === 'true');
       setSelectedAvatar(
-        localStorage.getItem(`linekora_profile_picture_${profile.uid || profile.id || 'guest'}`) || 
-        COMPANY_AVATAR_PRESETS[0]
+        localStorage.getItem(`linekora_profile_picture_${profile.uid || profile.id || 'guest'}`) || ''
       );
     }
   }, [profile?.id]);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('Photo must be smaller than 2MB.');
+      return;
+    }
+    setUploadError('');
+    const reader = new FileReader();
+    reader.onload = (ev) => setSelectedAvatar(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -64,7 +71,11 @@ export default function CompanySettings() {
     localStorage.setItem('company_display_name_override', companyName);
     
     const avatarKey = `linekora_profile_picture_${profile?.uid || profile?.id || 'guest'}`;
-    if (selectedAvatar) localStorage.setItem(avatarKey, selectedAvatar);
+    if (selectedAvatar) {
+      localStorage.setItem(avatarKey, selectedAvatar);
+    } else {
+      localStorage.removeItem(avatarKey);
+    }
 
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
@@ -80,32 +91,43 @@ export default function CompanySettings() {
 
         <form onSubmit={handleSave} className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm space-y-12">
           
-          {/* Avatar Presets Selection */}
+          {/* Avatar Upload */}
           <section className="space-y-6">
             <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight flex items-center gap-3">
-              <div className="h-16 w-16 rounded-2xl overflow-hidden shadow-md">
-                <img src={selectedAvatar || null} alt="Company Avatar" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+              <div className="relative">
+                <div className="h-20 w-20 rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-blue-50 shrink-0">
+                  {selectedAvatar ? (
+                    <img src={selectedAvatar} alt="Company Avatar" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
+                      <User size={32} className="text-blue-400" />
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-2 -right-2 h-9 w-9 bg-blue-600 text-white rounded-xl shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all border-2 border-white"
+                >
+                  <Camera size={16} />
+                </button>
+                {selectedAvatar && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAvatar('')}
+                    className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-all border-2 border-white"
+                  >
+                    <X size={10} />
+                  </button>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
               </div>
               <div>
                 <span>Corporate Identity Visual</span>
-                <p className="text-xs font-semibold text-gray-400 mt-0.5 normal-case font-sans">Select a professional branded placeholder banner or logo.</p>
+                <p className="text-xs font-semibold text-gray-400 mt-0.5 normal-case font-sans">Tap the <span className="text-blue-600 font-bold">camera icon</span> to upload your company logo.<br/>Max size: 2MB. JPG, PNG, or WEBP.</p>
+                {uploadError && <p className="text-xs text-red-500 font-bold mt-1">{uploadError}</p>}
               </div>
             </h3>
-            
-            <div className="flex flex-wrap gap-4 pt-2">
-              {COMPANY_AVATAR_PRESETS.map((preset, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setSelectedAvatar(preset)}
-                  className={`h-16 w-16 rounded-2xl overflow-hidden border-4 transition-all hover:scale-105 active:scale-95 cursor-pointer ${
-                    selectedAvatar === preset ? 'border-blue-600 scale-105 shadow-md shadow-blue-105' : 'border-transparent opacity-60 hover:opacity-100'
-                  }`}
-                >
-                  <img src={preset} alt={`Company preset ${idx + 1}`} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                </button>
-              ))}
-            </div>
           </section>
 
           <section className="pt-2 border-t border-gray-50">

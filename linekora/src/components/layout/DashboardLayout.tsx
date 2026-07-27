@@ -569,12 +569,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               className="h-9 w-9 rounded-full overflow-hidden border border-gray-200 hover:border-blue-500 transition-colors shrink-0 flex items-center justify-center bg-white"
               title="Go to Settings"
             >
-              <img 
-                src={getAvatarUrl()} 
-                alt="Avatar" 
-                className="h-full w-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              {getAvatarUrl() ? (
+                <img 
+                  src={getAvatarUrl()!} 
+                  alt="Avatar" 
+                  className="h-full w-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="text-sm font-black text-blue-600 uppercase">{(user?.displayName || 'U')[0]}</span>
+              )}
             </Link>
           </div>
         </header>
