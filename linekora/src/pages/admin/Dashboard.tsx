@@ -12,7 +12,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import IdentityCardVisual from '../../components/IdentityCardVisual';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
-import { getUsers, updateUser } from '../../lib/api';
+import { getUsers, updateUser, getPendingVerifications } from '../../lib/api';
 
 interface AuditLog {
   id: string;
@@ -253,15 +253,13 @@ export default function AdminDashboard() {
         const realUsers: UserAccount[] = [];
         const realPendingVerifications: any[] = [];
 
-        // Read uploaded verification docs from localStorage
-        let workerDocs: any = null;
-        let employerDocs: any = null;
+        // Fetch verification documents from server-side database
+        let serverDocs: any[] = [];
         try {
-          const wd = localStorage.getItem('worker_verification_docs');
-          const ed = localStorage.getItem('employer_verification_docs');
-          if (wd) workerDocs = JSON.parse(wd);
-          if (ed) employerDocs = JSON.parse(ed);
-        } catch (e) {}
+          serverDocs = await getPendingVerifications();
+        } catch (e) {
+          console.warn('Could not fetch verification docs from API, falling back to localStorage', e);
+        }
 
         apiUsers.forEach((u) => {
           if (u.role === 'ADMIN') return;
@@ -278,23 +276,35 @@ export default function AdminDashboard() {
           });
           if (u.verificationStatus === 'pending') {
             const isWorker = u.role === 'WORKER';
-            const docs = isWorker ? workerDocs : employerDocs;
+            const isCompany = u.role === 'COMPANY';
+            const typeLabel = isWorker ? 'Worker' : isCompany ? 'Company' : 'Individual';
+            const idType = isWorker ? 'National ID / Passport' : isCompany ? 'Business Registration (TIN)' : 'ID Document';
+
+            // Find matching server-side docs by userId
+            const serverDoc = serverDocs.find((d: any) => d.id === u.id);
+            const docs = serverDoc?.verificationData || null;
+
             realPendingVerifications.push({
               id: `v_${u.id}`,
               user: u.displayName,
-              type: isWorker ? 'Worker' : u.role === 'COMPANY' ? 'Company' : 'Individual',
+              type: typeLabel,
               date: docs?.date || 'Recently',
               status: 'pending',
-              idType: isWorker ? 'National ID / Passport' : 'ID Document',
+              idType,
               details: `Uploaded documents waiting for approval. Email: ${u.email}`,
               code: `UID-${u.id.slice(0, 4).toUpperCase()}`,
               userId: u.id,
-              // Attach actual uploaded images
+              // Attach actual uploaded images from server-side storage
               frontId: docs?.frontId || null,
               backId: docs?.backId || null,
-              selfie: docs?.capturedPhoto || null,
-              nationalIdNum: docs?.nationalIdNum || docs?.idNumber || null,
+              selfie: docs?.selfie || docs?.capturedPhoto || null,
+              nationalIdNum: docs?.nationalIdNum || docs?.idNumber || docs?.tinNumber || null,
               selectedTier: docs?.selectedTier || null,
+              // Company-specific fields
+              certFile: docs?.certFile || null,
+              certFileName: docs?.certFileName || null,
+              address: docs?.address || null,
+              website: docs?.website || null,
             });
           }
         });
@@ -1119,6 +1129,31 @@ export default function AdminDashboard() {
                       <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
                         <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Requested Verification Tier</span>
                         <p className="font-black text-orange-400 uppercase tracking-wider">{selectedVerification.selectedTier}</p>
+                      </div>
+                    )}
+
+                    {selectedVerification.certFile && (
+                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900 space-y-2">
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Business Registration Certificate</span>
+                        {selectedVerification.certFile.startsWith('data:') ? (
+                          <img src={selectedVerification.certFile} alt="Business Certificate" className="w-full h-32 object-cover rounded-lg border border-gray-800" />
+                        ) : (
+                          <p className="font-bold text-gray-300 text-xs">{selectedVerification.certFileName || 'Certificate uploaded'}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedVerification.address && (
+                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Office / Physical Address</span>
+                        <p className="font-bold text-gray-200">{selectedVerification.address}</p>
+                      </div>
+                    )}
+
+                    {selectedVerification.website && (
+                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Company Website</span>
+                        <p className="font-bold text-blue-400">{selectedVerification.website}</p>
                       </div>
                     )}
 

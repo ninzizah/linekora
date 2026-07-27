@@ -6,20 +6,24 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { useAuth } from '../../lib/AuthContext';
+import { saveVerificationDocs, updateUser } from '../../lib/api';
 
 type VerificationStep = 'intro' | 'documents' | 'address' | 'otp' | 'completed';
 
 export default function CompanyVerification() {
+  const { profile } = useAuth();
   const [step, setStep] = useState<VerificationStep>('intro');
   const [isUploading, setIsUploading] = useState(false);
   const [tinNumber, setTinNumber] = useState('');
   const [certFile, setCertFile] = useState<string | null>(null);
   const [certFileName, setCertFileName] = useState('');
+  const [address, setAddress] = useState('');
+  const [website, setWebsite] = useState('');
 
   const handleAutoFillSampleCompanyDocs = () => {
     setTinNumber('109876543');
     setCertFileName('RDB_Business_Registration_2026.pdf');
-    setCertFile('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=400&auto=format&fit=crop');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,34 +40,35 @@ export default function CompanyVerification() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setIsUploading(true);
-    // Simulate API call
+
+    // Save verification docs to server when leaving documents step
+    if (step === 'documents' && profile) {
+      try {
+        const verificationPayload = {
+          tinNumber,
+          certFile: certFile || undefined,
+          certFileName,
+          address,
+          website,
+          date: new Date().toLocaleString()
+        };
+        const userId = profile.firebaseUid || profile.id;
+        await saveVerificationDocs(userId, verificationPayload);
+        await updateUser(profile.id, {
+          verificationStatus: 'pending',
+        });
+        localStorage.setItem('company_verification_docs', JSON.stringify(verificationPayload));
+      } catch (e) {
+        console.error('Failed to save company verification', e);
+      }
+    }
+
     setTimeout(() => {
       setIsUploading(false);
       const steps: VerificationStep[] = ['intro', 'documents', 'address', 'otp', 'completed'];
       const nextIdx = steps.indexOf(step) + 1;
-      
-      if (step === 'otp') {
-        // Final step - update demo user
-        const demoUserStr = localStorage.getItem('demo_user');
-        if (demoUserStr) {
-          const user = JSON.parse(demoUserStr);
-          user.tier = 'Verified Company';
-          user.verificationStatus = 'verified';
-          user.trustScore = 95;
-          localStorage.setItem('demo_user', JSON.stringify(user));
-        }
-        
-        // Save to localStorage for admin preview
-        localStorage.setItem('company_verification_docs', JSON.stringify({
-          tinNumber,
-          certFile,
-          certFileName,
-          date: new Date().toLocaleString()
-        }));
-      }
-
       if (nextIdx < steps.length) setStep(steps[nextIdx]);
     }, 1500);
   };
@@ -210,6 +215,8 @@ export default function CompanyVerification() {
                       <input 
                         type="text" 
                         placeholder="Kigali City Tower, Floor 4, Suite 402"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
                         className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm"
                       />
                     </div>
@@ -222,6 +229,8 @@ export default function CompanyVerification() {
                       <input 
                         type="url" 
                         placeholder="https://yourcompany.com"
+                        value={website}
+                        onChange={(e) => setWebsite(e.target.value)}
                         className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm"
                       />
                     </div>

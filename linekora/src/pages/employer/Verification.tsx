@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
-import { updateUser } from '../../lib/api';
+import { updateUser, saveVerificationDocs } from '../../lib/api';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 type VerificationStep = 'intro' | 'documents' | 'address' | 'selfie' | 'completed';
@@ -26,22 +26,26 @@ export default function EmployerVerification() {
 
   const saveVerificationToApi = async () => {
     try {
-      // Save full verification artifacts to localStorage so admin has access to view them
-      localStorage.setItem('employer_verification_docs', JSON.stringify({
-        frontId,
-        backId,
+      const verificationPayload = {
         idNumber,
+        frontId: frontId || undefined,
+        backId: backId || undefined,
         sector,
         cell,
-        capturedPhoto,
+        selfie: capturedPhoto || undefined,
         date: new Date().toLocaleString()
-      }));
+      };
 
-      if (profile?.id) {
+      // Save to server-side database so admin can view from any device
+      if (profile?.firebaseUid || profile?.id) {
+        await saveVerificationDocs(profile.firebaseUid || profile.id, verificationPayload);
         await updateUser(profile.id, {
           verificationStatus: 'pending',
         });
       }
+
+      // Also save locally for offline reference
+      localStorage.setItem('employer_verification_docs', JSON.stringify(verificationPayload));
     } catch (e) {
       console.error('Failed to save verification to API', e);
     }
@@ -152,8 +156,8 @@ export default function EmployerVerification() {
         console.error("Canvas snap failed", e);
       }
     } else {
-      // Fallback captured image placeholder
-      setCapturedPhoto("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop");
+      // No camera available — user must upload selfie manually
+      setCapturedPhoto(null);
     }
 
     setTimeout(() => {

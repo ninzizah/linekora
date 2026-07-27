@@ -177,3 +177,46 @@ export const getReviews = (targetId: string) =>
 
 export const createReview = (data: { rating: number; comment?: string; reviewerId: string; targetId: string }) =>
   request<Review>('/reviews', { method: 'POST', body: JSON.stringify(data) });
+
+// ─── VERIFICATION ─────────────────────────────────────────────────────────────
+
+export interface VerificationData {
+  nationalId?: string;
+  frontId?: string;
+  backId?: string;
+  selfie?: string;
+  tinNumber?: string;
+  certFile?: string;
+  certFileName?: string;
+  sector?: string;
+  cell?: string;
+  address?: string;
+  website?: string;
+  selectedTier?: string;
+  date?: string;
+}
+
+export interface VerificationSubmission {
+  id: string;
+  firebaseUid: string;
+  displayName: string;
+  email: string;
+  role: string;
+  verificationStatus: string;
+  verificationData: VerificationData | null;
+  trustScore: number;
+  tier: string;
+  createdAt: string;
+}
+
+export const saveVerificationDocs = (userId: string, data: VerificationData) =>
+  request<{ success: boolean; user: UserProfile }>('/verification/' + userId, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const getVerificationDocs = (userId: string) =>
+  request<VerificationSubmission>('/verification/' + userId);
+
+export const getPendingVerifications = () =>
+  request<VerificationSubmission[]>('/verification');

@@ -86,6 +86,92 @@ app.patch('/api/users/:id', async (req, res) => {
   }
 });
 
+// ─── VERIFICATION DOCUMENTS ────────────────────────────────────────────────────
+
+// Save verification documents for a user (called by verification pages)
+app.post('/api/verification/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ id: userId }, { firebaseUid: userId }] },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const user = await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        verificationData: JSON.stringify(req.body),
+        verificationStatus: 'pending',
+      },
+    });
+    res.json({ success: true, user });
+  } catch (error: any) {
+    console.error('Failed to save verification docs:', error);
+    res.status(500).json({ error: error.message || 'Failed to save verification documents' });
+  }
+});
+
+// Get verification documents for a user (called by admin dashboard)
+app.get('/api/verification/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ id: userId }, { firebaseUid: userId }] },
+      select: {
+        id: true,
+        firebaseUid: true,
+        displayName: true,
+        email: true,
+        role: true,
+        verificationStatus: true,
+        verificationData: true,
+        trustScore: true,
+        tier: true,
+        createdAt: true,
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const verificationData = user.verificationData ? JSON.parse(user.verificationData) : null;
+    res.json({ ...user, verificationData });
+  } catch (error: any) {
+    console.error('Failed to fetch verification docs:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch verification documents' });
+  }
+});
+
+// Get all pending verifications (called by admin dashboard)
+app.get('/api/verification', async (_req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { verificationStatus: 'pending' },
+      select: {
+        id: true,
+        firebaseUid: true,
+        displayName: true,
+        email: true,
+        role: true,
+        verificationStatus: true,
+        verificationData: true,
+        trustScore: true,
+        tier: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const result = users.map(u => ({
+      ...u,
+      verificationData: u.verificationData ? JSON.parse(u.verificationData) : null,
+    }));
+    res.json(result);
+  } catch (error: any) {
+    console.error('Failed to fetch pending verifications:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch pending verifications' });
+  }
+});
+
 // ─── JOBS ────────────────────────────────────────────────────────────────────
 
 app.get('/api/jobs', async (req, res) => {
