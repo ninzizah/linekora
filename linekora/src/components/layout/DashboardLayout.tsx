@@ -256,7 +256,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const getAvatarUrl = () => {
-    const saved = localStorage.getItem(`linekora_profile_picture_${user?.uid || 'guest'}`);
+    const uid = user?.firebaseUid || user?.id || 'guest';
+    const saved = localStorage.getItem(`linekora_profile_picture_${uid}`);
     return saved || null;
   };
 

@@ -16,7 +16,7 @@ export default function WorkerSettings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cvInputRef = useRef<HTMLInputElement>(null);
   
-  const uid = profile?.id || profile?.uid || 'guest';
+  const uid = profile?.firebaseUid || profile?.id || 'guest';
   const sk = (key: string) => `${key}_${uid}`;
 
   // Inputs State
@@ -45,7 +45,7 @@ export default function WorkerSettings() {
       setLocation(localStorage.getItem(sk('worker_profile_location')) || profile.location || '');
       setBio(localStorage.getItem(sk('worker_profile_bio')) || '');
       setAvatarUrl(
-        localStorage.getItem(`linekora_profile_picture_${profile.uid || profile.id || 'guest'}`) || ''
+        localStorage.getItem(`linekora_profile_picture_${uid}`) || ''
       );
     }
   }, [profile?.id]);
@@ -89,7 +89,7 @@ export default function WorkerSettings() {
     // Keep legacy key for DashboardLayout display name
     localStorage.setItem('worker_profile_name', displayName);
 
-    const avatarKey = `linekora_profile_picture_${profile?.uid || profile?.id || 'guest'}`;
+    const avatarKey = `linekora_profile_picture_${uid}`;
     if (avatarUrl) {
       localStorage.setItem(avatarKey, avatarUrl);
     } else {

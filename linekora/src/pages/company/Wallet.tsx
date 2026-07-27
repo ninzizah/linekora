@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../lib/AuthContext';
 
 interface CompanyTransaction {
   id: number;
@@ -19,6 +20,10 @@ interface CompanyTransaction {
 }
 
 export default function CompanyWallet() {
+  const { profile } = useAuth();
+  const walletUid = profile?.firebaseUid || profile?.id || 'guest';
+  const wk = (key: string) => `${key}_${walletUid}`;
+  
   const [filter, setFilter] = useState<'all' | 'escrow' | 'completed'>('all');
   const [showDeposit, setShowDeposit] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
@@ -30,23 +35,23 @@ export default function CompanyWallet() {
 
   // Stateful financial values
   const [balance, setBalance] = useState<number>(() => {
-    const saved = localStorage.getItem('company_available_balance');
+    const saved = localStorage.getItem(wk('company_available_balance'));
     return saved ? parseInt(saved, 10) : 0;
   });
 
   const [escrowBalance, setEscrowBalance] = useState<number>(() => {
-    const saved = localStorage.getItem('company_escrow_balance');
+    const saved = localStorage.getItem(wk('company_escrow_balance'));
     return saved ? parseInt(saved, 10) : 0;
   });
 
   const [totalSpent, setTotalSpent] = useState<number>(() => {
-    const saved = localStorage.getItem('company_total_spent');
+    const saved = localStorage.getItem(wk('company_total_spent'));
     return saved ? parseInt(saved, 10) : 0;
   });
 
   // Stateful transactions
   const [transactions, setTransactions] = useState<CompanyTransaction[]>(() => {
-    const saved = localStorage.getItem('company_transactions');
+    const saved = localStorage.getItem(wk('company_transactions'));
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -59,19 +64,19 @@ export default function CompanyWallet() {
 
   // Synchronize localStorage
   useEffect(() => {
-    localStorage.setItem('company_available_balance', balance.toString());
+    localStorage.setItem(wk('company_available_balance'), balance.toString());
   }, [balance]);
 
   useEffect(() => {
-    localStorage.setItem('company_escrow_balance', escrowBalance.toString());
+    localStorage.setItem(wk('company_escrow_balance'), escrowBalance.toString());
   }, [escrowBalance]);
 
   useEffect(() => {
-    localStorage.setItem('company_total_spent', totalSpent.toString());
+    localStorage.setItem(wk('company_total_spent'), totalSpent.toString());
   }, [totalSpent]);
 
   useEffect(() => {
-    localStorage.setItem('company_transactions', JSON.stringify(transactions));
+    localStorage.setItem(wk('company_transactions'), JSON.stringify(transactions));
   }, [transactions]);
 
   const stats = [

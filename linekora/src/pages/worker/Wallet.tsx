@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../lib/AuthContext';
 
 interface Transaction {
   id: number;
@@ -18,6 +19,10 @@ interface Transaction {
 }
 
 export default function WorkerWallet() {
+  const { profile } = useAuth();
+  const walletUid = profile?.firebaseUid || profile?.id || 'guest';
+  const wk = (key: string) => `${key}_${walletUid}`;
+  
   const [activeTab, setActiveTab] = useState<'all' | 'escrow' | 'completed'>('all');
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -25,23 +30,23 @@ export default function WorkerWallet() {
 
   // Stateful financial values
   const [balance, setBalance] = useState<number>(() => {
-    const saved = localStorage.getItem('worker_available_balance');
+    const saved = localStorage.getItem(wk('worker_available_balance'));
     return saved ? parseInt(saved, 10) : 0;
   });
 
   const [pendingBalance, setPendingBalance] = useState<number>(() => {
-    const saved = localStorage.getItem('worker_pending_balance');
+    const saved = localStorage.getItem(wk('worker_pending_balance'));
     return saved ? parseInt(saved, 10) : 0;
   });
 
   const [totalWithdrawn, setTotalWithdrawn] = useState<number>(() => {
-    const saved = localStorage.getItem('worker_total_withdrawn');
+    const saved = localStorage.getItem(wk('worker_total_withdrawn'));
     return saved ? parseInt(saved, 10) : 0;
   });
 
   // Stateful transactions loaded from localStorage
   const [txList, setTxList] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('worker_transactions');
+    const saved = localStorage.getItem(wk('worker_transactions'));
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -54,19 +59,19 @@ export default function WorkerWallet() {
 
   // Keep localStorage sync'd
   useEffect(() => {
-    localStorage.setItem('worker_available_balance', balance.toString());
+    localStorage.setItem(wk('worker_available_balance'), balance.toString());
   }, [balance]);
 
   useEffect(() => {
-    localStorage.setItem('worker_pending_balance', pendingBalance.toString());
+    localStorage.setItem(wk('worker_pending_balance'), pendingBalance.toString());
   }, [pendingBalance]);
 
   useEffect(() => {
-    localStorage.setItem('worker_total_withdrawn', totalWithdrawn.toString());
+    localStorage.setItem(wk('worker_total_withdrawn'), totalWithdrawn.toString());
   }, [totalWithdrawn]);
 
   useEffect(() => {
-    localStorage.setItem('worker_transactions', JSON.stringify(txList));
+    localStorage.setItem(wk('worker_transactions'), JSON.stringify(txList));
   }, [txList]);
 
   // Deposit input state

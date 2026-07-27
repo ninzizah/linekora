@@ -62,8 +62,9 @@ export default function EmployerSettings() {
     }
 
     // Load avatar
-    const key = profile?.uid ? `linekora_profile_picture_${profile.uid}` : `linekora_profile_picture_guest`;
-    const saved = localStorage.getItem(key);
+    const empUid = profile?.firebaseUid || profile?.id || 'guest';
+    const avatarKey = `linekora_profile_picture_${empUid}`;
+    const saved = localStorage.getItem(avatarKey);
     if (saved) setAvatarUrl(saved);
   }, [profile]);
 
@@ -108,11 +109,12 @@ export default function EmployerSettings() {
     localStorage.setItem('current_user_location', location);
 
     // Save avatar
-    const key = profile?.uid ? `linekora_profile_picture_${profile.uid}` : `linekora_profile_picture_guest`;
+    const empUid = profile?.firebaseUid || profile?.id || 'guest';
+    const avatarKey = `linekora_profile_picture_${empUid}`;
     if (avatarUrl) {
-      localStorage.setItem(key, avatarUrl);
+      localStorage.setItem(avatarKey, avatarUrl);
     } else {
-      localStorage.removeItem(key);
+      localStorage.removeItem(avatarKey);
     }
 
     setTimeout(() => {

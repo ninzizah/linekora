@@ -25,7 +25,8 @@ export default function CompanySettings() {
   const [isSaved, setIsSaved] = useState(false);
   const [strictHiring, setStrictHiring] = useState(false);
 
-  const storageKey = (key: string) => `${key}_${profile?.id || profile?.uid || 'guest'}`;
+  const companyUid = profile?.firebaseUid || profile?.id || 'guest';
+  const storageKey = (key: string) => `${key}_${companyUid}`;
 
   useEffect(() => {
     if (profile) {
@@ -36,7 +37,7 @@ export default function CompanySettings() {
       setHeadquarters(localStorage.getItem(storageKey('company_location')) || profile.location || '');
       setStrictHiring(localStorage.getItem(storageKey('company_strict_hiring')) === 'true');
       setSelectedAvatar(
-        localStorage.getItem(`linekora_profile_picture_${profile.uid || profile.id || 'guest'}`) || ''
+        localStorage.getItem(`linekora_profile_picture_${companyUid}`) || ''
       );
     }
   }, [profile?.id]);
@@ -70,7 +71,7 @@ export default function CompanySettings() {
     // Keep legacy key for DashboardLayout display name
     localStorage.setItem('company_display_name_override', companyName);
     
-    const avatarKey = `linekora_profile_picture_${profile?.uid || profile?.id || 'guest'}`;
+    const avatarKey = `linekora_profile_picture_${companyUid}`;
     if (selectedAvatar) {
       localStorage.setItem(avatarKey, selectedAvatar);
     } else {

@@ -57,16 +57,10 @@ export default function PostJob() {
   const [renewingJobId, setRenewingJobId] = useState<number | null>(null);
 
   // Shortlist management local state
-  const [shortlisted, setShortlisted] = useState([
-    { id: 101, name: 'John Musoke', role: 'Security Guard', avatar: 'J', status: 'Shortlisted' },
-    { id: 102, name: 'Sarah Namono', role: 'Office Cleaner', avatar: 'S', status: 'Shortlisted' }
-  ]);
+  const [shortlisted, setShortlisted] = useState<{ id: number; name: string; role: string; avatar: string; status: string }[]>([]);
 
   // Expired Jobs mock database
-  const [expiredJobs, setExpiredJobs] = useState([
-    { id: 501, title: 'Temporary Warehouse Assistant', location: 'Remera, Kigali', expiredAt: '5 days ago', salary: 'RWF 18,000/day' },
-    { id: 502, title: 'Retail Stock Manager', location: 'Nyamirambo', expiredAt: '12 days ago', salary: 'RWF 250,000/mo' }
-  ]);
+  const [expiredJobs, setExpiredJobs] = useState<{ id: number; title: string; location: string; expiredAt: string; salary: string }[]>([]);
 
   const categories = [
     'Construction', 'Domestic Help', 'Mechanical', 'Security', 

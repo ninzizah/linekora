@@ -17,7 +17,7 @@ interface NotificationMsg {
 
 export default function WorkerProfile() {
   const { profile } = useAuth();
-  const uid = profile?.id || profile?.uid || 'guest';
+  const uid = profile?.firebaseUid || profile?.id || 'guest';
   const sk = (key: string) => `${key}_${uid}`;
 
   // Load from localStorage scoped to this user or defaults

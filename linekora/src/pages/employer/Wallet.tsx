@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../lib/AuthContext';
 
 interface EmployerTransaction {
   id: number;
@@ -19,6 +20,10 @@ interface EmployerTransaction {
 }
 
 export default function EmployerWallet() {
+  const { profile } = useAuth();
+  const walletUid = profile?.firebaseUid || profile?.id || 'guest';
+  const wk = (key: string) => `${key}_${walletUid}`;
+  
   const [filter, setFilter] = useState<'all' | 'escrow' | 'completed'>('all');
   const [showDeposit, setShowDeposit] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
@@ -30,22 +35,22 @@ export default function EmployerWallet() {
 
   // Sourced states
   const [balance, setBalance] = useState<number>(() => {
-    const saved = localStorage.getItem('employer_available_balance');
+    const saved = localStorage.getItem(wk('employer_available_balance'));
     return saved ? parseInt(saved, 10) : 0;
   });
 
   const [escrowBalance, setEscrowBalance] = useState<number>(() => {
-    const saved = localStorage.getItem('employer_escrow_balance');
+    const saved = localStorage.getItem(wk('employer_escrow_balance'));
     return saved ? parseInt(saved, 10) : 0;
   });
 
   const [totalSpent, setTotalSpent] = useState<number>(() => {
-    const saved = localStorage.getItem('employer_total_spent');
+    const saved = localStorage.getItem(wk('employer_total_spent'));
     return saved ? parseInt(saved, 10) : 0;
   });
 
   const [transactions, setTransactions] = useState<EmployerTransaction[]>(() => {
-    const saved = localStorage.getItem('employer_transactions');
+    const saved = localStorage.getItem(wk('employer_transactions'));
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -58,19 +63,19 @@ export default function EmployerWallet() {
 
   // Sync state
   useEffect(() => {
-    localStorage.setItem('employer_available_balance', balance.toString());
+    localStorage.setItem(wk('employer_available_balance'), balance.toString());
   }, [balance]);
 
   useEffect(() => {
-    localStorage.setItem('employer_escrow_balance', escrowBalance.toString());
+    localStorage.setItem(wk('employer_escrow_balance'), escrowBalance.toString());
   }, [escrowBalance]);
 
   useEffect(() => {
-    localStorage.setItem('employer_total_spent', totalSpent.toString());
+    localStorage.setItem(wk('employer_total_spent'), totalSpent.toString());
   }, [totalSpent]);
 
   useEffect(() => {
-    localStorage.setItem('employer_transactions', JSON.stringify(transactions));
+    localStorage.setItem(wk('employer_transactions'), JSON.stringify(transactions));
   }, [transactions]);
 
   const stats = [
