@@ -42,6 +42,7 @@ export interface UserProfile {
   trustScore: number;
   tier: string;
   verificationStatus: string;
+  avatarUrl?: string;
   createdAt: string;
 }
 

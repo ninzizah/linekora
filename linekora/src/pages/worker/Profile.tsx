@@ -159,17 +159,6 @@ export default function WorkerProfile() {
       .filter(Boolean);
     setPortfolioList(parsedPortfolio);
 
-    // Sync back to demo_user local storage if exist to persist on reload cleanly
-    const demoUserStr = localStorage.getItem('demo_user');
-    if (demoUserStr) {
-      try {
-        const demoProfile = JSON.parse(demoUserStr);
-        demoProfile.displayName = editName.trim();
-        demoProfile.location = editLocation.trim();
-        localStorage.setItem('demo_user', JSON.stringify(demoProfile));
-      } catch (e) {}
-    }
-
     setShowEditModal(false);
     addNotification('success', 'Profile Updated 🚀', 'Your verified specifications saved successfully. Secure trust score unaffected.');
   };

@@ -16,7 +16,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -267,7 +267,7 @@ app.get('/api/applications', async (req, res) => {
       where,
       include: {
         job: { include: { employer: { select: { displayName: true, email: true } } } },
-        worker: { select: { id: true, displayName: true, trustScore: true, verificationStatus: true, phone: true } },
+        worker: { select: { id: true, displayName: true, trustScore: true, verificationStatus: true, phone: true, avatarUrl: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

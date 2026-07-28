@@ -75,7 +75,7 @@ export default function CompanyApplicants() {
             salary: app.job?.salary || 'RWF 20,000 / Task',
             location: app.job?.location || 'Kigali',
             status: 'accepted',
-            workerId: app.workerId || 'worker_demo_1',
+            workerId: app.workerId || 'unknown',
             workerName: app.worker?.displayName || 'Worker',
             employerId: profile?.id,
             employerName: profile?.displayName || 'Employer',
@@ -203,16 +203,21 @@ export default function CompanyApplicants() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex items-center gap-6">
                     <div className="relative">
-                      <div className="h-16 w-16 bg-blue-100 rounded-[1.5rem] flex items-center justify-center text-blue-600 font-black font-sans text-xl">
-                        {avatarLetters}
-                      </div>
+                      {applicant.worker?.avatarUrl ? (
+                        <div className="h-16 w-16 rounded-[1.5rem] overflow-hidden">
+                          <img src={applicant.worker.avatarUrl} alt={workerName} className="h-full w-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="h-16 w-16 bg-blue-100 rounded-[1.5rem] flex items-center justify-center text-blue-600 font-black font-sans text-xl">
+                          {avatarLetters}
+                        </div>
+                      )}
                       {isVerified && (
                         <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-1 rounded-lg border-2 border-white">
                           <Shield size={10} fill="currentColor" />
                         </div>
                       )}
-                    </div>
-                    <div>
+                    </div>                    <div>
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{workerName}</h3>
                         <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-0.5 rounded-full">Score: {trustScore}</span>

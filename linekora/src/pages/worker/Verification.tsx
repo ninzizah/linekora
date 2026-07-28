@@ -189,16 +189,8 @@ export default function WorkerVerification() {
       const steps: VerificationStep[] = ['intro', 'tier_select', 'documents', 'selfie', 'otp', 'completed'];
       const nextIdx = steps.indexOf(step) + 1;
       
-      // If we just finished OTP, update the demo user data as it was the final step
+      // If we just finished OTP, final step
       if (step === 'otp' && selectedTier) {
-        const demoUserStr = localStorage.getItem('demo_user');
-        if (demoUserStr) {
-          const user = JSON.parse(demoUserStr);
-          user.tier = selectedTier === 'bronze' ? 'Verified Bronze' : 'Silver Verified';
-          user.verificationStatus = 'pending'; // Mark as pending under review
-          user.trustScore = selectedTier === 'bronze' ? 85 : 98;
-          localStorage.setItem('demo_user', JSON.stringify(user));
-        }
       }
 
       if (nextIdx < steps.length) setStep(steps[nextIdx]);

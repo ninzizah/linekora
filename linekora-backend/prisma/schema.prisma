@@ -15,6 +15,7 @@ model User {
   role               Role     @default(WORKER)
   phone              String?
   location           String?
+  avatarUrl          String?  @db.Text
   trustScore         Int      @default(50)
   tier               String   @default("Free Account")
   verificationStatus String   @default("unverified")

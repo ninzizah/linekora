@@ -83,10 +83,10 @@ export default function CompanySettings() {
     const dbId = profile?.id || profile?.firebaseUid;
     if (dbId) {
       try {
-        await updateUser(dbId, { displayName: companyName, location: headquarters, phone } as any);
+        await updateUser(dbId, { displayName: companyName, location: headquarters, phone, avatarUrl: selectedAvatar || undefined } as any);
       } catch (err) {
         console.warn('Failed to persist to DB:', err);
-      }
+    }
     }
 
     setIsSaved(true);

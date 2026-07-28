@@ -57,13 +57,6 @@ const CATEGORY_METADATA: Record<string, { range: string; min: number; max: numbe
   }
 };
 
-// Preset sample images for simulated upload
-const SAMPLE_PHOTOS = [
-  { id: '1', url: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=200&q=80', label: 'Cleaning sample' },
-  { id: '2', url: 'https://images.unsplash.com/photo-1542013936693-8848e574047a?auto=format&fit=crop&w=200&q=80', label: 'Leaks sample' },
-  { id: '3', url: 'https://images.unsplash.com/photo-1584473457406-6240486418e9?auto=format&fit=crop&w=200&q=80', label: 'Yard sample' }
-];
-
 interface Toast {
   id: string;
   message: string;
@@ -130,19 +123,28 @@ export default function EmployerPostTask() {
     }
   };
 
-  // Simulated Custom Photo Upload
-  const handleSimulatedUpload = (url: string) => {
-    if (attachedPhotos.includes(url)) {
-      setAttachedPhotos(prev => prev.filter(u => u !== url));
-      addToast('Media thumbnail detached.', 'info');
-    } else {
-      if (attachedPhotos.length >= 3) {
-        addToast('Maximum 3 sample attachments allowed in draft.', 'info');
-        return;
-      }
-      setAttachedPhotos(prev => [...prev, url]);
-      addToast('Simulated image attached successfully!', 'success');
-    }
+  // Real device photo upload
+  const handleRealUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const maxFiles = 5 - attachedPhotos.length;
+    const toProcess = Array.from(files).slice(0, maxFiles);
+    toProcess.forEach((file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        setAttachedPhotos(prev => {
+          if (prev.length >= 5) {
+            addToast('Maximum 5 photos allowed.', 'info');
+            return prev;
+          }
+          addToast('Photo attached successfully!', 'success');
+          return [...prev, dataUrl];
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
   };
 
   const handleRemovePhoto = (url: string) => {
@@ -416,38 +418,17 @@ export default function EmployerPostTask() {
                       </div>
                     </div>
 
-                    {/* SIMULATED TASK PHOTOS UPLOADER */}
+                    {/* TASK PHOTOS UPLOADER */}
                     <div className="space-y-3">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">
-                        Attach Reference Photos (Simulated)
+                        Attach Reference Photos
                       </label>
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                        <div className="md:col-span-4 border-2 border-dashed border-gray-200 hover:border-blue-500 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-gray-50/50">
+                        <div className="md:col-span-4 border-2 border-dashed border-gray-200 hover:border-blue-500 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-gray-50/50" onClick={() => document.getElementById('photo-upload')?.click()}>
                           <Camera className="mx-auto text-gray-400 mb-2" size={24} />
-                          <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Simulate Click upload</p>
-                          <p className="text-[9px] text-gray-400 italic font-sans mt-0.5">Choose presets right here:</p>
-                        </div>
-                        <div className="md:col-span-8 flex gap-3 overflow-x-auto py-1">
-                          {SAMPLE_PHOTOS.map(p => {
-                            const isAttached = attachedPhotos.includes(p.url);
-                            return (
-                              <button
-                                type="button"
-                                key={p.id}
-                                onClick={() => handleSimulatedUpload(p.url)}
-                                className={`relative flex-shrink-0 h-16 w-24 rounded-xl overflow-hidden border-2 transition-all ${
-                                  isAttached ? 'border-blue-500 scale-95 shadow-md' : 'border-gray-200 hover:border-gray-300'
-                                }`}
-                              >
-                                <img src={p.url} className="h-full w-full object-cover" alt={p.label} />
-                                <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
-                                  <span className="text-[8px] font-black text-white bg-black/60 px-1 py-0.5 rounded leading-none">
-                                    {isAttached ? '✅ Added' : '+ Add'}
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })}
+                          <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Click to upload</p>
+                          <p className="text-[9px] text-gray-400 italic font-sans mt-0.5">Max 5 photos</p>
+                          <input id="photo-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleRealUpload} />
                         </div>
                       </div>
 

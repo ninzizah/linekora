@@ -119,7 +119,7 @@ export default function EmployerSettings() {
     const dbId = profile?.id || profile?.firebaseUid;
     if (dbId) {
       try {
-        await updateUser(dbId, { displayName, location, phone } as any);
+        await updateUser(dbId, { displayName, location, phone, avatarUrl: avatarUrl || undefined } as any);
       } catch (err) {
         console.warn('Failed to persist to DB:', err);
       }

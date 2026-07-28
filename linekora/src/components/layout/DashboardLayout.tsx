@@ -167,13 +167,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleLogout = async () => {
     try {
       console.log('Attempting to sign out...');
-      localStorage.removeItem('demo_user');
       await signOut(auth);
       console.log('Successfully signed out');
       navigate('/');
     } catch (err) {
       console.error('Error signing out:', err);
-      localStorage.removeItem('demo_user');
       navigate('/');
     }
   };

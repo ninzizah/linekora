@@ -22,7 +22,8 @@ interface WorkerItem {
   verified: boolean;
   skills: string[];
   trustScore: number;
-  experience: string; // '1-2yrs' | '3-5yrs' | '5yrs+'
+  experience: string;
+  avatarUrl?: string;
 }
 
 interface Toast {
@@ -64,6 +65,7 @@ export default function BrowseWorkers() {
             skills: ['Domestic Help', 'Quick Tasks', 'Punctual'],
             trustScore: u.trustScore,
             experience: (['1-2yrs', '3-5yrs', '5yrs+'])[idx % 3],
+            avatarUrl: u.avatarUrl,
           }));
         // Set real workers
         setWorkers(realWorkers);
@@ -431,10 +433,15 @@ export default function BrowseWorkers() {
                       tier: 'Standard Tier',
                       rating: worker.rating,
                       completedJobsCount: worker.jobs,
+                      avatarUrl: worker.avatarUrl,
                     })}>
                       {/* Avatar */}
-                      <div className="relative h-14 w-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 border border-gray-100 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                        <User size={28} />
+                      <div className="relative h-14 w-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 border border-gray-100 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors overflow-hidden">
+                        {worker.avatarUrl ? (
+                          <img src={worker.avatarUrl} alt={worker.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <User size={28} />
+                        )}
                         {worker.verified && (
                           <div className="absolute -top-1.5 -right-1.5 bg-blue-600 text-white rounded-full p-1 shadow-md border-2 border-white">
                             <CheckCircle2 size={10} strokeWidth={3} />

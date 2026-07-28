@@ -183,14 +183,8 @@ export default function EmployerVerification() {
       const steps: VerificationStep[] = ['intro', 'documents', 'address', 'selfie', 'completed'];
       const nextIdx = steps.indexOf(step) + 1;
       
-      // If we just finished selfie, update the demo user data as it was the final step
+      // If we just finished selfie, final step
       if (step === 'selfie') {
-        const demoUserStr = localStorage.getItem('demo_user');
-        if (demoUserStr) {
-          const user = JSON.parse(demoUserStr);
-          user.verificationStatus = 'pending'; // Mark as pending under review
-          localStorage.setItem('demo_user', JSON.stringify(user));
-        }
       }
 
       if (nextIdx < steps.length) setStep(steps[nextIdx]);

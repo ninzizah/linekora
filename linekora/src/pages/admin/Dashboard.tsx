@@ -367,14 +367,7 @@ export default function AdminDashboard() {
   };
 
   // Recharts Volume Data
-  const volumeData = [
-    { name: 'Jun 17', Escrowed: 8200000, Commissions: 240000 },
-    { name: 'Jun 18', Escrowed: 12500000, Commissions: 450000 },
-    { name: 'Jun 19', Escrowed: 18400000, Commissions: 620000 },
-    { name: 'Jun 20', Escrowed: 24900000, Commissions: 890000 },
-    { name: 'Jun 21', Escrowed: 29500000, Commissions: 1120000 },
-    { name: 'Jun 22', Escrowed: 34200000, Commissions: 1480500 },
-  ];
+  const volumeData: { name: string; Escrowed: number; Commissions: number }[] = [];
 
   const distributionData = [
     { name: 'Workers', count: users.filter(u => u.role === 'worker').length },
@@ -587,7 +580,6 @@ export default function AdminDashboard() {
   };
 
   const handleLogoutAdmin = () => {
-    localStorage.removeItem('demo_user');
     triggerNotification("Logging out of administrative space...", "info");
     setTimeout(() => {
       window.location.href = '/login';

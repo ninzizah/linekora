@@ -55,11 +55,9 @@ export default function WorkerSettings() {
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem('demo_user');
       await signOut(auth);
     } catch (err) {
       console.error('Error signing out:', err);
-      localStorage.removeItem('demo_user');
     } finally {
       navigate('/');
     }
@@ -103,7 +101,7 @@ export default function WorkerSettings() {
     const dbId = profile?.id || profile?.firebaseUid;
     if (dbId) {
       try {
-        await updateUser(dbId, { displayName, location, phone, bio } as any);
+        await updateUser(dbId, { displayName, location, phone, bio, avatarUrl: avatarUrl || undefined } as any);
       } catch (err) {
         console.warn('Failed to persist to DB:', err);
       }
