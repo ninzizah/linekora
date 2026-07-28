@@ -8,6 +8,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
+import { updateUser } from '../../lib/api';
 
 export default function WorkerSettings() {
   const { profile } = useAuth();
@@ -22,6 +23,7 @@ export default function WorkerSettings() {
   // Inputs State
   const [displayName, setDisplayName] = useState('');
   const [location, setLocation] = useState('');
+  const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isSaved, setIsSaved] = useState(false);
@@ -43,6 +45,7 @@ export default function WorkerSettings() {
     if (profile) {
       setDisplayName(localStorage.getItem(sk('worker_profile_name')) || profile.displayName || '');
       setLocation(localStorage.getItem(sk('worker_profile_location')) || profile.location || '');
+      setPhone(profile.phone || '');
       setBio(localStorage.getItem(sk('worker_profile_bio')) || '');
       setAvatarUrl(
         localStorage.getItem(`linekora_profile_picture_${uid}`) || ''
@@ -81,7 +84,7 @@ export default function WorkerSettings() {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem(sk('worker_profile_name'), displayName);
     localStorage.setItem(sk('worker_profile_location'), location);
@@ -94,6 +97,16 @@ export default function WorkerSettings() {
       localStorage.setItem(avatarKey, avatarUrl);
     } else {
       localStorage.removeItem(avatarKey);
+    }
+
+    // Persist to DB
+    const dbId = profile?.id || profile?.firebaseUid;
+    if (dbId) {
+      try {
+        await updateUser(dbId, { displayName, location, phone, bio } as any);
+      } catch (err) {
+        console.warn('Failed to persist to DB:', err);
+      }
     }
 
     setIsSaved(true);
@@ -275,6 +288,17 @@ export default function WorkerSettings() {
                     defaultValue={profile?.email} 
                     disabled
                     className="w-full px-5 py-3.5 rounded-2xl bg-gray-100 border-2 border-transparent text-gray-400 outline-none font-sans font-bold text-sm cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">Phone Number</label>
+                  <input 
+                    type="tel" 
+                    value={phone} 
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+250 788 123 456"
+                    className="w-full px-5 py-3.5 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all text-sm"
                   />
                 </div>
 

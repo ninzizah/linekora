@@ -9,6 +9,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { updateUser } from '../../lib/api';
 
 interface Toast {
   id: string;
@@ -91,7 +92,7 @@ export default function EmployerSettings() {
     navigate('/');
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!displayName.trim()) {
       addToast('Validation Failure ❌', 'Display Name cannot be blank.', 'error');
       return;
@@ -112,6 +113,16 @@ export default function EmployerSettings() {
       localStorage.setItem(avatarKey, avatarUrl);
     } else {
       localStorage.removeItem(avatarKey);
+    }
+
+    // Persist to DB
+    const dbId = profile?.id || profile?.firebaseUid;
+    if (dbId) {
+      try {
+        await updateUser(dbId, { displayName, location, phone } as any);
+      } catch (err) {
+        console.warn('Failed to persist to DB:', err);
+      }
     }
 
     setTimeout(() => {

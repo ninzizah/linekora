@@ -8,6 +8,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
+import { updateUser } from '../../lib/api';
 
 export default function CompanySettings() {
   const { profile } = useAuth();
@@ -60,7 +61,7 @@ export default function CompanySettings() {
     navigate('/');
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem(storageKey('company_name'), companyName);
     localStorage.setItem(storageKey('company_industry'), industry);
@@ -76,6 +77,16 @@ export default function CompanySettings() {
       localStorage.setItem(avatarKey, selectedAvatar);
     } else {
       localStorage.removeItem(avatarKey);
+    }
+
+    // Persist to DB
+    const dbId = profile?.id || profile?.firebaseUid;
+    if (dbId) {
+      try {
+        await updateUser(dbId, { displayName: companyName, location: headquarters, phone } as any);
+      } catch (err) {
+        console.warn('Failed to persist to DB:', err);
+      }
     }
 
     setIsSaved(true);

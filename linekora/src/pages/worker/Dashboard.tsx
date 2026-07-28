@@ -8,7 +8,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
-import { getJobs, createApplication, createNotification, Job } from '../../lib/api';
+import { getJobs, createApplication, createNotification, applyToJob, getApplications, Job } from '../../lib/api';
 import { formatDistanceToNow } from 'date-fns';
 
 function getRelativeTime(dateStr?: string): string {
@@ -64,74 +64,48 @@ export default function WorkerDashboard() {
     return () => window.removeEventListener('storage', syncJobs);
   }, []);
 
-  const handleAcceptJob = (id: number) => {
+  const handleAcceptJob = async (id: number) => {
+    if (!profile?.id) return;
     setAcceptedJobId(id);
     setIsProcessing(true);
-    setTimeout(() => {
-      // Simulate SMS alert blast sending and claim job
-      const matchedJob = urgentJobs.find(job => job.id === id);
-      if (matchedJob) {
-        // Load existing contracts
-        let contractList: any[] = [];
-        const cachedContracts = localStorage.getItem('linekora_contracts');
-        if (cachedContracts) {
-          try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
-        }
+    try {
+      await applyToJob(id, profile.id);
 
-        const exists = contractList.some(c => c.id === id);
-        if (!exists) {
-          const newContract: any = {
-            id: matchedJob.id,
-            jobTitle: matchedJob.title,
-            company: matchedJob.company || 'Private Client',
-            salary: matchedJob.salary,
-            location: matchedJob.location,
-            status: 'accepted',
-            workerId: 'worker_demo_1',
-            workerName: 'Shema Honore',
-            employerId: 'employer_demo_1',
-            employerName: matchedJob.company || 'Private Client',
-            daysSinceRequest: 0,
-            rating: 0,
-            review: '',
-            commissionPaidWorker: false,
-            commissionPaidEmployer: false,
-            date: 'Active Shift Contract',
-            logo: matchedJob.logo || 'PJ',
-            phone: matchedJob.phone || '+250 780 000 000'
-          };
-          contractList.push(newContract);
-          localStorage.setItem('linekora_contracts', JSON.stringify(contractList));
-        }
-
-        // Push alert to employer
-        const existingAlerts = localStorage.getItem('system_alerts') || '[]';
-        let alertsArr = [];
-        try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
-        alertsArr.push({
-          id: Date.now().toString(),
-          category: 'success',
+      // Notify employer
+      const job = [...dbUrgentJobs, ...urgentJobs].find((j: any) => j.id === id);
+      if (job?.employerId) {
+        await createNotification({
+          userId: job.employerId,
           title: '⚡ Hot Task Claimed!',
-          details: `Worker Shema Honore claimed your hot task "${matchedJob.title}". Contract is now active.`,
-          time: 'Just now',
-          read: false
+          body: `${profile.displayName} claimed your urgent task "${job.title}". Contract is now active.`,
+          type: 'success',
         });
-        localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
       }
 
-      setUrgentJobs(prev => {
-        const updated = prev.filter(job => job.id !== id);
-        localStorage.setItem('urgent_jobs', JSON.stringify(updated));
-        return updated;
-      });
+      const newApplied = new Set(appliedIds);
+      newApplied.add(id);
+      setAppliedIds(newApplied);
+      localStorage.setItem('applied_job_ids', JSON.stringify([...newApplied]));
+
       setAcceptedJobId(null);
       setIsProcessing(false);
       setModalFeedback({
         type: 'claim',
-        title: 'GIG CLAIMED SECURELY! 🎉',
-        message: `An automated security SMS with contact details (+250 782 100 00${id % 10}) and Google Map directions coordinates for "${matchedJob?.title || 'Gig'}" has been dispatched to your phone! Bahite bakoherereza code kuri message!`
+        title: 'GIG CLAIMED SECURELY!',
+        message: `Your application for "${job?.title || 'Gig'}" has been submitted. The employer has been notified and will review your profile.`,
       });
-    }, 1500);
+    } catch (err: any) {
+      setAcceptedJobId(null);
+      setIsProcessing(false);
+      if (err.message?.includes('Already applied')) {
+        const newApplied = new Set(appliedIds);
+        newApplied.add(id);
+        setAppliedIds(newApplied);
+        setModalFeedback({ type: 'already', title: 'Already Applied', message: `You already claimed this gig.` });
+      } else {
+        showJobToast(err.message || 'Failed to claim job.', 'error');
+      }
+    }
   };
 
   const handleToggleSave = (job: any, e?: React.MouseEvent) => {
@@ -223,16 +197,26 @@ export default function WorkerDashboard() {
 
   useEffect(() => {
     loadAllJobs();
+    // Load applied jobs from DB
+    if (profile?.id) {
+      getApplications({ workerId: profile.id }).then(apps => {
+        const ids = new Set(apps.map(a => a.jobId));
+        setAppliedIds(ids);
+        localStorage.setItem('applied_job_ids', JSON.stringify([...ids]));
+      }).catch(() => {
+        // fallback to localStorage
+        try {
+          const cached = JSON.parse(localStorage.getItem('applied_job_ids') || '[]');
+          setAppliedIds(new Set(cached));
+        } catch { /* ignore */ }
+      });
+    }
     // Also sync localStorage urgentJobs (employer hot tasks from their session)
     const local = localStorage.getItem('urgent_jobs');
     if (local) {
       try { setUrgentJobs(JSON.parse(local)); } catch { /* ignore */ }
     }
-    try {
-      const cached = JSON.parse(localStorage.getItem('applied_job_ids') || '[]');
-      setAppliedIds(new Set(cached));
-    } catch { /* ignore */ }
-  }, []);
+  }, [profile?.id]);
 
   const stats = [
     {
@@ -398,18 +382,20 @@ export default function WorkerDashboard() {
                       </div>
 
                       <button
-                        disabled={acceptedJobId !== null}
+                        disabled={acceptedJobId !== null || appliedIds.has(job.id)}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAcceptJob(job.id);
                         }}
                         className={`px-5 py-3 rounded-xl font-sans font-black uppercase tracking-widest text-[9px] shrink-0 transition-all text-center ${
-                          acceptedJobId === job.id
+                          appliedIds.has(job.id)
+                            ? 'bg-green-100 text-green-700 border border-green-200 cursor-default'
+                            : acceptedJobId === job.id
                             ? 'bg-amber-500 text-white animate-pulse'
                             : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-100'
                         }`}
                       >
-                        {acceptedJobId === job.id ? 'Securing...' : 'Claim Job'}
+                        {appliedIds.has(job.id) ? '✓ Applied' : acceptedJobId === job.id ? 'Securing...' : 'Claim Job'}
                       </button>
                     </div>
                   ))}

@@ -205,7 +205,7 @@ export default function EmployerPostTask() {
         status: 'open',
         urgent: isUrgent,
         employerId: profile.id,
-        phone: phone || undefined,
+        deadline: startDate || undefined,
       });
 
       // Cache locally too

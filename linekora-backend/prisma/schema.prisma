@@ -34,18 +34,19 @@ model User {
 }
 
 model Job {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   title       String
   description String
   salary      String
   location    String
   category    String?
-  urgent      Boolean  @default(false)
-  status      String   @default("open") // open, accepted, completion_requested, completed
+  urgent      Boolean   @default(false)
+  status      String    @default("open") // open, accepted, completion_requested, completed, expired
+  deadline    DateTime?
   employerId  String
-  employer    User     @relation("EmployerJobs", fields: [employerId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  employer    User      @relation("EmployerJobs", fields: [employerId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   applications Application[]
 }

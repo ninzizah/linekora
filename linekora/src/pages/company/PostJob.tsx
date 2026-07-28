@@ -130,6 +130,7 @@ export default function PostJob() {
         status: 'open',
         urgent: isUrgent,
         employerId: profile.id,
+        deadline: formData.deadline || undefined,
       });
 
       // Also cache locally for offline use

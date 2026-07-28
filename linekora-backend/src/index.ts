@@ -182,6 +182,12 @@ app.get('/api/jobs', async (req, res) => {
     if (category) where.category = category;
     if (status) where.status = status;
 
+    // Filter out expired jobs (deadline has passed)
+    where.OR = [
+      { deadline: null },
+      { deadline: { gte: new Date() } },
+    ];
+
     const jobs = await prisma.job.findMany({
       where,
       include: { employer: { select: { id: true, displayName: true, email: true, phone: true } } },
@@ -214,6 +220,40 @@ app.patch('/api/jobs/:id', async (req, res) => {
   }
 });
 
+// Apply to a job (worker claiming)
+app.post('/api/jobs/:id/apply', async (req, res) => {
+  try {
+    const jobId = parseInt(req.params.id);
+    const { workerId } = req.body;
+    if (!workerId) return res.status(400).json({ error: 'workerId is required' });
+
+    // Check if already applied
+    const existing = await prisma.application.findFirst({
+      where: { jobId, workerId },
+    });
+    if (existing) {
+      return res.status(409).json({ error: 'Already applied to this job' });
+    }
+
+    const application = await prisma.application.create({
+      data: { jobId, workerId, status: 'pending' },
+    });
+
+    // Also update job status to accepted
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { status: 'accepted' },
+    });
+
+    res.json(application);
+  } catch (error: any) {
+    if (error.message?.includes('Already applied')) {
+      return res.status(409).json({ error: 'Already applied to this job' });
+    }
+    res.status(500).json({ error: error.message || 'Failed to apply' });
+  }
+});
+
 // ─── APPLICATIONS ────────────────────────────────────────────────────────────
 
 app.get('/api/applications', async (req, res) => {
@@ -227,7 +267,7 @@ app.get('/api/applications', async (req, res) => {
       where,
       include: {
         job: { include: { employer: { select: { displayName: true, email: true } } } },
-        worker: { select: { id: true, displayName: true, trustScore: true, verificationStatus: true } },
+        worker: { select: { id: true, displayName: true, trustScore: true, verificationStatus: true, phone: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

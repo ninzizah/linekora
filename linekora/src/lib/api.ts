@@ -74,6 +74,7 @@ export interface Job {
   urgent: boolean;
   status: string;
   employerId: string;
+  deadline?: string;
   phone?: string;
   employer?: Pick<UserProfile, 'id' | 'displayName' | 'email' | 'phone'>;
   createdAt: string;
@@ -92,6 +93,9 @@ export const createJob = (data: Omit<Job, 'id' | 'createdAt' | 'employer'>) =>
 export const updateJob = (id: number, data: Partial<Job>) =>
   request<Job>(`/jobs/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 
+export const applyToJob = (jobId: number, workerId: string) =>
+  request<any>(`/jobs/${jobId}/apply`, { method: 'POST', body: JSON.stringify({ workerId }) });
+
 // ─── APPLICATIONS ─────────────────────────────────────────────────────────────
 
 export interface Application {
@@ -101,7 +105,7 @@ export interface Application {
   status: string;
   createdAt: string;
   job?: Job;
-  worker?: Pick<UserProfile, 'id' | 'displayName' | 'trustScore' | 'verificationStatus'>;
+  worker?: Pick<UserProfile, 'id' | 'displayName' | 'trustScore' | 'verificationStatus' | 'phone'>;
 }
 
 export const getApplications = (params: { workerId?: string; jobId?: number; employerId?: string }) => {

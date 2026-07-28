@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getUsers } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
+import PublicProfileModal from '../../components/PublicProfileModal';
+import type { PublicProfileUser } from '../../components/PublicProfileModal';
 
 interface WorkerItem {
   id: string | number;
@@ -88,6 +90,9 @@ export default function BrowseWorkers() {
 
   // Escrow Loading Phases state inside Step 2
   const [escrowPhase, setEscrowPhase] = useState(0);
+
+  // Profile modal state
+  const [viewingProfile, setViewingProfile] = useState<PublicProfileUser | null>(null);
 
   // System alerts state
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -264,6 +269,7 @@ export default function BrowseWorkers() {
   const filteredWorkers = getFilteredWorkers();
 
   return (
+    <>
     <DashboardLayout>
       <div className="max-w-6xl mx-auto px-4">
         <header className="mb-8 text-center md:text-left flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-gray-100">
@@ -414,7 +420,18 @@ export default function BrowseWorkers() {
               >
                 <div>
                   <div className="flex items-start justify-between mb-4.5">
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 cursor-pointer" onClick={() => setViewingProfile({
+                      id: worker.id,
+                      name: worker.name,
+                      displayName: worker.name,
+                      role: worker.role,
+                      location: worker.location,
+                      trustScore: worker.trustScore,
+                      verificationStatus: worker.verified ? 'verified' : 'unverified',
+                      tier: 'Standard Tier',
+                      rating: worker.rating,
+                      completedJobsCount: worker.jobs,
+                    })}>
                       {/* Avatar */}
                       <div className="relative h-14 w-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 border border-gray-100 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                         <User size={28} />
@@ -788,5 +805,13 @@ export default function BrowseWorkers() {
         </AnimatePresence>
       </div>
     </DashboardLayout>
+
+    {/* PUBLIC PROFILE MODAL */}
+    <PublicProfileModal
+      user={viewingProfile}
+      isOpen={!!viewingProfile}
+      onClose={() => setViewingProfile(null)}
+    />
+    </>
   );
 }
