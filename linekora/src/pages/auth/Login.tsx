@@ -37,7 +37,8 @@ export default function Login() {
       navigate(roleRoutes[profile.role] || '/dashboard');
     } catch {
       // User exists in Firebase but not in PostgreSQL (e.g. DB reset).
-      // Auto-create a minimal record so they don't get stuck in a loop.
+      // Auto-create a minimal record so they don't get stuck redirecting
+      // back to register after every login.
       try {
         await upsertUser({
           firebaseUid: uid,
@@ -45,6 +46,8 @@ export default function Login() {
           displayName: email?.split('@')[0] || 'User',
         } as any);
         await refreshProfile();
+        navigate('/dashboard');
+        return;
       } catch {}
       navigate('/register');
     }
