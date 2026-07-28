@@ -4,7 +4,7 @@ import { Shield, Mail, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import { auth } from '../../lib/firebase';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
-import { getUser } from '../../lib/api';
+import { getUser, upsertUser } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage, Language } from '../../lib/LanguageContext';
 
@@ -24,11 +24,10 @@ export default function Login() {
   const { refreshProfile } = useAuth();
   const { language, setLanguage } = useLanguage();
 
-  const handleAfterAuth = async (uid: string) => {
+  const handleAfterAuth = async (uid: string, email?: string) => {
     try {
       const profile = await getUser(uid);
       await refreshProfile();
-      // Route by role
       const roleRoutes: Record<string, string> = {
         WORKER: '/dashboard/worker',
         COMPANY: '/dashboard/company',
@@ -37,7 +36,12 @@ export default function Login() {
       };
       navigate(roleRoutes[profile.role] || '/dashboard');
     } catch {
-      // User authenticated but no profile in DB yet → finish registration
+      // User exists in Firebase but not in PostgreSQL (e.g. DB reset).
+      // Auto-create a minimal record so they don't get stuck in a loop.
+      try {
+        await upsertUser({ firebaseUid: uid, email: email || '' } as any);
+        await refreshProfile();
+      } catch {}
       navigate('/register');
     }
   };
@@ -48,7 +52,7 @@ export default function Login() {
     setError(null);
     try {
       const result = await signInWithEmailAndPassword(auth, email.trim(), password);
-      await handleAfterAuth(result.user.uid);
+      await handleAfterAuth(result.user.uid, result.user.email || email.trim());
     } catch (err: any) {
       const code = err.code;
       if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
@@ -69,7 +73,7 @@ export default function Login() {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      await handleAfterAuth(result.user.uid);
+      await handleAfterAuth(result.user.uid, result.user.email || undefined);
     } catch (err: any) {
       if (err.code === 'auth/operation-not-allowed') {
         setError('Google sign-in is not enabled. Please enable it in the Firebase Console.');
