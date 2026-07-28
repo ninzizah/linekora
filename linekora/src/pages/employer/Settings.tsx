@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, Shield, LogOut, Save, CheckCircle, 
-  X, AlertTriangle, FileCheck, Camera, Phone
+  X, AlertTriangle, Camera, Phone
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
@@ -30,11 +30,8 @@ export default function EmployerSettings() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [uploadError, setUploadError] = useState('');
   
-  // Verification states
+  // Verification state
   const [isVerified, setIsVerified] = useState(false);
-  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
-  const [nationalId, setNationalId] = useState('');
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   // Saving state
   const [saving, setSaving] = useState(false);
@@ -121,34 +118,6 @@ export default function EmployerSettings() {
       setSaving(false);
       addToast('Settings Saved 💾', 'Your profile updates have been saved.', 'success');
     }, 800);
-  };
-
-  // Mock Verification process
-  const triggerVerifyVerify = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nationalId.trim() || nationalId.length < 16) {
-      addToast('Format Mismatch 🔍', 'Kigali National Registration ID must comprise exactly 16 characters.', 'error');
-      return;
-    }
-
-    setIsSubmittingVerification(true);
-    setTimeout(() => {
-      setIsSubmittingVerification(false);
-      setIsVerified(true);
-      setShowVerifyModal(false);
-      
-      // Update overrides with verified state
-      const payload = {
-        displayName,
-        location,
-        phone,
-        bio,
-        isVerified: true
-      };
-      localStorage.setItem('employer_profile_overrides', JSON.stringify(payload));
-      
-      addToast('Shield Verification Active 🛡️', 'Validation complete. Security Shield attached to your profile feeds successfully!', 'success');
-    }, 1500);
   };
 
   return (
@@ -318,7 +287,7 @@ export default function EmployerSettings() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowVerifyModal(true)}
+                  onClick={() => navigate('/verification/employer')}
                   className="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-yellow-100 self-start md:self-auto shrink-0"
                 >
                   Verify Now
@@ -355,84 +324,6 @@ export default function EmployerSettings() {
           </div>
         </div>
       </div>
-
-      {/* SECURE NATIONAL ID VERIFICATION OVERLAY SCREEN */}
-      <AnimatePresence>
-        {showVerifyModal && (
-          <div className="fixed inset-0 z-55 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-gray-950/65 backdrop-blur-sm"
-              onClick={() => setShowVerifyModal(false)}
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-[2.5rem] w-full max-w-md p-8 md:p-10 shadow-2xl relative border border-gray-100 z-10"
-            >
-              <button 
-                onClick={() => setShowVerifyModal(false)}
-                className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-55 text-gray-400 bg-gray-50 flex items-center justify-center border border-gray-150"
-              >
-                <X size={18} />
-              </button>
-
-              <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
-                <FileCheck size={24} />
-              </div>
-
-              <h3 className="text-xl font-black text-gray-950 font-sans uppercase">Identity Audit Console</h3>
-              <p className="text-xs text-gray-400 font-sans italic mt-1 mb-6">
-                Rwandan National ID document checking coordinates instantly with district administrative records for premium security.
-              </p>
-
-              <form onSubmit={triggerVerifyVerify} className="space-y-6">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">16-Digit National ID Number</label>
-                  <input 
-                    type="text"
-                    maxLength={16}
-                    value={nationalId}
-                    onChange={(e) => setNationalId(e.target.value)}
-                    placeholder="e.g. 1199580045123456"
-                    className="w-full px-5 py-4 rounded-xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all font-mono"
-                  />
-                  <span className="text-[9px] text-gray-400 block mt-1.5 leading-snug px-1 italic">
-                    Note: For simulation, input any 16 characters or numbers. Your mock certificate matches instantly.
-                  </span>
-                </div>
-
-                <div className="pt-2 grid grid-cols-2 gap-3">
-                  <button 
-                    type="button" 
-                    onClick={() => setShowVerifyModal(false)}
-                    className="py-3.5 bg-gray-50 hover:bg-gray-100 border border-gray-150 text-gray-650 rounded-xl font-sans font-black uppercase text-[10px] tracking-widest transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit"
-                    disabled={isSubmittingVerification}
-                    className="py-3.5 bg-blue-650 hover:bg-blue-700 text-white rounded-xl font-sans font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    {isSubmittingVerification ? (
-                      <span>Auditing Document...</span>
-                    ) : (
-                      <>
-                        <Shield size={12} />
-                        <span>Submit Document</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* FLOATING SYSTEM TOASTS PANEL */}
       <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
