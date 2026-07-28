@@ -20,7 +20,7 @@ export default function Register() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const { language, setLanguage } = useLanguage();
 
   const [formData, setFormData] = useState({
@@ -67,10 +67,9 @@ export default function Register() {
     setLoading(true);
     setError(null);
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      await syncToDatabase(user.uid, user.email!, user.displayName || 'User', role);
+      // If already authenticated (e.g. redirected from Login), skip re-auth
+      const fbUser = user ?? (await signInWithPopup(auth, new GoogleAuthProvider())).user;
+      await syncToDatabase(fbUser.uid, fbUser.email!, fbUser.displayName || 'User', role);
       await refreshProfile();
       navigate('/dashboard');
     } catch (err: any) {
@@ -88,17 +87,20 @@ export default function Register() {
     setError(null);
 
     try {
-      // 1. Create Firebase user
-      const credential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = credential.user;
-
-      // 2. Set display name on Firebase
-      await updateProfile(user, { displayName: formData.displayName });
-
-      // 3. Sync to PostgreSQL
-      await syncToDatabase(user.uid, formData.email, formData.displayName, role);
-      await refreshProfile();
-      navigate('/dashboard');
+      if (user) {
+        // Already authenticated (e.g. redirected from Login after DB record was missing)
+        await syncToDatabase(user.uid, user.email || formData.email, formData.displayName, role);
+        await refreshProfile();
+        navigate('/dashboard');
+      } else {
+        // New registration: create Firebase user
+        const credential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        const fbUser = credential.user;
+        await updateProfile(fbUser, { displayName: formData.displayName });
+        await syncToDatabase(fbUser.uid, formData.email, formData.displayName, role);
+        await refreshProfile();
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       const code = err.code;
       if (code === 'auth/email-already-in-use') {
