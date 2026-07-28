@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../lib/AuthContext';
+import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 
 interface Application {
   id: number;
@@ -21,6 +23,7 @@ interface Application {
 }
 
 export default function WorkerApplications() {
+  const { profile } = useAuth();
   const [filter, setFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected' | 'completed' | 'completion_requested'>('all');
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,21 +34,13 @@ export default function WorkerApplications() {
 
   const [apps, setApps] = useState<any[]>(() => {
     // 1. Get raw applications
-    let workerApps: any[] = [];
-    const cachedApps = localStorage.getItem('worker_applications');
-    if (cachedApps) {
-      try { workerApps = JSON.parse(cachedApps); } catch (e) { workerApps = []; }
-    }
+    const workerApps = readScopedStorage<any[]>(profile?.id, 'worker_applications', []);
 
     // 2. Merge with contracts from linekora_contracts database
-    let contractList: any[] = [];
-    const cachedContracts = localStorage.getItem('linekora_contracts');
-    if (cachedContracts) {
-      try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
-    }
+    const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
 
-    const shemaContracts = contractList.filter(c => c.workerId === 'worker_demo_1');
-    const formattedContracts = shemaContracts.map(c => ({
+    const myContracts = contractList.filter(c => c.workerId === profile?.id);
+    const formattedContracts = myContracts.map(c => ({
       id: c.id,
       jobTitle: c.jobTitle,
       company: c.company,
@@ -69,7 +64,7 @@ export default function WorkerApplications() {
   const saveAppsOnly = (newApps: any[]) => {
     // Save applications list only, split out contracts
     const appsOnly = newApps.filter(ap => !ap.isContract);
-    localStorage.setItem('worker_applications', JSON.stringify(appsOnly));
+    writeScopedStorage(profile?.id, 'worker_applications', appsOnly);
   };
 
   const handleDeclineOrReject = (id: number) => {
@@ -77,31 +72,25 @@ export default function WorkerApplications() {
     setConfirmingAction(null);
     setTimeout(() => {
       // Mark matching contract in linekora_contracts as rejected
-      let contractList: any[] = [];
-      const cachedContracts = localStorage.getItem('linekora_contracts');
-      if (cachedContracts) {
-        try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
-      }
+      const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
       const updatedContracts = contractList.map(c => 
         c.id === id ? { ...c, status: 'rejected' } : c
       );
-      localStorage.setItem('linekora_contracts', JSON.stringify(updatedContracts));
+      writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
 
       // Push alert
       const declinedApp = apps.find(ap => ap.id === id);
       if (declinedApp) {
-        const existingAlerts = localStorage.getItem('system_alerts') || '[]';
-        let alertsArr = [];
-        try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
+        const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
         alertsArr.push({
           id: Date.now().toString(),
           category: 'urgent',
           title: '❌ Job Offer Declined',
-          details: `Worker Shema Honore declined your job offer for "${declinedApp.jobTitle}".`,
+          details: `Worker ${profile?.displayName || 'Worker'} declined your job offer for "${declinedApp.jobTitle}".`,
           time: 'Just now',
           read: false
         });
-        localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
+        writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
       }
 
       const updated = apps.map(ap => 
@@ -140,11 +129,7 @@ export default function WorkerApplications() {
     setTimeout(() => {
       const acceptedApp = apps.find(ap => ap.id === id);
       if (acceptedApp) {
-        let contractList: any[] = [];
-        const cachedContracts = localStorage.getItem('linekora_contracts');
-        if (cachedContracts) {
-          try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
-        }
+        let contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
 
         const exists = contractList.some(c => c.id === id);
         if (!exists) {
@@ -155,9 +140,9 @@ export default function WorkerApplications() {
             salary: acceptedApp.salary,
             location: acceptedApp.location,
             status: 'accepted',
-            workerId: 'worker_demo_1',
-            workerName: 'Shema Honore',
-            employerId: 'employer_demo_1',
+            workerId: profile?.id,
+            workerName: profile?.displayName,
+            employerId: (acceptedApp as any).employerId || profile?.id,
             employerName: acceptedApp.company,
             daysSinceRequest: 0,
             rating: 0,
@@ -174,21 +159,19 @@ export default function WorkerApplications() {
             c.id === id ? { ...c, status: 'accepted', date: 'Active Shift Contract' } : c
           );
         }
-        localStorage.setItem('linekora_contracts', JSON.stringify(contractList));
+        writeScopedStorage(profile?.id, 'linekora_contracts', contractList);
 
         // Push alert
-        const existingAlerts = localStorage.getItem('system_alerts') || '[]';
-        let alertsArr = [];
-        try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
+        const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
         alertsArr.push({
           id: Date.now().toString(),
           category: 'success',
           title: '🤝 Job Offer Approved!',
-          details: `Worker Shema Honore approved your job offer for "${acceptedApp.jobTitle}". Contract is now active.`,
+          details: `Worker ${profile?.displayName || 'Worker'} approved your job offer for "${acceptedApp.jobTitle}". Contract is now active.`,
           time: 'Just now',
           read: false
         });
-        localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
+        writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
       }
 
       const updated = apps.map(ap => 
@@ -209,31 +192,25 @@ export default function WorkerApplications() {
     setIsProcessing(true);
     setTimeout(() => {
       // 1. Read existing contract list
-      let contractList: any[] = [];
-      const cachedContracts = localStorage.getItem('linekora_contracts');
-      if (cachedContracts) {
-        try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
-      }
+      const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
 
       // 2. Update the contract status
       const updatedContracts = contractList.map(c => 
         c.id === id ? { ...c, status: 'completion_requested', date: 'Completion Pending' } : c
       );
-      localStorage.setItem('linekora_contracts', JSON.stringify(updatedContracts));
+      writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
 
       // 3. Dispatch system notification alert to the employer
-      const existingAlerts = localStorage.getItem('system_alerts') || '[]';
-      let alertsArr = [];
-      try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
+      const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
       alertsArr.push({
         id: Date.now().toString(),
         category: 'urgent',
         title: '⏳ Completion Requested',
-        details: `Worker Shema Honore requested completion confirmation for "${updatedContracts.find(c => c.id === id)?.jobTitle || 'Job'}".`,
+        details: `Worker ${profile?.displayName || 'Worker'} requested completion confirmation for "${updatedContracts.find(c => c.id === id)?.jobTitle || 'Job'}".`,
         time: 'Just now',
         read: false
       });
-      localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
+      writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
 
       // Reload state
       const refreshedApps = apps.map(ap => 

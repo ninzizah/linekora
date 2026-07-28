@@ -74,27 +74,6 @@ export default function PostJob() {
     { id: 'on-demand', label: 'On-demand' },
   ];
 
-  // Dynamic candidate matchmaking based on Category selection
-  const getRecommendedCandidates = (category: string) => {
-    const database = [
-      { id: 201, name: 'Moses Byaruhanga', skill: 'Masonry & Concrete', category: 'Construction', match: '98%', location: 'Kigali', badge: 'Expert' },
-      { id: 202, name: 'Aline Umutoni', skill: 'Logistics Coordinator', category: 'Logistics', match: '96%', location: 'Remera', badge: 'Certified' },
-      { id: 203, name: 'Jean Bosco', skill: 'Emergency Plumber', category: 'Construction', match: '94%', location: 'Nyamirambo', badge: 'Pro' },
-      { id: 204, name: 'Sarah Namono', skill: 'Premium Sanitizer', category: 'Domestic Help', match: '97%', location: 'Entebbe', badge: 'Top Rated' },
-      { id: 205, name: 'Peter Okello', skill: 'CCTV Security Expert', category: 'Security', match: '95%', location: 'Mukono', badge: 'Licensed' },
-      { id: 206, name: 'Grace Akello', skill: 'Early Learning Tutor', category: 'Domestic Help', match: '99%', location: 'Kira', badge: 'Verified' },
-      { id: 207, name: 'Emmanuel Sseunda', skill: 'Heavy Mechanical Fitter', category: 'Mechanical', match: '92%', location: 'Kampala', badge: 'Pro' },
-      { id: 208, name: 'David Mugisha', skill: 'TypeScript Frontend Coder', category: 'IT & Tech', match: '98%', location: 'Kacyiru', badge: 'Senior' },
-      { id: 209, name: 'Claudine Uwera', skill: 'Hospitality Maitre d\'', category: 'Hospitality', match: '96%', location: 'Kigali', badge: 'Elite' },
-      { id: 210, name: 'Eric Sengazi', skill: 'Brand Identity Architect', category: 'Creative', match: '94%', location: 'Gisenyi', badge: 'Creative' }
-    ];
-
-    const matched = database.filter(worker => worker.category.toLowerCase() === category.toLowerCase());
-    if (matched.length > 0) return matched;
-    // Fallbacks
-    return [database[0], database[1], database[3]];
-  };
-
   // Notifications systems
   const [notifications, setNotifications] = useState<NotificationMsg[]>([]);
 
@@ -501,65 +480,19 @@ export default function PostJob() {
                 </p>
               </div>
 
-              {/* RECOMMENDED CANDIDATES SECTION */}
-              <div className="space-y-4 mb-8">
-                <div className="flex items-center justify-between border-b border-gray-50 pb-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-600 flex items-center gap-1.5 font-sans">
-                    <Sparkles size={14} className="text-yellow-500" />
-                    Recommended Candidates Match ({formData.category})
-                  </h4>
-                  <button 
-                    onClick={() => {
-                      setShowSuccessModal(false);
-                      navigate('/dashboard/company/browse');
-                    }}
-                    className="text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-600 transition-colors"
-                  >
-                    View All Workers
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3.5">
-                  {getRecommendedCandidates(formData.category).slice(0, 3).map((worker) => (
-                    <div 
-                      key={worker.id} 
-                      className="p-5 rounded-2xl bg-gray-50 border border-gray-100 hover:border-blue-200 hover:bg-white transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="h-11 w-11 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-400 text-sm font-black group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                          {worker.name[0]}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <h5 className="font-sans font-black text-sm text-gray-900">{worker.name}</h5>
-                            <span className="bg-blue-50 text-blue-600 text-[8px] font-black uppercase px-2 py-0.5 rounded tracking-wider">
-                              {worker.badge}
-                            </span>
-                          </div>
-                          <p className="text-[10px] font-semibold text-gray-500 font-sans mt-0.5 italic">{worker.skill} • {worker.location}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        <span className="text-[10px] font-black text-green-600 bg-green-50 border border-green-100 px-2.5 py-1 rounded-lg mr-2 leading-none">
-                          {worker.match} MATCH
-                        </span>
-                        <button 
-                          onClick={() => handleInviteCandidate(worker.name)}
-                          className="px-3.5 py-2 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-blue-700 transition-colors"
-                        >
-                          Invite
-                        </button>
-                        <button 
-                          onClick={() => handleShortlistCandidate(worker.name, worker.skill)}
-                          className="p-2 bg-white text-gray-400 hover:text-blue-600 rounded-xl hover:bg-blue-50 transition-colors border border-gray-100"
-                        >
-                          <Bookmark size={12} className="fill-current" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 mb-8">
+                <p className="text-sm font-sans font-bold text-blue-700 text-center">
+                  Your job has been published to the marketplace. Verified workers matching your category will be able to see and apply for it.
+                </p>
+                <button 
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    navigate('/dashboard/company/browse');
+                  }}
+                  className="mt-3 mx-auto block text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  Browse Workers →
+                </button>
               </div>
 
               {/* ROUTING OPTIONS */}

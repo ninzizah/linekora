@@ -8,6 +8,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
+import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import { getJobs, createApplication, createNotification, applyToJob, getApplications, Job } from '../../lib/api';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -30,35 +31,20 @@ export default function WorkerDashboard() {
   
   // Real-time stateful saved jobs aligned with local storage
   const [savedJobs, setSavedJobs] = useState<any[]>(() => {
-    const cached = localStorage.getItem('worker_saved_jobs');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) { return []; }
-    }
-    return [];
+    return readScopedStorage<any[]>(profile?.id, 'worker_saved_jobs', []);
   });
 
   const [urgentJobs, setUrgentJobs] = useState<any[]>(() => {
-    const local = localStorage.getItem('urgent_jobs');
-    if (local) {
-      try {
-        const parsed = JSON.parse(local);
-        return Array.from(new Map(parsed.map((item: any) => [item.id, item])).values());
-      } catch (e) { return []; }
-    }
-    return [];
+    const parsed = readScopedStorage<any[]>(profile?.id, 'urgent_jobs', []);
+    return Array.from(new Map(parsed.map((item: any) => [item.id, item])).values());
   });
 
   // Re-sync whenever dashboard loads
   useEffect(() => {
     const syncJobs = () => {
-      const local = localStorage.getItem('urgent_jobs');
-      if (local) {
-        try {
-          const parsed = JSON.parse(local);
-          const unique = Array.from(new Map(parsed.map((item: any) => [item.id, item])).values());
-          setUrgentJobs(unique);
-        } catch (e) {}
-      }
+      const parsed = readScopedStorage<any[]>(profile?.id, 'urgent_jobs', []);
+      const unique = Array.from(new Map(parsed.map((item: any) => [item.id, item])).values());
+      setUrgentJobs(unique);
     };
     window.addEventListener('storage', syncJobs);
     return () => window.removeEventListener('storage', syncJobs);
@@ -85,7 +71,7 @@ export default function WorkerDashboard() {
       const newApplied = new Set(appliedIds);
       newApplied.add(id);
       setAppliedIds(newApplied);
-      localStorage.setItem('applied_job_ids', JSON.stringify([...newApplied]));
+      writeScopedStorage(profile?.id, 'applied_job_ids', [...newApplied]);
 
       setAcceptedJobId(null);
       setIsProcessing(false);
@@ -121,13 +107,12 @@ export default function WorkerDashboard() {
       updated = [...savedJobs, job];
     }
     setSavedJobs(updated);
-    localStorage.setItem('worker_saved_jobs', JSON.stringify(updated));
+    writeScopedStorage(profile?.id, 'worker_saved_jobs', updated);
   };
 
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [appliedIds, setAppliedIds] = useState<Set<number>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('applied_job_ids') || '[]')); }
-    catch { return new Set(); }
+    return new Set(readScopedStorage<number[]>(profile?.id, 'applied_job_ids', []));
   });
   const [dbUrgentJobs, setDbUrgentJobs] = useState<Job[]>([]);
   const [recommendedJobs, setRecommendedJobs] = useState<Job[]>([]);
@@ -179,7 +164,7 @@ export default function WorkerDashboard() {
       const newApplied = new Set(appliedIds);
       newApplied.add(job.id);
       setAppliedIds(newApplied);
-      localStorage.setItem('applied_job_ids', JSON.stringify([...newApplied]));
+      writeScopedStorage(profile?.id, 'applied_job_ids', [...newApplied]);
       setIsProcessing(false);
       setModalFeedback({ type: 'apply', title: 'Applied Successfully! 🚀', message: `Your credentials and trust score have been linked. ${job.employer?.displayName || 'The client'} has been notified!` });
     } catch (err: any) {
@@ -202,19 +187,17 @@ export default function WorkerDashboard() {
       getApplications({ workerId: profile.id }).then(apps => {
         const ids = new Set(apps.map(a => a.jobId));
         setAppliedIds(ids);
-        localStorage.setItem('applied_job_ids', JSON.stringify([...ids]));
+        writeScopedStorage(profile?.id, 'applied_job_ids', [...ids]);
       }).catch(() => {
         // fallback to localStorage
-        try {
-          const cached = JSON.parse(localStorage.getItem('applied_job_ids') || '[]');
-          setAppliedIds(new Set(cached));
-        } catch { /* ignore */ }
+        const cached = readScopedStorage<number[]>(profile?.id, 'applied_job_ids', []);
+        setAppliedIds(new Set(cached));
       });
     }
     // Also sync localStorage urgentJobs (employer hot tasks from their session)
-    const local = localStorage.getItem('urgent_jobs');
-    if (local) {
-      try { setUrgentJobs(JSON.parse(local)); } catch { /* ignore */ }
+    const parsed = readScopedStorage<any[]>(profile?.id, 'urgent_jobs', []);
+    if (parsed.length > 0) {
+      setUrgentJobs(parsed);
     }
   }, [profile?.id]);
 

@@ -4,6 +4,8 @@ import {
   X, MessageSquare, ShieldAlert, Award, FileText, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../lib/AuthContext';
+import { readScopedStorage, writeScopedStorage } from '../lib/userScopedStorage';
 
 interface Contract {
   id: number;
@@ -27,6 +29,7 @@ interface Contract {
 }
 
 export default function ActiveContractsResolver() {
+  const { profile } = useAuth();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   
@@ -53,7 +56,7 @@ export default function ActiveContractsResolver() {
 
     // Real-time sync: reload contracts when another tab/page updates localStorage
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'linekora_contracts') {
+      if (e.key === `linekora_contracts_${profile?.id}`) {
         loadContracts();
       }
     };
@@ -66,22 +69,16 @@ export default function ActiveContractsResolver() {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadContracts = () => {
-    const cached = localStorage.getItem('linekora_contracts');
-    if (cached) {
-      try {
-        setContracts(JSON.parse(cached));
-      } catch (e) {
-        setContracts([]);
-      }
-    }
+    const cached = readScopedStorage<Contract[]>(profile?.id, 'linekora_contracts', []);
+    setContracts(cached);
   };
 
   const updateContractInDatabase = (updatedList: Contract[]) => {
     setContracts(updatedList);
-    localStorage.setItem('linekora_contracts', JSON.stringify(updatedList));
+    writeScopedStorage(profile?.id, 'linekora_contracts', updatedList);
   };
 
   const handleActionClick = (id: number, status: Contract['status']) => {
@@ -111,18 +108,18 @@ export default function ActiveContractsResolver() {
 
       // Special action penalty if Worker is flagged "Not Trusted"
       if (status === 'not_trusted') {
-        const currentStrikes = Number(localStorage.getItem('worker_not_trusted_strikes') || '0');
-        localStorage.setItem('worker_not_trusted_strikes', String(currentStrikes + 1));
+        const currentStrikes = readScopedStorage<number>(profile?.id, 'worker_not_trusted_strikes', 0);
+        writeScopedStorage(profile?.id, 'worker_not_trusted_strikes', currentStrikes + 1);
 
         // Let's degrade the worker profile count
-        const currentCompletedCount = Number(localStorage.getItem('worker_completed_jobs_count') || '0');
-        localStorage.setItem('worker_completed_jobs_count', String(Math.max(0, currentCompletedCount - 10))); // Decimate score!
+        const currentCompletedCount = readScopedStorage<number>(profile?.id, 'worker_completed_jobs_count', 0);
+        writeScopedStorage(profile?.id, 'worker_completed_jobs_count', Math.max(0, currentCompletedCount - 10)); // Decimate score!
         
         // Add alert notification for admin intervention
         logSystemAlert(
           'urgent',
           '🚫 Untrusted Penalty Inflicted',
-          `Worker Shema Honore has been flagged as "Not Trusted" on contract "${contract.jobTitle}". System strike count is at ${currentStrikes + 1}.`
+          `Worker ${profile?.displayName || 'Worker'} has been flagged as "Not Trusted" on contract "${contract.jobTitle}". System strike count is at ${currentStrikes + 1}.`
         );
       } else if (status === 'disputed') {
         logSystemAlert(
@@ -146,9 +143,7 @@ export default function ActiveContractsResolver() {
   };
 
   const logSystemAlert = (category: 'urgent' | 'success' | 'info', title: string, details: string) => {
-    const existingAlerts = localStorage.getItem('system_alerts') || '[]';
-    let alertsArr = [];
-    try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
+    const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
     alertsArr.push({
       id: Date.now().toString(),
       category,
@@ -157,7 +152,7 @@ export default function ActiveContractsResolver() {
       time: 'Just now',
       read: false
     });
-    localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
+    writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
   };
 
   const handleApproveAndSubmitReview = () => {
@@ -180,8 +175,8 @@ export default function ActiveContractsResolver() {
       });
 
       // 2. Increment Worker's completed jobs count
-      const currentCount = Number(localStorage.getItem('worker_completed_jobs_count') || '342');
-      localStorage.setItem('worker_completed_jobs_count', String(currentCount + 1));
+      const currentCount = readScopedStorage<number>(profile?.id, 'worker_completed_jobs_count', 0);
+      writeScopedStorage(profile?.id, 'worker_completed_jobs_count', currentCount + 1);
 
       // 3–4. Platform commission fees disabled for MVP (verification fees only)
 

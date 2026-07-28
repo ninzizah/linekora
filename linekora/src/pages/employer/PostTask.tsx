@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
+import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import { motion, AnimatePresence } from 'motion/react';
 import { createJob } from '../../lib/api';
 
@@ -77,11 +78,7 @@ export default function EmployerPostTask() {
 
   // Check if there are active uncompleted contracts in database
   const [hasUncompleted, setHasUncompleted] = useState(() => {
-    let contractsList: any[] = [];
-    const cachedContracts = localStorage.getItem('linekora_contracts');
-    if (cachedContracts) {
-      try { contractsList = JSON.parse(cachedContracts); } catch (e) { contractsList = []; }
-    }
+    const contractsList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
     return contractsList.some(c => c.status !== 'completed' && c.status !== 'not_trusted');
   });
   
@@ -221,13 +218,11 @@ export default function EmployerPostTask() {
       };
 
       if (isUrgent) {
-        const existingUrgent = localStorage.getItem('urgent_jobs');
-        const urgentList = existingUrgent ? JSON.parse(existingUrgent) : [];
-        localStorage.setItem('urgent_jobs', JSON.stringify([localTask, ...urgentList]));
+        const urgentList = readScopedStorage<any[]>(profile?.id, 'urgent_jobs', []);
+        writeScopedStorage(profile?.id, 'urgent_jobs', [localTask, ...urgentList]);
       }
-      const existingJobs = localStorage.getItem('all_jobs');
-      const jobsList = existingJobs ? JSON.parse(existingJobs) : [];
-      localStorage.setItem('all_jobs', JSON.stringify([localTask, ...jobsList]));
+      const jobsList = readScopedStorage<any[]>(profile?.id, 'all_jobs', []);
+      writeScopedStorage(profile?.id, 'all_jobs', [localTask, ...jobsList]);
 
       setLoading(false);
       setShowSuccessBlast(true);

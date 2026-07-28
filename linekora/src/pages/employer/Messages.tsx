@@ -60,7 +60,7 @@ export default function EmployerMessages() {
     if (!message.trim() || activeChat === null) return;
 
     const newMsg: MessageItem = {
-      id: Date.now(),
+      id: Date.now() + Math.random(),
       text: message.trim(),
       sent: true,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })

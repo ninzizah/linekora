@@ -74,9 +74,6 @@ export default function CompanyDashboard() {
   // Expired Jobs database
   const [expiredJobs, setExpiredJobs] = useState<any[]>([]);
 
-  // Recommended candidates pool
-  const recommendedCandidates: any[] = [];
-
   // Modals state
   const [showExpiredJobsModal, setShowExpiredJobsModal] = useState(false);
   const [showShortlistModal, setShowShortlistModal] = useState(false);
@@ -214,7 +211,6 @@ export default function CompanyDashboard() {
     { label: 'Expired Jobs', value: expiredJobsCount.toString(), icon: Clock, color: 'bg-red-500' },
     { label: 'Applications Count', value: '0', icon: Users, color: 'bg-indigo-600' },
     { label: 'Shortlisted Workers', value: shortlistCount.toString(), icon: Star, color: 'bg-green-600' },
-    { label: 'Recommended Candidates', value: recommendedCandidates.length.toString(), icon: User, color: 'bg-purple-600' },
     { label: 'Company Trust Score', value: profile?.trustScore ? `${profile.trustScore}%` : '0%', icon: ShieldCheck, color: 'bg-yellow-500' },
   ];
 
@@ -316,57 +312,6 @@ export default function CompanyDashboard() {
               <div className="lg:col-span-2 space-y-10">
                 {/* 🚀 CONTRACT RESOLVER CENTER */}
                 <ActiveContractsResolver />
-
-                {/* Recommended Candidates Section */}
-                <section>
-                  <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-xl font-black text-gray-900 font-sans tracking-tight uppercase flex items-center gap-2 italic">
-                      <Star className="text-yellow-500" size={20} />
-                      Recommended Candidates
-                    </h2>
-                    <Link to="/dashboard/company/browse" className="text-xs font-black text-blue-600 uppercase tracking-widest hover:underline">View All Workers</Link>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    {recommendedCandidates.map((candidate, i) => (
-                      <div key={i} className="group bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:border-blue-600 hover:shadow-xl hover:shadow-blue-500/5 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-5">
-                          <div className="h-14 w-14 bg-gray-50 rounded-2xl flex items-center justify-center border-2 border-transparent group-hover:border-blue-100 group-hover:bg-blue-50 transition-all">
-                            <span className="text-lg font-black text-gray-400 group-hover:text-blue-600 uppercase">{candidate.name[0]}</span>
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-sans font-black text-gray-900 text-lg">{candidate.name}</h4>
-                              {candidate.verified && <CheckCircle2 size={16} className="text-blue-600" />}
-                            </div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{candidate.skill} • {candidate.location}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3.5 self-end sm:self-center">
-                          <div className="text-right mr-2 hidden sm:block">
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Match Score</p>
-                            <span className="text-sm font-black text-green-600 bg-green-50 px-3 py-1 rounded-full">{candidate.match}</span>
-                          </div>
-                          
-                          <button 
-                            type="button"
-                            onClick={() => handleInviteCandidate(candidate.name)}
-                            className="py-2.5 px-4 bg-gray-900 hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
-                          >
-                            Invite
-                          </button>
-
-                          <button 
-                            type="button"
-                            onClick={() => handleShortlistRecommended(candidate.name, candidate.skill)}
-                            className="p-2.5 bg-white text-gray-400 hover:text-blue-600 rounded-xl hover:bg-blue-50 border border-gray-100 transition-all shadow-sm"
-                          >
-                            <Bookmark size={16} className="fill-current" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
 
                 {/* Expired Jobs Card Action */}
                 <section className="bg-gray-50 rounded-[3rem] p-8 border border-dashed border-gray-250">

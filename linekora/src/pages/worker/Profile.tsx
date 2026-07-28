@@ -7,6 +7,7 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 
 interface NotificationMsg {
   id: string;
@@ -17,6 +18,7 @@ interface NotificationMsg {
 
 export default function WorkerProfile() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const uid = profile?.firebaseUid || profile?.id || 'guest';
   const sk = (key: string) => `${key}_${uid}`;
 
@@ -207,7 +209,7 @@ export default function WorkerProfile() {
 
   // Direct contact message click
   const handleSendMessageClick = () => {
-    addNotification('success', 'Encrypted Line Connected 💬', 'LINEKORA instant secure workplace chat channel initialized with Shema Honore.');
+    navigate('/dashboard/worker/messages');
   };
 
   // Portfolio click notifications

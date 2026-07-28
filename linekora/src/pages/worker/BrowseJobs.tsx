@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
+import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { getJobs, createApplication, createNotification, Job } from '../../lib/api';
@@ -33,8 +34,7 @@ export default function BrowseJobs() {
   const [appliedIds, setAppliedIds] = useState<Set<number>>(new Set());
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [savedIds, setSavedIds] = useState<Set<number>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('saved_job_ids') || '[]')); } 
-    catch { return new Set(); }
+    return new Set(readScopedStorage<number[]>(profile?.id, 'saved_job_ids', []));
   });
 
   // Filter states
@@ -64,10 +64,8 @@ export default function BrowseJobs() {
   useEffect(() => {
     loadJobs();
     // Load previously applied IDs
-    try {
-      const cached = JSON.parse(localStorage.getItem('applied_job_ids') || '[]');
-      setAppliedIds(new Set(cached));
-    } catch { /* ignore */ }
+    const cached = readScopedStorage<number[]>(profile?.id, 'applied_job_ids', []);
+    setAppliedIds(new Set(cached));
   }, [filterUrgent, filterCategory]);
 
   const handleApply = async (job: Job) => {
@@ -104,7 +102,7 @@ export default function BrowseJobs() {
       const newApplied = new Set(appliedIds);
       newApplied.add(job.id);
       setAppliedIds(newApplied);
-      localStorage.setItem('applied_job_ids', JSON.stringify([...newApplied]));
+      writeScopedStorage(profile?.id, 'applied_job_ids', [...newApplied]);
       showToast(`Applied for "${job.title}" successfully! 🎉`, 'success');
     } catch (err: any) {
       if (err.message?.includes('Already applied')) {
@@ -125,7 +123,7 @@ export default function BrowseJobs() {
     if (updated.has(jobId)) { updated.delete(jobId); } 
     else { updated.add(jobId); }
     setSavedIds(updated);
-    localStorage.setItem('saved_job_ids', JSON.stringify([...updated]));
+    writeScopedStorage(profile?.id, 'saved_job_ids', [...updated]);
   };
 
   const getLimitMessage = () => {

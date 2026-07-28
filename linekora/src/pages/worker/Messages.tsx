@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   MessageSquare, Search, Send, Plus, 
   MoreVertical, Phone, Video, Shield,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../lib/AuthContext';
 
 interface ChatItem {
   id: number;
@@ -36,14 +37,41 @@ interface ToastAlert {
 }
 
 export default function WorkerMessages() {
+  const { profile } = useAuth();
+  const uid = profile?.id || 'default';
+  const CHATS_KEY = `linekora_worker_chats_${uid}`;
+  const MESSAGES_KEY = `linekora_worker_messages_${uid}`;
+
   const [activeChat, setActiveChat] = useState<number | null>(null);
   const [message, setMessage] = useState('');
 
-  // Stateful chats list
-  const [chatsList, setChatsList] = useState<ChatItem[]>([]);
+  // Stateful chats list with localStorage persistence
+  const [chatsList, setChatsList] = useState<ChatItem[]>(() => {
+    try {
+      const cached = localStorage.getItem(CHATS_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return [];
+  });
 
-  // Messages database keyed by chatId
-  const [messagesDB, setMessagesDB] = useState<Record<number, MessageItem[]>>({});
+  // Messages database keyed by chatId with localStorage persistence
+  const [messagesDB, setMessagesDB] = useState<Record<number, MessageItem[]>>(() => {
+    try {
+      const cached = localStorage.getItem(MESSAGES_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return {};
+  });
+
+  // Sync chats to localStorage
+  useEffect(() => {
+    localStorage.setItem(CHATS_KEY, JSON.stringify(chatsList));
+  }, [chatsList, CHATS_KEY]);
+
+  // Sync messages to localStorage
+  useEffect(() => {
+    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messagesDB));
+  }, [messagesDB, MESSAGES_KEY]);
 
   // UI Interactive States
   const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false);
@@ -84,7 +112,7 @@ export default function WorkerMessages() {
     if (!message.trim() || activeChat === null) return;
 
     const newMsg: MessageItem = {
-      id: Date.now(),
+      id: Date.now() + Math.random(),
       text: message.trim(),
       sent: true,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -352,7 +380,7 @@ export default function WorkerMessages() {
               <div className="flex-1 overflow-y-auto p-8 space-y-6">
                 <div className="flex justify-center">
                   <div className="px-4 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-black text-gray-400 uppercase tracking-widest shadow-sm">
-                    Today, Friday 24th April
+                    Today
                   </div>
                 </div>
 

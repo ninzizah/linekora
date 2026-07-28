@@ -129,7 +129,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   useEffect(() => {
     if (!user?.id) return;
     try {
-      const raw = localStorage.getItem(`linekora_chats_${user.id}`);
+      // Read from the correct role-based localStorage key
+      const role = (user?.role || '').toUpperCase();
+      let chatKey = '';
+      if (role === 'WORKER') chatKey = `linekora_worker_chats_${user.id}`;
+      else if (role === 'COMPANY') chatKey = `linekora_company_chats_${user.id}`;
+      else chatKey = `linekora_employer_chats_${user.id}`;
+      
+      const raw = localStorage.getItem(chatKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         setChats(parsed);
@@ -139,7 +146,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     } catch {
       setChats([]);
     }
-  }, [user?.id]);
+  }, [user?.id, user?.role]);
 
 
   // Handle click outside to close the notifications panel
