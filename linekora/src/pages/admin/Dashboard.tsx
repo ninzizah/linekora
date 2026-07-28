@@ -246,76 +246,79 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<UserAccount[]>([]);
 
   // Fetch real users from PostgreSQL API
-  useEffect(() => {
-    const fetchRealUsers = async () => {
+  const fetchRealUsers = async () => {
+    try {
+      const apiUsers = await getUsers();
+      const realUsers: UserAccount[] = [];
+      const realPendingVerifications: any[] = [];
+
+      // Fetch verification documents from server-side database
+      let serverDocs: any[] = [];
       try {
-        const apiUsers = await getUsers();
-        const realUsers: UserAccount[] = [];
-        const realPendingVerifications: any[] = [];
-
-        // Fetch verification documents from server-side database
-        let serverDocs: any[] = [];
-        try {
-          serverDocs = await getPendingVerifications();
-        } catch (e) {
-          console.warn('Could not fetch verification docs from API, falling back to localStorage', e);
-        }
-
-        apiUsers.forEach((u) => {
-          if (u.role === 'ADMIN') return;
-          realUsers.push({
-            uid: u.id,
-            name: u.displayName,
-            role: u.role.toLowerCase() as any,
-            location: u.location || 'Kigali, Rwanda',
-            trustScore: u.trustScore,
-            status: 'active',
-            email: u.email,
-            phone: u.phone || '',
-            verificationStatus: u.verificationStatus as any,
-          });
-          if (u.verificationStatus === 'pending') {
-            const isWorker = u.role === 'WORKER';
-            const isCompany = u.role === 'COMPANY';
-            const typeLabel = isWorker ? 'Worker' : isCompany ? 'Company' : 'Individual';
-            const idType = isWorker ? 'National ID / Passport' : isCompany ? 'Business Registration (TIN)' : 'ID Document';
-
-            // Find matching server-side docs by userId
-            const serverDoc = serverDocs.find((d: any) => d.id === u.id);
-            const docs = serverDoc?.verificationData || null;
-
-            realPendingVerifications.push({
-              id: `v_${u.id}`,
-              user: u.displayName,
-              type: typeLabel,
-              date: docs?.date || 'Recently',
-              status: 'pending',
-              idType,
-              details: `Uploaded documents waiting for approval. Email: ${u.email}`,
-              code: `UID-${u.id.slice(0, 4).toUpperCase()}`,
-              userId: u.id,
-              // Attach actual uploaded images from server-side storage
-              frontId: docs?.frontId || null,
-              backId: docs?.backId || null,
-              selfie: docs?.selfie || docs?.capturedPhoto || null,
-              nationalIdNum: docs?.nationalIdNum || docs?.idNumber || docs?.tinNumber || null,
-              selectedTier: docs?.selectedTier || null,
-              // Company-specific fields
-              certFile: docs?.certFile || null,
-              certFileName: docs?.certFileName || null,
-              address: docs?.address || null,
-              website: docs?.website || null,
-            });
-          }
-        });
-
-        setUsers(realUsers);
-        setVerificationQueue(realPendingVerifications);
-      } catch (err) {
-        console.error('Failed to fetch users from API', err);
+        serverDocs = await getPendingVerifications();
+      } catch (e) {
+        console.warn('Could not fetch verification docs from API, falling back to localStorage', e);
       }
-    };
+
+      apiUsers.forEach((u) => {
+        if (u.role === 'ADMIN') return;
+        realUsers.push({
+          uid: u.id,
+          name: u.displayName,
+          role: u.role.toLowerCase() as any,
+          location: u.location || 'Kigali, Rwanda',
+          trustScore: u.trustScore,
+          status: 'active',
+          email: u.email,
+          phone: u.phone || '',
+          verificationStatus: u.verificationStatus as any,
+        });
+        if (u.verificationStatus === 'pending') {
+          const isWorker = u.role === 'WORKER';
+          const isCompany = u.role === 'COMPANY';
+          const typeLabel = isWorker ? 'Worker' : isCompany ? 'Company' : 'Individual';
+          const idType = isWorker ? 'National ID / Passport' : isCompany ? 'Business Registration (TIN)' : 'ID Document';
+
+          // Find matching server-side docs by userId
+          const serverDoc = serverDocs.find((d: any) => d.id === u.id);
+          const docs = serverDoc?.verificationData || null;
+
+          realPendingVerifications.push({
+            id: `v_${u.id}`,
+            user: u.displayName,
+            type: typeLabel,
+            date: docs?.date || 'Recently',
+            status: 'pending',
+            idType,
+            details: `Uploaded documents waiting for approval. Email: ${u.email}`,
+            code: `UID-${u.id.slice(0, 4).toUpperCase()}`,
+            userId: u.id,
+            // Attach actual uploaded images from server-side storage
+            frontId: docs?.frontId || null,
+            backId: docs?.backId || null,
+            selfie: docs?.selfie || docs?.capturedPhoto || null,
+            nationalIdNum: docs?.nationalIdNum || docs?.idNumber || docs?.tinNumber || null,
+            selectedTier: docs?.selectedTier || null,
+            // Company-specific fields
+            certFile: docs?.certFile || null,
+            certFileName: docs?.certFileName || null,
+            address: docs?.address || null,
+            website: docs?.website || null,
+          });
+        }
+      });
+
+      setUsers(realUsers);
+      setVerificationQueue(realPendingVerifications);
+    } catch (err) {
+      console.error('Failed to fetch users from API', err);
+    }
+  };
+
+  useEffect(() => {
     fetchRealUsers();
+    const interval = setInterval(fetchRealUsers, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
@@ -738,6 +741,7 @@ export default function AdminDashboard() {
             <button 
               type="button"
               onClick={() => {
+                fetchRealUsers();
                 triggerNotification("Relinking nodes... Index up-to-date.");
               }}
               className="p-2.5 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-gray-800 transition-all cursor-pointer"

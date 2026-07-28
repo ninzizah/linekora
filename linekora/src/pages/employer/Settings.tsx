@@ -287,7 +287,7 @@ export default function EmployerSettings() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigate('/verification/employer')}
+                  onClick={() => navigate('/dashboard/employer/verify')}
                   className="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-yellow-100 self-start md:self-auto shrink-0"
                 >
                   Verify Now
