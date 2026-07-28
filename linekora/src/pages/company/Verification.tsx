@@ -73,6 +73,9 @@ export default function CompanyVerification() {
     }, 1500);
   };
 
+  const isAlreadyVerified = profile?.verificationStatus === 'verified';
+  const isPending = profile?.verificationStatus === 'pending';
+
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto py-10 px-4">
@@ -84,6 +87,42 @@ export default function CompanyVerification() {
           <p className="text-gray-500 font-sans font-medium mt-2 italic">Official verification is required for the "Verified Employer" badge.</p>
         </header>
 
+        {isAlreadyVerified ? (
+          <div className="bg-white rounded-[3rem] p-8 md:p-12 border border-gray-100 shadow-xl shadow-gray-200/50">
+            <div className="flex flex-col items-center text-center">
+              <div className="h-24 w-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-8 border border-green-100 shadow-lg shadow-green-100">
+                <ShieldCheck size={48} strokeWidth={2.5} />
+              </div>
+              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Already Verified!</h2>
+              <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
+                Your company has been verified. Your Verified Company badge is active.
+              </p>
+              <div className="bg-green-50 border border-green-200 p-6 rounded-3xl text-xs font-sans font-bold leading-relaxed mb-8 max-w-md">
+                <span className="text-green-700 font-black uppercase text-[10px] tracking-wider block mb-2">Verified Company Badge Active</span>
+                <p className="text-green-800">Post unlimited jobs and attract verified workers who prioritize trusted employers.</p>
+              </div>
+              <button onClick={() => window.location.href = '/dashboard/company'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
+                Go to Dashboard
+              </button>
+            </div>
+          </div>
+        ) : isPending ? (
+          <div className="bg-white rounded-[3rem] p-8 md:p-12 border border-gray-100 shadow-xl shadow-gray-200/50">
+            <div className="flex flex-col items-center text-center">
+              <div className="h-24 w-24 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center mb-8 border border-yellow-100 shadow-lg shadow-yellow-100">
+                <ShieldCheck size={48} strokeWidth={2.5} className="animate-pulse" />
+              </div>
+              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Under Review</h2>
+              <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
+                Your company documents have been submitted and are being reviewed by our admin team.
+              </p>
+              <button onClick={() => window.location.href = '/dashboard/company'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
+                Go to Dashboard
+              </button>
+            </div>
+          </div>
+        ) : (
+        <div>
         {/* Progress Stepper */}
         <div className="flex justify-center gap-2 mb-12">
           {['documents', 'address', 'otp'].map((s, i) => {
@@ -321,6 +360,8 @@ export default function CompanyVerification() {
             </p>
           </div>
         </div>
+        </div>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -664,7 +664,7 @@ export default function EmployerPostTask() {
                             {category}
                           </span>
                           <h4 className="text-base font-black text-gray-950 font-sans tracking-tight mt-2">{title || 'General Gig Task'}</h4>
-                          <p className="text-[10px] text-gray-400 font-sans uppercase font-black tracking-widest mt-0.5">By {profile?.displayName || 'Individual Landlord'}</p>
+                          <p className="text-[10px] text-gray-400 font-sans uppercase font-black tracking-widest mt-0.5">By {profile?.displayName || 'Individual Employer'}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-black text-blue-600">RWF {Number(budget).toLocaleString()}</p>

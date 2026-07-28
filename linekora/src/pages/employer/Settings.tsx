@@ -43,8 +43,9 @@ export default function EmployerSettings() {
   // Initialize from context state
   useEffect(() => {
     if (profile) {
-      setDisplayName(profile.displayName || 'Kigali Landlord');
-      setLocation(profile.location || 'Nyarugenge, Kiyovu');
+      setDisplayName(profile.displayName || '');
+      setLocation(profile.location || '');
+      setIsVerified(profile.verificationStatus === 'verified');
     }
 
     const savedOverrides = localStorage.getItem('employer_profile_overrides');
@@ -55,7 +56,6 @@ export default function EmployerSettings() {
         if (parsed.location) setLocation(parsed.location);
         if (parsed.phone) setPhone(parsed.phone);
         if (parsed.bio) setBio(parsed.bio);
-        if (parsed.isVerified) setIsVerified(parsed.isVerified);
       } catch (e) {
         console.error('Error parsing profile settings overrides', e);
       }
@@ -296,7 +296,7 @@ export default function EmployerSettings() {
                 <div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-xs font-black text-green-905 uppercase tracking-wider font-sans">Verification Shield Badge Active</p>
-                    <span className="bg-green-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded leading-none uppercase">Verified landlord</span>
+                    <span className="bg-green-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded leading-none uppercase">Verified Employer</span>
                   </div>
                   <p className="text-xs text-green-700 font-bold font-sans mt-0.5 italic leading-normal">
                     "Your identity file has been audited against standard Kigali administrative registries. Workers prioritize verified employers."

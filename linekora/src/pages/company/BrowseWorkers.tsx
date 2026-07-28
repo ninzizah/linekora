@@ -218,7 +218,7 @@ export default function BrowseWorkers() {
               workerId: String(hiringWorker.id),
               workerName: hiringWorker.name,
               employerId: 'current-employer',
-              employerName: 'Kigali Landlord',
+              employerName: profile?.displayName || 'Employer',
               daysSinceRequest: 3,
               rating: 0,
               review: '',

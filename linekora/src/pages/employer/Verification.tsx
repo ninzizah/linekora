@@ -197,6 +197,10 @@ export default function EmployerVerification() {
     }, 1500);
   };
 
+  // If already verified or pending, show status instead of the flow
+  const isAlreadyVerified = profile?.verificationStatus === 'verified';
+  const isPending = profile?.verificationStatus === 'pending';
+
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto py-10 px-4">
@@ -208,7 +212,42 @@ export default function EmployerVerification() {
           <p className="text-gray-500 font-sans font-medium mt-2">Verified employers build secure pathways and attract top-tier local workers.</p>
         </header>
 
-        {/* Progress Stepper */}
+        {isAlreadyVerified ? (
+          <div className="bg-white rounded-[3rem] p-8 md:p-12 border border-gray-100 shadow-xl shadow-gray-200/50">
+            <div className="flex flex-col items-center text-center">
+              <div className="h-24 w-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-8 border border-green-100 shadow-lg shadow-green-100">
+                <CheckCircle2 size={48} strokeWidth={2.5} />
+              </div>
+              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Already Verified!</h2>
+              <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
+                Your identity has been audited and approved. Your Verified Employer badge is active on your profile.
+              </p>
+              <div className="bg-green-50 border border-green-200 p-6 rounded-3xl text-xs font-sans font-bold leading-relaxed mb-8 max-w-md">
+                <span className="text-green-700 font-black uppercase text-[10px] tracking-wider block mb-2">Verified Employer Badge Active</span>
+                <p className="text-green-800">Workers prioritize your job listings. You can post unlimited gigs and receive applications from verified workers.</p>
+              </div>
+              <button onClick={() => window.location.href = '/dashboard/employer'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
+                Go to Dashboard
+              </button>
+            </div>
+          </div>
+        ) : isPending ? (
+          <div className="bg-white rounded-[3rem] p-8 md:p-12 border border-gray-100 shadow-xl shadow-gray-200/50">
+            <div className="flex flex-col items-center text-center">
+              <div className="h-24 w-24 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center mb-8 border border-yellow-100 shadow-lg shadow-yellow-100">
+                <Loader2 size={48} strokeWidth={2.5} className="animate-spin" />
+              </div>
+              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Under Review</h2>
+              <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
+                Your verification documents have been submitted and are being reviewed by our admin team.
+              </p>
+              <button onClick={() => window.location.href = '/dashboard/employer'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
+                Go to Dashboard
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="flex items-center justify-center gap-2 mb-12">
           {['documents', 'address', 'selfie'].map((s, i) => {
             const currentIdx = ['intro', 'documents', 'address', 'selfie', 'completed'].indexOf(step);
@@ -528,6 +567,8 @@ export default function EmployerVerification() {
             )}
           </AnimatePresence>
         </div>
+        </>
+        )}
       </div>
     </DashboardLayout>
   );
