@@ -1,7 +1,9 @@
 import { Shield, Facebook, Twitter, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../../lib/LanguageContext';
 
 export default function Footer() {
+  const { t } = useLanguage();
   return (
     <footer className="border-t border-gray-100 bg-gray-50 pt-16 pb-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -16,7 +18,7 @@ export default function Footer() {
               </span>
             </Link>
             <p className="mt-4 font-sans text-sm text-gray-500 leading-relaxed">
-              Find trusted work. Hire trusted people. The secure marketplace for verified talent and tasks.
+              {t('footer_tagline')}
             </p>
             <div className="mt-6 flex gap-4">
               <a href="https://www.facebook.com/share/18uH4qiqLt/" target="_blank" rel="noopener noreferrer" title="Facebook">
@@ -38,39 +40,39 @@ export default function Footer() {
           </div>
 
           <div>
-            <h3 className="font-sans text-sm font-bold uppercase tracking-wider text-gray-900">Platform</h3>
+            <h3 className="font-sans text-sm font-bold uppercase tracking-wider text-gray-900">{t('footer_platform')}</h3>
             <ul className="mt-4 space-y-2">
-              <li><Link to="/register" className="font-sans text-sm text-gray-600 hover:text-blue-600">Find Jobs</Link></li>
-              <li><Link to="/register" className="font-sans text-sm text-gray-600 hover:text-blue-600">Hire Workers</Link></li>
-              <li><Link to="/register" className="font-sans text-sm text-gray-600 hover:text-blue-600">Get Verified</Link></li>
-              <li><Link to="/pricing" className="font-sans text-sm text-gray-600 hover:text-blue-600">Pricing</Link></li>
+              <li><Link to="/register" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('find_jobs')}</Link></li>
+              <li><Link to="/register" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('hire_workers')}</Link></li>
+              <li><Link to="/register" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('get_verified')}</Link></li>
+              <li><Link to="/pricing" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('pricing')}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="font-sans text-sm font-bold uppercase tracking-wider text-gray-900">Support</h3>
+            <h3 className="font-sans text-sm font-bold uppercase tracking-wider text-gray-900">{t('footer_support')}</h3>
             <ul className="mt-4 space-y-2">
-              <li><Link to="/contact" className="font-sans text-sm text-gray-600 hover:text-blue-600">Help Center</Link></li>
-              <li><Link to="/scams" className="font-sans text-sm text-gray-600 hover:text-blue-600">Safety & Scams</Link></li>
-              <li><Link to="/contact" className="font-sans text-sm text-gray-600 hover:text-blue-600">Contact Us</Link></li>
-              <li><Link to="/about" className="font-sans text-sm text-gray-600 hover:text-blue-600">Verification Fees</Link></li>
+              <li><Link to="/contact" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('help_center')}</Link></li>
+              <li><Link to="/scams" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('safety_scams')}</Link></li>
+              <li><Link to="/contact" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('contact')}</Link></li>
+              <li><Link to="/about" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('verification_fees')}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="font-sans text-sm font-bold uppercase tracking-wider text-gray-900">Legal</h3>
+            <h3 className="font-sans text-sm font-bold uppercase tracking-wider text-gray-900">{t('footer_legal')}</h3>
             <ul className="mt-4 space-y-2">
-              <li><Link to="/legal?tab=privacy" className="font-sans text-sm text-gray-600 hover:text-blue-600">Privacy Policy</Link></li>
-              <li><Link to="/legal?tab=terms" className="font-sans text-sm text-gray-600 hover:text-blue-600">Terms of Service</Link></li>
-              <li><Link to="/legal?tab=cookies" className="font-sans text-sm text-gray-600 hover:text-blue-600">Cookie Policy</Link></li>
-              <li><Link to="/legal?tab=refund" className="font-sans text-sm text-gray-600 hover:text-blue-600">Refund Policy</Link></li>
+              <li><Link to="/legal?tab=privacy" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('privacy_policy')}</Link></li>
+              <li><Link to="/legal?tab=terms" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('terms_of_service')}</Link></li>
+              <li><Link to="/legal?tab=cookies" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('cookie_policy')}</Link></li>
+              <li><Link to="/legal?tab=refund" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('refund_policy')}</Link></li>
             </ul>
           </div>
         </div>
         
         <div className="mt-16 border-t border-gray-200 pt-8 text-center">
           <p className="font-sans text-sm text-gray-500">
-            © {new Date().getFullYear()} LINEKORA. All rights reserved. Built with trust in East Africa.
+            © {t('copyright', { year: new Date().getFullYear() })}
           </p>
         </div>
       </div>

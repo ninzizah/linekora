@@ -7,10 +7,12 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import ActiveContractsResolver from '../../components/ActiveContractsResolver';
 
 export default function EmployerDashboard() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   
   // Commission settings
   const [unpaidCommission, setUnpaidCommission] = useState(() => 
@@ -36,9 +38,9 @@ export default function EmployerDashboard() {
       alertsArr.push({
         id: Date.now().toString(),
         category: 'success',
-        title: '💼 Corporate Fee Received',
-        details: 'You safely cleared your RWF 5,000 corporate commission invoice. Placement services reinstated.',
-        time: 'Just now',
+        title: t('toast_corporate_fee_received'),
+        details: t('toast_corporate_fee_received_desc', { amount: unpaidCommission.toLocaleString() }),
+        time: t('just_now'),
         read: false
       });
       localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
@@ -46,11 +48,11 @@ export default function EmployerDashboard() {
   };
 
   const needs = [
-    { name: 'Need Cleaner', icon: Search },
-    { name: 'Need Mechanic', icon: Search },
-    { name: 'Need Gardener', icon: Search },
-    { name: 'Need Nanny', icon: Search },
-    { name: 'Need Mover', icon: Search },
+    { name: t('need_cleaner'), icon: Search },
+    { name: t('need_mechanic'), icon: Search },
+    { name: t('need_gardener'), icon: Search },
+    { name: t('need_nanny'), icon: Search },
+    { name: t('need_mover'), icon: Search },
   ];
 
   return (
@@ -61,17 +63,17 @@ export default function EmployerDashboard() {
           <div className="mb-10 bg-gradient-to-r from-red-650 to-orange-600 p-6 rounded-[2.5rem] border border-red-200 text-white shadow-xl shadow-red-100 flex flex-col md:flex-row md:items-center justify-between gap-6 animate-pulse">
             <div className="space-y-1">
               <h3 className="text-lg font-black uppercase tracking-tight font-sans flex items-center gap-2">
-                🔒 Placement Functions Restricted
+                {t('placement_restricted')}
               </h3>
               <p className="text-xs font-bold text-red-50/90 leading-relaxed font-sans max-w-2xl">
-                Your professional profile has an unpaid LINEKORA placement fee of <span className="font-extrabold underline">RWF {unpaidCommission}</span> due on active completed contracts. While shifts remain active, you are blocked from posting new jobs until this invoice is cleared.
+                {t('placement_restricted_desc', { amount: unpaidCommission.toLocaleString() })}
               </p>
             </div>
             <button
               onClick={() => setShowPayModal(true)}
               className="bg-white text-red-600 px-6 py-3.5 rounded-2xl hover:bg-red-50 transition-all font-sans font-black uppercase tracking-widest text-xs shrink-0 shadow-lg"
             >
-              Resolve Invoice (RWF {unpaidCommission})
+              {t('resolve_invoice', { amount: unpaidCommission.toLocaleString() })}
             </button>
           </div>
         )}
@@ -79,24 +81,24 @@ export default function EmployerDashboard() {
         <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase flex items-center gap-2">
-              Hi, {profile?.displayName || 'Employer'} 👋
+              {t('greeting_hi', { name: profile?.displayName || t('employer') })}
               {profile?.verificationStatus === 'verified' && (
                 <span className="inline-flex items-center gap-1 bg-green-50 text-green-600 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase">
                   <CheckCircle2 size={12} />
-                  Verified Client
+                  {t('verified_client')}
                 </span>
               )}
             </h1>
-            <p className="text-gray-500 font-sans font-medium mt-1 italic">Hire verified workers for your home and personal tasks.</p>
+            <p className="text-gray-500 font-sans font-medium mt-1 italic">{t('dashboard_subtitle')}</p>
           </div>
           <Link to="/dashboard/employer/post" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-sans font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
             <PlusSquare size={20} />
-            Post Simple Task
+            {t('post_simple_task')}
           </Link>
         </header>
 
         <section className="mb-12">
-          <h2 className="text-lg font-bold text-gray-400 uppercase tracking-widest font-sans mb-6">What do you need today?</h2>
+          <h2 className="text-lg font-bold text-gray-400 uppercase tracking-widest font-sans mb-6">{t('what_do_you_need')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {needs.map((need, i) => (
               <button key={i} className="flex flex-col items-center justify-center p-6 rounded-3xl bg-white border border-gray-100 hover:border-blue-600 hover:shadow-lg transition-all group">
@@ -116,15 +118,15 @@ export default function EmployerDashboard() {
 
             <section className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-bold text-gray-900 font-sans">Recently Posted Tasks</h3>
-                <button className="text-sm font-bold text-blue-600 hover:underline">See all</button>
+                <h3 className="text-xl font-bold text-gray-900 font-sans">{t('recently_posted_tasks')}</h3>
+                <button className="text-sm font-bold text-blue-600 hover:underline">{t('see_all')}</button>
               </div>
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 mb-4">
                   <CheckCircle2 size={32} />
                 </div>
-                <p className="text-gray-900 font-sans font-bold">No active tasks</p>
-                <p className="text-gray-500 font-sans text-sm mt-1">Post a task to find verified workers near you.</p>
+                <p className="text-gray-900 font-sans font-bold">{t('no_active_tasks')}</p>
+                <p className="text-gray-500 font-sans text-sm mt-1">{t('post_a_task_to_find')}</p>
               </div>
             </section>
           </div>
@@ -132,12 +134,12 @@ export default function EmployerDashboard() {
           <div className="space-y-8">
             <section className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-8 text-white shadow-xl shadow-indigo-100 font-sans">
               <ShieldCheck className="mb-4" size={32} />
-              <h3 className="text-xl font-bold font-sans mb-2">Verified Only</h3>
+              <h3 className="text-xl font-bold font-sans mb-2">{t('verified_only')}</h3>
               <p className="text-white/80 font-sans text-sm mb-6 leading-relaxed">
-                By default, we only show your tasks to workers who have completed their biometric ID checks.
+                {t('verified_only_desc')}
               </p>
               <Link to="/dashboard/employer/browse" className="block text-center w-full bg-white text-indigo-600 py-3 rounded-xl font-sans font-bold shadow-lg text-sm transition-transform hover:scale-105">
-                Browse Verified Talent
+                {t('browse_verified_talent')}
               </Link>
             </section>
           </div>
@@ -164,13 +166,13 @@ export default function EmployerDashboard() {
                 <div className="h-16 w-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto text-xl font-mono font-black">
                   MTN
                 </div>
-                <h3 className="text-xl font-black font-sans uppercase tracking-tight text-gray-950">Corporate Placement MoMo</h3>
+                <h3 className="text-xl font-black font-sans uppercase tracking-tight text-gray-950">{t('corporate_placement_momo')}</h3>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  Clear outstanding corporate placement dues of <span className="font-bold">RWF {unpaidCommission}</span> instantly via registered MTN Mobile Money handles.
+                  {t('corporate_placement_momo_desc', { amount: unpaidCommission.toLocaleString() })}
                 </p>
 
                 <div className="text-left space-y-1">
-                  <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">MoMo Account Phone</label>
+                  <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">{t('momo_account_phone')}</label>
                   <input
                     type="text"
                     value={payPhone}
@@ -180,8 +182,8 @@ export default function EmployerDashboard() {
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-xl flex justify-between text-xs font-mono font-bold text-gray-500">
-                  <span>Merchant Title:</span>
-                  <span>LINEKORA Placement</span>
+                  <span>{t('merchant_title')}</span>
+                  <span>{t('merchant_linekora_placement')}</span>
                 </div>
 
                 <button
@@ -189,7 +191,7 @@ export default function EmployerDashboard() {
                   disabled={isProcessingPay}
                   className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg transition-all"
                 >
-                  {isProcessingPay ? 'Processing Payout...' : `Settle RWF ${unpaidCommission} Invoice`}
+                  {isProcessingPay ? t('processing_payout') : t('settle_invoice', { amount: unpaidCommission.toLocaleString() })}
                 </button>
               </div>
             </motion.div>

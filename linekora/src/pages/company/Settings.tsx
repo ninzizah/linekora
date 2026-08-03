@@ -9,10 +9,12 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { updateUser } from '../../lib/api';
+import { useLanguage } from '../../lib/LanguageContext';
 
 export default function CompanySettings() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Controlled states
@@ -47,7 +49,7 @@ export default function CompanySettings() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      setUploadError('Photo must be smaller than 2MB.');
+      setUploadError(t('photo_size_error'));
       return;
     }
     setUploadError('');
@@ -97,8 +99,8 @@ export default function CompanySettings() {
     <DashboardLayout>
       <div className="max-w-4xl mx-auto font-sans">
         <header className="mb-10">
-          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Company Settings</h1>
-          <p className="text-gray-500 font-sans font-medium mt-1 italic">Manage your corporate profile and hiring preferences.</p>
+          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('company_settings')}</h1>
+          <p className="text-gray-500 font-sans font-medium mt-1 italic">{t('company_settings_subtitle')}</p>
         </header>
 
         <form onSubmit={handleSave} className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm space-y-12">
@@ -109,7 +111,7 @@ export default function CompanySettings() {
               <div className="relative">
                 <div className="h-20 w-20 rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-blue-50 shrink-0">
                   {selectedAvatar ? (
-                    <img src={selectedAvatar} alt="Company Avatar" className="h-full w-full object-cover" />
+                    <img src={selectedAvatar} alt={t('company_avatar')} className="h-full w-full object-cover" />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
                       <User size={32} className="text-blue-400" />
@@ -135,8 +137,8 @@ export default function CompanySettings() {
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
               </div>
               <div>
-                <span>Corporate Identity Visual</span>
-                <p className="text-xs font-semibold text-gray-400 mt-0.5 normal-case font-sans">Tap the <span className="text-blue-600 font-bold">camera icon</span> to upload your company logo.<br/>Max size: 2MB. JPG, PNG, or WEBP.</p>
+                <span>{t('corporate_identity_visual')}</span>
+                <p className="text-xs font-semibold text-gray-400 mt-0.5 normal-case font-sans">{t('photo_upload_hint_prefix')} <span className="text-blue-600 font-bold">{t('camera_icon')}</span> {t('photo_upload_hint_suffix')}<br/>{t('photo_upload_limits')}</p>
                 {uploadError && <p className="text-xs text-red-500 font-bold mt-1">{uploadError}</p>}
               </div>
             </h3>
@@ -145,11 +147,11 @@ export default function CompanySettings() {
           <section className="pt-2 border-t border-gray-50">
             <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight mb-8 flex items-center gap-3">
               <Building size={24} className="text-blue-600" />
-              Company Information
+              {t('company_information')}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Company Name</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">{t('company_name')}</label>
                 <input 
                   type="text" 
                   value={companyName}
@@ -158,17 +160,17 @@ export default function CompanySettings() {
                 />
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Industry</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">{t('industry')}</label>
                 <input 
                   type="text" 
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  placeholder="e.g. Technology / Logistics"
+                  placeholder={t('placeholder_industry')}
                   className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all"
                 />
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Official Email</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">{t('official_email')}</label>
                 <input 
                   type="email" 
                   value={email}
@@ -177,7 +179,7 @@ export default function CompanySettings() {
                 />
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Headquarters</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">{t('headquarters')}</label>
                 <input 
                   type="text" 
                   value={headquarters}
@@ -186,7 +188,7 @@ export default function CompanySettings() {
                 />
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Telephone Number</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">{t('telephone_number')}</label>
                 <div className="relative">
                   <Phone className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input 
@@ -206,9 +208,9 @@ export default function CompanySettings() {
               <div>
                 <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight flex items-center gap-3">
                   <ShieldCheck size={24} className="text-blue-600" />
-                  Trust & Security
+                  {t('trust_and_security')}
                 </h3>
-                <p className="text-sm font-medium text-gray-500 font-sans mt-1">Manage who can interact with your company.</p>
+                <p className="text-sm font-medium text-gray-500 font-sans mt-1">{t('manage_interactions')}</p>
               </div>
             </div>
             <div className="p-6 bg-gray-50 rounded-[2rem] flex items-center justify-between border border-transparent hover:border-blue-100 transition-all group">
@@ -217,8 +219,8 @@ export default function CompanySettings() {
                   <CheckCircle2 size={20} />
                 </div>
                 <div>
-                  <h4 className="font-sans font-black text-gray-900 text-sm">Strict Hiring Only</h4>
-                  <p className="text-xs text-gray-500 font-medium">Only verified workers can apply to our jobs.</p>
+                  <h4 className="font-sans font-black text-gray-900 text-sm">{t('strict_hiring_only')}</h4>
+                  <p className="text-xs text-gray-500 font-medium">{t('strict_hiring_only_desc')}</p>
                 </div>
               </div>
             <button 
@@ -238,17 +240,17 @@ export default function CompanySettings() {
               className="flex items-center gap-2 text-red-500 font-sans font-black text-xs uppercase tracking-widest hover:bg-red-50 px-4 py-2 rounded-xl transition-all"
             >
               <LogOut size={18} />
-              Sign Out
+              {t('sign_out')}
             </button>
             <div className="flex items-center gap-4">
               {isSaved && (
                 <span className="text-xs font-black text-green-600 animate-pulse uppercase">
-                  ✅ Saved Company Details!
+                  {t('saved_company_details')}
                 </span>
               )}
               <button type="submit" className="px-10 py-4 bg-blue-600 text-white rounded-[2.5rem] font-sans font-black text-sm uppercase tracking-widest shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center gap-3 active:scale-95 cursor-pointer">
                 <Save size={20} />
-                Save Company Profile
+                {t('save_company_profile')}
               </button>
             </div>
           </div>

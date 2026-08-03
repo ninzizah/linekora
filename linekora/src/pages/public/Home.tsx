@@ -9,15 +9,15 @@ export default function Home() {
   const { t } = useLanguage();
 
   const categories = [
-    { name: 'Office jobs', icon: Building },
-    { name: 'Construction', icon: Briefcase },
-    { name: 'Cleaning', icon: CheckCircle },
-    { name: 'Mechanic', icon: Handshake },
-    { name: 'Delivery', icon: MapPin },
-    { name: 'IT / Tech', icon: Shield },
-    { name: 'Agriculture', icon: Briefcase },
-    { name: 'Security', icon: Shield },
-    { name: 'Hospitality', icon: Users },
+    { name: t('category_office_jobs'), icon: Building },
+    { name: t('category_construction'), icon: Briefcase },
+    { name: t('category_cleaning'), icon: CheckCircle },
+    { name: t('category_mechanic'), icon: Handshake },
+    { name: t('category_delivery'), icon: MapPin },
+    { name: t('category_it_tech'), icon: Shield },
+    { name: t('category_agriculture'), icon: Briefcase },
+    { name: t('category_security'), icon: Shield },
+    { name: t('category_hospitality'), icon: Users },
   ];
 
   const stats = [
@@ -42,7 +42,7 @@ export default function Home() {
             >
               <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5 text-blue-600">
                 <Shield size={16} />
-                <span className="font-sans text-sm font-bold tracking-tight">Biometric Verification Enabled</span>
+                <span className="font-sans text-sm font-bold tracking-tight">{t('badge_biometric_verification')}</span>
               </div>
               <h1 className="mt-6 font-sans text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-gray-900 leading-tight">
                 {t('hero_title')}
@@ -82,8 +82,8 @@ export default function Home() {
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-full bg-blue-500 border-2 border-white"></div>
                       <div>
-                        <p className="font-sans text-white font-bold">Verified Professional</p>
-                        <p className="text-white/70 text-sm italic font-sans">"Joining LINEKORA doubled my income in 3 months."</p>
+                        <p className="font-sans text-white font-bold">{t('verified_professional')}</p>
+                        <p className="text-white/70 text-sm italic font-sans">{t('testimonial_quote')}</p>
                       </div>
                     </div>
                   </div>
@@ -100,9 +100,9 @@ export default function Home() {
       <section className="bg-gray-50 py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h2 className="font-sans text-3xl font-extrabold text-gray-900">Explore Categories</h2>
+            <h2 className="font-sans text-3xl font-extrabold text-gray-900">{t('explore_categories')}</h2>
             <p className="mt-4 font-sans text-lg text-gray-600 max-w-2xl mx-auto">
-              Whatever you need, we have a verified expert ready to help.
+              {t('explore_categories_desc')}
             </p>
           </div>
           <div className="mt-16 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -126,14 +126,14 @@ export default function Home() {
       <section className="py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-16 text-center">
-            <h2 className="font-sans text-3xl font-extrabold text-gray-900">How LINEKORA Works</h2>
+            <h2 className="font-sans text-3xl font-extrabold text-gray-900">{t('how_it_works')}</h2>
           </div>
           <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
             {[
-              { title: 'Create account', desc: 'Sign up as a worker or employer in seconds.', icon: '01' },
-              { title: 'Verify identity', desc: 'Secure biometric verification for total trust.', icon: '02' },
-              { title: 'Apply / Hire', desc: 'Post jobs or find work that fits your schedule.', icon: '03' },
-              { title: 'Work safely', desc: 'Payments held in escrow until work is done.', icon: '04' },
+              { title: t('step_create_account'), desc: t('step_create_account_desc'), icon: '01' },
+              { title: t('step_verify_identity'), desc: t('step_verify_identity_desc'), icon: '02' },
+              { title: t('step_apply_hire'), desc: t('step_apply_hire_desc'), icon: '03' },
+              { title: t('step_work_safely'), desc: t('step_work_safely_desc'), icon: '04' },
             ].map((step, i) => (
               <div key={i} className="relative">
                 <div className="mb-6 font-sans text-6xl font-black text-blue-100">{step.icon}</div>

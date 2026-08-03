@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import PublicProfileModal from '../../components/PublicProfileModal';
 import type { PublicProfileUser } from '../../components/PublicProfileModal';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface WorkerItem {
   id: string | number;
@@ -36,6 +37,7 @@ interface Toast {
 export default function BrowseWorkers() {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
@@ -44,6 +46,8 @@ export default function BrowseWorkers() {
   const [selectedRating, setSelectedRating] = useState('Any Rating');
   const [selectedExperience, setSelectedExperience] = useState<string | null>(null);
   const [onlyHighlyTrusted, setOnlyHighlyTrusted] = useState(false);
+
+  const expText = (e: string | null) => ({ '1-2yrs': t('exp_1_2yrs'), '3-5yrs': t('exp_3_5yrs'), '5yrs+': t('exp_5yrs_plus') })[e || ''] || e || '';
 
   // Workers dataset
   const [workers, setWorkers] = useState<WorkerItem[]>([]);
@@ -57,12 +61,12 @@ export default function BrowseWorkers() {
           .map((u, idx) => ({
             id: u.id,
             name: u.displayName,
-            role: 'Professional Worker',
+            role: t('professional_worker'),
             location: u.location || 'Kigali',
             rating: 5.0,
             jobs: 0,
             verified: u.verificationStatus === 'verified',
-            skills: ['Domestic Help', 'Quick Tasks', 'Punctual'],
+            skills: [t('skill_domestic_help'), t('skill_quick_tasks'), t('skill_punctual')],
             trustScore: u.trustScore,
             experience: (['1-2yrs', '3-5yrs', '5yrs+'])[idx % 3],
             avatarUrl: u.avatarUrl,
@@ -166,15 +170,15 @@ export default function BrowseWorkers() {
     // Validation
     const isCustom = useDraftTask === 'custom';
     if (isCustom && !customTaskTitle.trim()) {
-      addToast('Validation Checklist ❌', 'Please specify a task title description.', 'error');
+      addToast(t('toast_validation_checklist'), t('toast_task_title_required'), 'error');
       return;
     }
     if (!offeredBudget || Number(offeredBudget) < 1000) {
-      addToast('Threshold Mismatch ⚠️', 'Minimum contract budget is RWF 1,000.', 'error');
+      addToast(t('toast_threshold_mismatch'), t('toast_min_budget'), 'error');
       return;
     }
     if (!offerDate) {
-      addToast('Validation Checklist ❌', 'Please mention the contract beginning date.', 'error');
+      addToast(t('toast_validation_checklist'), t('toast_start_date_required_contract'), 'error');
       return;
     }
 
@@ -203,11 +207,11 @@ export default function BrowseWorkers() {
               workerId: hiringWorker.id,
               workerName: hiringWorker.name,
               workerRole: hiringWorker.role,
-              taskTitle: draftObj?.title || 'Custom Direct Task',
+              taskTitle: draftObj?.title || t('custom_direct_task'),
               amount: Number(offeredBudget),
               startDate: offerDate,
-              status: 'Escrow Locked',
-              timestamp: 'Just now'
+              status: t('escrow_locked'),
+              timestamp: t('just_now')
             };
 
             const existingContracts = localStorage.getItem('active_contracts_history');
@@ -217,7 +221,7 @@ export default function BrowseWorkers() {
             // Save to active resolver contracts to be displayable in Dashboard
             const contractForResolver = {
               id: Date.now(),
-              jobTitle: draftObj?.title || 'Custom Direct Task',
+              jobTitle: draftObj?.title || t('custom_direct_task'),
               company: 'LINEKORA Tasks',
               salary: `RWF ${Number(offeredBudget).toLocaleString()}`,
               location: hiringWorker.location,
@@ -225,13 +229,13 @@ export default function BrowseWorkers() {
               workerId: String(hiringWorker.id),
               workerName: hiringWorker.name,
               employerId: 'current-employer',
-              employerName: profile?.displayName || 'Employer',
+              employerName: profile?.displayName || t('employer'),
               daysSinceRequest: 3,
               rating: 0,
               review: '',
               commissionPaidWorker: false,
               commissionPaidEmployer: false,
-              date: 'Waiting for resolution'
+              date: t('waiting_for_resolution')
             };
 
             const existingResolverContracts = localStorage.getItem('linekora_contracts');
@@ -239,8 +243,8 @@ export default function BrowseWorkers() {
             localStorage.setItem('linekora_contracts', JSON.stringify([contractForResolver, ...parsedResolverContracts]));
 
             addToast(
-              'Escrow Locked & Dispatched 🛫',
-              `RWF ${Number(offeredBudget).toLocaleString()} secured inside LINEKORA. ${hiringWorker.name} has been notified.`,
+              t('toast_escrow_locked'),
+              t('toast_escrow_locked_msg', { amount: Number(offeredBudget).toLocaleString(), name: hiringWorker.name }),
               'success'
             );
           }, 1200);
@@ -259,7 +263,7 @@ export default function BrowseWorkers() {
         const rawBudget = match.salary.replace(/[^\d]/g, '');
         if (rawBudget) setOfferedBudget(rawBudget);
         setOfferDirections(match.description);
-        addToast('Draft Populated 📋', `Selected details from your live post: "${match.title}"`, 'info');
+        addToast(t('toast_draft_populated'), t('toast_draft_populated_msg', { title: match.title }), 'info');
       }
     } else {
       setCustomTaskTitle('');
@@ -276,17 +280,17 @@ export default function BrowseWorkers() {
       <div className="max-w-6xl mx-auto px-4">
         <header className="mb-8 text-center md:text-left flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-gray-100">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Talent Pool Workspace</h1>
+            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('talent_pool_workspace')}</h1>
             <p className="text-gray-500 font-sans font-medium mt-1 italic">
-              Hire vetted, identity-audited domestic and commercial professionals directly across Kigali
+              {t('browse_workers_subtitle')}
             </p>
           </div>
           
           {/* Quick Stats banner */}
           <div className="flex gap-4 items-center shrink-0">
             <div className="bg-blue-50/50 border border-blue-100 px-4 py-2.5 rounded-2xl text-center shadow-sm">
-              <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest block font-mono">Verified Pool</span>
-              <span className="text-lg font-black text-blue-900 font-sans leading-none mt-1 block">{workers.length} Active</span>
+              <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest block font-mono">{t('verified_pool')}</span>
+              <span className="text-lg font-black text-blue-900 font-sans leading-none mt-1 block">{t('count_active', { count: workers.length })}</span>
             </div>
           </div>
         </header>
@@ -297,7 +301,7 @@ export default function BrowseWorkers() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-405 group-focus-within:text-blue-600 transition-colors" size={18} />
             <input 
               type="text" 
-              placeholder="Search by candidate name, direct role (e.g., Plumber), or skill tag..." 
+              placeholder={t('placeholder_search_workers_company')} 
               className="w-full pl-11 pr-36 py-4 rounded-2xl bg-white border border-gray-100 shadow-sm focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none font-sans font-medium text-sm transition-all"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -308,13 +312,13 @@ export default function BrowseWorkers() {
                 onClick={() => setSearch('')}
                 className="absolute right-24 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold text-xs"
               >
-                Clear
+                {t('clear')}
               </button>
             )}
             <button
               className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-sans font-black text-xs uppercase tracking-widest transition-all shadow-sm"
             >
-              Search
+              {t('search')}
             </button>
           </div>
           <button 
@@ -325,7 +329,7 @@ export default function BrowseWorkers() {
             }`}
           >
             <Filter size={16} />
-            Filters {showFilters ? '▲' : '▼'}
+            {t('filters')} {showFilters ? '▲' : '▼'}
           </button>
         </div>
 
@@ -339,51 +343,51 @@ export default function BrowseWorkers() {
               className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8 bg-white p-6 rounded-3xl border border-gray-150 shadow-lg"
             >
               <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2.5">Administrative District</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2.5">{t('administrative_district')}</label>
                 <select 
                   value={selectedDistrict}
                   onChange={(e) => setSelectedDistrict(e.target.value)}
                   className="w-full p-3 rounded-xl border border-gray-100 font-sans font-bold text-xs outline-none focus:border-blue-600 bg-gray-50 cursor-pointer"
                 >
-                  <option value="All Districts">All Areas</option>
-                  <option value="Kampala">Kampala Hub</option>
-                  <option value="Entebbe">Entebbe District</option>
-                  <option value="Mukono">Mukono Sector</option>
-                  <option value="Kira">Kira Area</option>
-                  <option value="Kiyovu">Kiyovu Ward (Kigali)</option>
-                  <option value="Kimihurura">Kimihurura (Kigali)</option>
+                  <option value="All Districts">{t('district_all_areas')}</option>
+                  <option value="Kampala">{t('district_kampala_hub')}</option>
+                  <option value="Entebbe">{t('district_entebbe')}</option>
+                  <option value="Mukono">{t('district_mukono')}</option>
+                  <option value="Kira">{t('district_kira')}</option>
+                  <option value="Kiyovu">{t('district_kiyovu')}</option>
+                  <option value="Kimihurura">{t('district_kimihurura')}</option>
                 </select>
               </div>
               
               <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2.5">Star Rating</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2.5">{t('star_rating')}</label>
                 <select 
                   value={selectedRating}
                   onChange={(e) => setSelectedRating(e.target.value)}
                   className="w-full p-3 rounded-xl border border-gray-100 font-sans font-bold text-xs outline-none focus:border-blue-600 bg-gray-50 cursor-pointer"
                 >
-                  <option value="Any Rating">Any Rating stars</option>
-                  <option value="4.9">4.9+ Top Tier</option>
-                  <option value="4.7">4.7+ High Grade</option>
-                  <option value="4.5">4.5+ Average</option>
+                  <option value="Any Rating">{t('rating_any')}</option>
+                  <option value="4.9">{t('rating_4_9')}</option>
+                  <option value="4.7">{t('rating_4_7')}</option>
+                  <option value="4.5">{t('rating_4_5')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2.5">Experience Level</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2.5">{t('experience_level')}</label>
                 <div className="flex flex-wrap gap-1.5 mt-0.5">
-                  {['1-2yrs', '3-5yrs', '5yrs+'].map(t => {
-                    const isSel = selectedExperience === t;
+                  {['1-2yrs', '3-5yrs', '5yrs+'].map(exp => {
+                    const isSel = selectedExperience === exp;
                     return (
                       <button 
                         type="button"
-                        key={t} 
-                        onClick={() => setSelectedExperience(isSel ? null : t)}
+                        key={exp} 
+                        onClick={() => setSelectedExperience(isSel ? null : exp)}
                         className={`px-2.5 py-1.5 rounded-lg text-[10.5px] font-black font-sans uppercase tracking-[0.05em] border transition-all ${
                           isSel ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
                         }`}
                       >
-                        {t}
+                        {expText(exp)}
                       </button>
                     );
                   })}
@@ -391,7 +395,7 @@ export default function BrowseWorkers() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2.5">Confidence Level</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2.5">{t('confidence_level')}</label>
                 <div className="flex items-center gap-2 mt-1 bg-yellow-50/50 p-2 border border-yellow-100 rounded-xl">
                   <input 
                     type="checkbox" 
@@ -401,7 +405,7 @@ export default function BrowseWorkers() {
                     className="h-4.5 w-4.5 rounded text-blue-600 accent-blue-600 focus:ring-transparent border-gray-300 cursor-pointer" 
                   />
                   <label htmlFor="highly-trusted-check" className="text-[11px] font-black text-yellow-905 font-sans uppercase tracking-wider cursor-pointer">
-                    ⭐ 800+ Trust score
+                    {t('trust_800')}
                   </label>
                 </div>
               </div>
@@ -451,7 +455,7 @@ export default function BrowseWorkers() {
                       <div>
                         <h3 className="text-lg font-black text-gray-901 font-sans tracking-tight leading-none mb-1 flex items-center gap-1.5">
                           {worker.name}
-                          {worker.verified && <span className="text-[8px] bg-blue-50 text-blue-600 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-blue-105 leading-none">Vetted</span>}
+                          {worker.verified && <span className="text-[8px] bg-blue-50 text-blue-600 font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-blue-105 leading-none">{t('vetted')}</span>}
                         </h3>
                         <p className="text-blue-600 font-sans font-black text-xs uppercase tracking-wider">{worker.role}</p>
                         
@@ -461,7 +465,7 @@ export default function BrowseWorkers() {
                             <span className="text-xs font-black font-sans">{worker.rating.toFixed(1)}</span>
                           </div>
                           <span className="text-gray-300 text-xs">•</span>
-                          <span className="text-[11px] font-bold text-gray-400 font-sans uppercase tracking-[0.05em]">{worker.jobs} completed tasks</span>
+                          <span className="text-[11px] font-bold text-gray-400 font-sans uppercase tracking-[0.05em]">{t('completed_tasks_count', { count: worker.jobs })}</span>
                         </div>
                       </div>
                     </div>
@@ -469,9 +473,9 @@ export default function BrowseWorkers() {
                     <div className="flex flex-col items-end gap-1">
                       <div className="flex items-center gap-1 bg-yellow-50 text-yellow-705 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-yellow-150 shadow-sm">
                         <Zap size={10} fill="currentColor" />
-                        Trust {worker.trustScore}
+                        {t('trust_badge', { score: worker.trustScore })}
                       </div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 font-mono mt-1">Exp: {worker.experience}</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 font-mono mt-1">{t('experience_label', { experience: expText(worker.experience) })}</span>
                     </div>
                   </div>
 
@@ -500,7 +504,7 @@ export default function BrowseWorkers() {
                     className="flex-1 px-4 py-3 bg-gray-950 text-white rounded-xl font-sans font-black text-[11px] uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   >
                     <Briefcase size={12} />
-                    Hire Now
+                    {t('hire_now')}
                   </button>
                   <button 
                     type="button"
@@ -521,9 +525,9 @@ export default function BrowseWorkers() {
                         const newChat = {
                           id: targetId,
                           name: worker.name,
-                          role: `Worker (${worker.role})`,
-                          lastMsg: "Let's discuss the job details.",
-                          time: 'Just now',
+                          role: t('chat_worker_role', { role: worker.role }),
+                          lastMsg: t('lets_discuss_job_details'),
+                          time: t('just_now'),
                           unread: 0,
                           online: true,
                           avatar: worker.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -537,7 +541,7 @@ export default function BrowseWorkers() {
                           try { existingMsgs = JSON.parse(existingMsgsStr); } catch (e) {}
                         }
                         existingMsgs[targetId] = [
-                          { id: Date.now(), text: `Hello ${worker.name}, I would like to chat about a job.`, sent: true, time: 'Just now' }
+                          { id: Date.now(), text: t('hello_chat_job', { name: worker.name }), sent: true, time: t('just_now') }
                         ];
                         localStorage.setItem(msgKey, JSON.stringify(existingMsgs));
                       }
@@ -557,9 +561,9 @@ export default function BrowseWorkers() {
           <div className="bg-white rounded-[3rem] p-16 text-center border border-gray-100 max-w-md mx-auto my-12 space-y-4 shadow-sm">
             <Inbox size={48} className="mx-auto text-gray-300" />
             <div>
-              <p className="text-sm font-black text-gray-800 uppercase tracking-wider font-sans leading-none">No Candidates match criteria</p>
+              <p className="text-sm font-black text-gray-800 uppercase tracking-wider font-sans leading-none">{t('no_candidates_match')}</p>
               <p className="text-xs text-gray-400 italic mt-1.5 font-sans">
-                Try widening your administrative district boundaries or resetting star rating metrics.
+                {t('no_candidates_match_hint')}
               </p>
             </div>
             <button 
@@ -570,11 +574,11 @@ export default function BrowseWorkers() {
                 setSelectedRating('Any Rating');
                 setSelectedExperience(null);
                 setOnlyHighlyTrusted(false);
-                addToast('Filters reset', 'Returned search views to baseline verified population.', 'info');
+                addToast(t('toast_filters_reset'), t('toast_filters_reset_msg'), 'info');
               }}
               className="px-5 py-2.5 bg-blue-600 text-white font-sans text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-colors cursor-pointer"
             >
-              Reset Search Views
+              {t('reset_search_views')}
             </button>
           </div>
         )}
@@ -617,7 +621,7 @@ export default function BrowseWorkers() {
                       <User size={20} />
                     </div>
                     <div>
-                      <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Securing Gig with</span>
+                      <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{t('securing_gig_with')}</span>
                       <h3 className="text-base font-black text-gray-955 uppercase font-sans tracking-tight mt-0.5">{hiringWorker.name}</h3>
                     </div>
                   </div>
@@ -628,16 +632,16 @@ export default function BrowseWorkers() {
                     {employerPresetJobs.length > 0 && (
                       <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                         <label className="block text-[9.5px] font-black text-blue-800 uppercase tracking-widest mb-1.5">
-                          Match with active job listing (Recommended)
+                          {t('match_active_job_listing')}
                         </label>
                         <select
                           value={useDraftTask}
                           onChange={(e) => handleSelectPresetDraft(e.target.value)}
                           className="w-full text-xs font-bold p-2.5 rounded bg-white border border-blue-200 cursor-pointer text-gray-800"
                         >
-                          <option value="custom">Draft direct customized task offer...</option>
+                          <option value="custom">{t('draft_direct_customized_task')}</option>
                           {employerPresetJobs.map(j => (
-                            <option key={j.id} value={j.id.toString()}>Match post: "{j.title}" ({j.salary})</option>
+                            <option key={j.id} value={j.id.toString()}>{t('match_post', { title: j.title, salary: j.salary })}</option>
                           ))}
                         </select>
                       </div>
@@ -645,12 +649,12 @@ export default function BrowseWorkers() {
 
                     {useDraftTask === 'custom' && (
                       <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-0.5">Task Description/Title</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-0.5">{t('task_description_title')}</label>
                         <input 
                           type="text"
                           value={customTaskTitle}
                           onChange={(e) => setCustomTaskTitle(e.target.value)}
-                          placeholder="e.g. Backgarden Clearing Work"
+                          placeholder={t('placeholder_backgarden_clearing')}
                           className="w-full px-4.5 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-xs"
                         />
                       </div>
@@ -658,21 +662,21 @@ export default function BrowseWorkers() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-0.5">Escrow wage budget (RWF)</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-0.5">{t('escrow_wage_budget')}</label>
                         <div className="relative">
                           <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                           <input 
                             type="number"
                             value={offeredBudget}
                             onChange={(e) => setOfferedBudget(e.target.value)}
-                            placeholder="e.g. 15000"
+                            placeholder={t('placeholder_15000')}
                             className="w-full pl-8 pr-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-xs"
                           />
                         </div>
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-0.5">Start Commencement Date</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-0.5">{t('start_commencement_date')}</label>
                         <input 
                           type="date"
                           value={offerDate}
@@ -683,12 +687,12 @@ export default function BrowseWorkers() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-0.5">Directions / Instructions for Candidate</label>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest px-0.5">{t('directions_instructions')}</label>
                       <textarea 
                         rows={2}
                         value={offerDirections}
                         onChange={(e) => setOfferDirections(e.target.value)}
-                        placeholder="Detail the neighborhood address or standard milestones..."
+                        placeholder={t('placeholder_directions')}
                         className="w-full px-4.5 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-xs resize-none"
                       />
                     </div>
@@ -699,7 +703,7 @@ export default function BrowseWorkers() {
                         className="w-full py-4 bg-gray-950 text-white font-sans font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-black shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <ShieldCheck size={14} />
-                        Trigger Hire order & Secure Escrow Lock
+                        {t('trigger_hire_order')}
                       </button>
                     </div>
                   </form>
@@ -715,9 +719,9 @@ export default function BrowseWorkers() {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-black text-gray-950 font-sans uppercase tracking-tight">Securing escrow contract</h3>
+                    <h3 className="text-lg font-black text-gray-950 font-sans uppercase tracking-tight">{t('securing_escrow_contract')}</h3>
                     <p className="text-xs text-gray-400 italic font-sans max-w-sm mx-auto mt-0.5">
-                      Establishing cryptographically isolated escrow account locks...
+                      {t('establishing_escrow_locks')}
                     </p>
                   </div>
 
@@ -729,7 +733,7 @@ export default function BrowseWorkers() {
                       }`}>
                         {escrowPhase >= 1 ? <Check size={12} strokeWidth={3} /> : '1'}
                       </div>
-                      <span className="text-[10.5px] font-black uppercase tracking-wide font-sans text-gray-600">Generating direct wallet link</span>
+                      <span className="text-[10.5px] font-black uppercase tracking-wide font-sans text-gray-600">{t('generating_wallet_link')}</span>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -738,7 +742,7 @@ export default function BrowseWorkers() {
                       }`}>
                         {escrowPhase >= 2 ? <Check size={12} strokeWidth={3} /> : '2'}
                       </div>
-                      <span className="text-[10.5px] font-black uppercase tracking-wide font-sans text-gray-600">Locking RWF {Number(offeredBudget).toLocaleString()}</span>
+                      <span className="text-[10.5px] font-black uppercase tracking-wide font-sans text-gray-600">{t('locking_rwf', { amount: Number(offeredBudget).toLocaleString() })}</span>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -747,7 +751,7 @@ export default function BrowseWorkers() {
                       }`}>
                         {escrowPhase >= 3 ? <Check size={12} strokeWidth={3} /> : '3'}
                       </div>
-                      <span className="text-[10.5px] font-black uppercase tracking-wide font-sans text-gray-600">Dispatching SMS & push beacons</span>
+                      <span className="text-[10.5px] font-black uppercase tracking-wide font-sans text-gray-600">{t('dispatching_sms')}</span>
                     </div>
                   </div>
                 </div>
@@ -761,9 +765,9 @@ export default function BrowseWorkers() {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-black text-gray-955 font-sans uppercase tracking-tight">Contract Engaged!</h3>
+                    <h3 className="text-xl font-black text-gray-955 font-sans uppercase tracking-tight">{t('contract_engaged')}</h3>
                     <p className="text-xs text-gray-505 font-sans max-w-sm mx-auto mt-2 leading-relaxed">
-                      Wages of <span className="text-blue-600 font-extrabold">RWF {Number(offeredBudget).toLocaleString()}</span> are held securely in LINEKORA escrow locks. <span className="font-bold text-gray-900">{hiringWorker.name}</span> has been paged immediately and has 12 hours to accept or decline before funds revert bounds.
+                      {t('wages_prefix')}<span className="text-blue-600 font-extrabold">RWF {Number(offeredBudget).toLocaleString()}</span>{t('wages_suffix', { name: hiringWorker.name })}
                     </p>
                   </div>
 
@@ -772,7 +776,7 @@ export default function BrowseWorkers() {
                       onClick={() => setHiringWorker(null)}
                       className="w-full py-3.5 bg-gray-950 text-white font-sans font-black uppercase text-[10px] tracking-widest rounded-xl hover:bg-black transition-all cursor-pointer"
                     >
-                      Close Workspace
+                      {t('close_workspace')}
                     </button>
                   </div>
                 </div>

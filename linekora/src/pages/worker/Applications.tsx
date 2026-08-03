@@ -8,6 +8,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface Application {
   id: number;
@@ -24,6 +25,7 @@ interface Application {
 
 export default function WorkerApplications() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [filter, setFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected' | 'completed' | 'completion_requested'>('all');
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -47,14 +49,14 @@ export default function WorkerApplications() {
       location: c.location,
       salary: c.salary,
       status: c.status,
-      date: c.status === 'accepted' ? 'Active Shift Contract' : 
-            c.status === 'completion_requested' ? 'Completion Requested' : 
-            c.status === 'completed' ? 'Contract Completed 🎉' : 
-            c.status === 'still_in_progress' ? 'Revision: In Progress' : 
-            c.status === 'disputed' ? 'Disputed milestone' : 'Flagged Untrusted',
+      date: c.status === 'accepted' ? t('active_shift_contract') : 
+            c.status === 'completion_requested' ? t('completion_requested') : 
+            c.status === 'completed' ? t('contract_completed') : 
+            c.status === 'still_in_progress' ? t('revision_in_progress') : 
+            c.status === 'disputed' ? t('disputed_milestone') : t('flagged_untrusted'),
       logo: c.logo || 'PJ',
       phone: c.phone || '+250 780 000 000',
-      description: c.description || 'Milestone-based professional opportunity nearby.',
+      description: c.description || t('milestone_opportunity_desc'),
       isContract: true
     }));
 
@@ -85,9 +87,9 @@ export default function WorkerApplications() {
         alertsArr.push({
           id: Date.now().toString(),
           category: 'urgent',
-          title: '❌ Job Offer Declined',
-          details: `Worker ${profile?.displayName || 'Worker'} declined your job offer for "${declinedApp.jobTitle}".`,
-          time: 'Just now',
+          title: t('job_offer_declined'),
+          details: t('offer_declined_details', { name: profile?.displayName || t('worker'), title: declinedApp.jobTitle }),
+          time: t('just_now'),
           read: false
         });
         writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
@@ -102,8 +104,8 @@ export default function WorkerApplications() {
       setIsProcessing(false);
       setModalFeedback({
         type: 'decline',
-        title: 'Offer Declined ❌',
-        message: 'You have retracted/declined this application contract and alignment safely. No penalties generated.'
+        title: t('offer_declined'),
+        message: t('offer_declined_message')
       });
     }, 1000);
   };
@@ -118,8 +120,8 @@ export default function WorkerApplications() {
       setIsProcessing(false);
       setModalFeedback({
         type: 'withdraw',
-        title: 'Withdrawn Successfully 👋',
-        message: 'Your job application has been deleted from client matching boards and database registers.'
+        title: t('withdrawn_successfully'),
+        message: t('withdrawn_message')
       });
     }, 1000);
   };
@@ -149,14 +151,14 @@ export default function WorkerApplications() {
             review: '',
             commissionPaidWorker: false,
             commissionPaidEmployer: false,
-            date: 'Active Shift Contract',
+            date: t('active_shift_contract'),
             logo: acceptedApp.logo,
             phone: acceptedApp.phone
           };
           contractList.push(newContract);
         } else {
           contractList = contractList.map(c => 
-            c.id === id ? { ...c, status: 'accepted', date: 'Active Shift Contract' } : c
+            c.id === id ? { ...c, status: 'accepted', date: t('active_shift_contract') } : c
           );
         }
         writeScopedStorage(profile?.id, 'linekora_contracts', contractList);
@@ -166,24 +168,24 @@ export default function WorkerApplications() {
         alertsArr.push({
           id: Date.now().toString(),
           category: 'success',
-          title: '🤝 Job Offer Approved!',
-          details: `Worker ${profile?.displayName || 'Worker'} approved your job offer for "${acceptedApp.jobTitle}". Contract is now active.`,
-          time: 'Just now',
+          title: t('job_offer_approved'),
+          details: t('offer_approved_details', { name: profile?.displayName || t('worker'), title: acceptedApp.jobTitle }),
+          time: t('just_now'),
           read: false
         });
         writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
       }
 
       const updated = apps.map(ap => 
-        ap.id === id ? { ...ap, status: 'accepted' as const, date: 'Active Shift Contract' } : ap
+        ap.id === id ? { ...ap, status: 'accepted' as const, date: t('active_shift_contract') } : ap
       );
       setApps(updated);
       saveAppsOnly(updated);
       setIsProcessing(false);
       setModalFeedback({
         type: 'accept',
-        title: 'CONGRATULATIONS! 🎉',
-        message: 'Job contract accepted! An automated briefing SMS containing site coordinates and supervisor hotlines was dispatched to your mobile. Feel free to contact the helpline directly!'
+        title: t('congratulations'),
+        message: t('contract_accepted_message')
       });
     }, 1200);
   };
@@ -196,7 +198,7 @@ export default function WorkerApplications() {
 
       // 2. Update the contract status
       const updatedContracts = contractList.map(c => 
-        c.id === id ? { ...c, status: 'completion_requested', date: 'Completion Pending' } : c
+        c.id === id ? { ...c, status: 'completion_requested', date: t('completion_pending') } : c
       );
       writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
 
@@ -205,24 +207,24 @@ export default function WorkerApplications() {
       alertsArr.push({
         id: Date.now().toString(),
         category: 'urgent',
-        title: '⏳ Completion Requested',
-        details: `Worker ${profile?.displayName || 'Worker'} requested completion confirmation for "${updatedContracts.find(c => c.id === id)?.jobTitle || 'Job'}".`,
-        time: 'Just now',
+        title: t('completion_requested_alert'),
+        details: t('completion_requested_details', { name: profile?.displayName || t('worker'), title: updatedContracts.find(c => c.id === id)?.jobTitle || t('job') }),
+        time: t('just_now'),
         read: false
       });
       writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
 
       // Reload state
       const refreshedApps = apps.map(ap => 
-        ap.id === id ? { ...ap, status: 'completion_requested', date: 'Completion Pending' } : ap
+        ap.id === id ? { ...ap, status: 'completion_requested', date: t('completion_pending') } : ap
       );
       setApps(refreshedApps);
       setSelectedApp(prev => prev && prev.id === id ? { ...prev, status: 'completion_requested' } : prev);
       setIsProcessing(false);
       setModalFeedback({
         type: 'accept',
-        title: 'Completion Dispatched! 🚀',
-        message: 'Your request for job completion was dispatched to the micro-client page immediately. You will be notified of reviews shortly.'
+        title: t('completion_dispatched'),
+        message: t('completion_dispatched_message')
       });
     }, 1200);
   };
@@ -262,12 +264,32 @@ export default function WorkerApplications() {
     }
   };
 
+  const filterLabels: Record<string, string> = {
+    all: t('all'),
+    pending: t('pending'),
+    accepted: t('active_in_progress'),
+    completion_requested: t('completion_requested'),
+    completed: t('status_completed'),
+  };
+
+  const statusText = (s: string) => ({
+    pending: t('status_pending'),
+    accepted: t('status_accepted'),
+    rejected: t('status_rejected'),
+    active: t('status_active'),
+    completed: t('status_completed'),
+    completion_requested: t('completion_requested'),
+    still_in_progress: t('revision_in_progress'),
+    disputed: t('disputed_milestone'),
+    not_trusted: t('flagged_untrusted'),
+  }[s] || s);
+
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto">
         <header className="mb-10">
-          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">My Applications & Active Jobs</h1>
-          <p className="text-gray-500 font-sans font-medium mt-1 italic">Track your job applications, active shift contracts, and completion handovers live.</p>
+          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('my_applications_active_jobs')}</h1>
+          <p className="text-gray-500 font-sans font-medium mt-1 italic">{t('track_applications_desc')}</p>
         </header>
 
         {/* BILINGUAL HIGH-CONTRAST STATUS NOTICE */}
@@ -278,14 +300,14 @@ export default function WorkerApplications() {
             </div>
             <div className="space-y-1">
               <h3 className="font-sans font-black text-slate-950 text-sm uppercase tracking-wide flex items-center gap-2">
-                APPLICATION & PROFILE STATUS / AMABWIRIZA Y'UMWIRONDORO
-                <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Notice</span>
+                {t('app_profile_status')}
+                <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">{t('notice')}</span>
               </h3>
               <p className="font-sans text-xs font-bold text-slate-900 leading-relaxed">
-                <span className="font-extrabold text-amber-900">[RW]</span> Umwirondoro wawe urakora kandi uragaragara ku bakoresha bose kuri LINEKORA bidasaba amafaranga yandi. Verification na komisiyo biba ari uguhitamo kwawe.
+                {t('banner_rw')}
               </p>
               <p className="font-sans text-[11px] font-semibold text-slate-800 leading-relaxed italic">
-                <span className="font-extrabold text-amber-900">[EN]</span> Your profile remains fully active and visible to employers across LINEKORA at zero mandatory cost. Verification and optional badges enhance visibility without locking free features.
+                {t('banner_en')}
               </p>
             </div>
           </div>
@@ -301,7 +323,7 @@ export default function WorkerApplications() {
                   filter === f ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
-                {f === 'accepted' ? 'Active / In Progress' : f.replace('_', ' ')}
+                {filterLabels[f] || f}
               </button>
             ))}
           </div>
@@ -347,13 +369,13 @@ export default function WorkerApplications() {
                   <div className="flex items-center justify-between md:flex-col md:items-end gap-3 pt-4 md:pt-0 border-t md:border-t-0 border-gray-50">
                     <div className={`px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${getStatusColor(app.status)}`}>
                       {getStatusIcon(app.status)}
-                      {app.status}
+                      {statusText(app.status)}
                     </div>
                     <button 
                       onClick={() => setSelectedApp(app)}
                       className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-all font-sans"
                     >
-                      View Details
+                      {t('view_details')}
                       <ChevronRight size={16} />
                     </button>
                   </div>
@@ -367,8 +389,8 @@ export default function WorkerApplications() {
               <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 mb-4">
                 <FileText size={32} />
               </div>
-              <h3 className="text-xl font-black text-gray-900 font-sans">No applications found</h3>
-              <p className="text-gray-500 font-sans text-sm mt-1">Try changing your filters or browse new jobs.</p>
+              <h3 className="text-xl font-black text-gray-900 font-sans">{t('no_applications_found')}</h3>
+              <p className="text-gray-500 font-sans text-sm mt-1">{t('change_filters_hint')}</p>
             </div>
           )}
         </div>
@@ -399,8 +421,8 @@ export default function WorkerApplications() {
               {isProcessing ? (
                 <div className="py-12 flex flex-col items-center justify-center text-center">
                   <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-6" />
-                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Processing Alignment</h3>
-                  <p className="text-xs text-gray-400 mt-2 font-sans italic">Broadcasting verified status change to platform ledger...</p>
+                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">{t('processing_alignment')}</h3>
+                  <p className="text-xs text-gray-400 mt-2 font-sans italic">{t('broadcasting_status')}</p>
                 </div>
               ) : modalFeedback ? (
                 <div className="py-6 flex flex-col items-center justify-center text-center">
@@ -425,16 +447,16 @@ export default function WorkerApplications() {
                     }}
                     className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg"
                   >
-                    Close Details
+                    {t('close_details')}
                   </button>
                 </div>
               ) : confirmingAction ? (
                 <div className="py-6 font-sans">
-                  <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-2">Are you sure?</h3>
+                  <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-2">{t('are_you_sure')}</h3>
                   <p className="text-sm text-gray-550 mb-8 leading-relaxed">
                     {confirmingAction === 'withdraw' 
-                      ? 'Do you want to completely withdraw this job application? This action will remove your reference entry from the employer pipeline database.'
-                      : 'Do you want to decline this verified job contract? Your status will be marked as declined without any penalty points.'
+                      ? t('withdraw_confirm_message')
+                      : t('decline_confirm_message')
                     }
                   </p>
                   <div className="flex gap-3">
@@ -448,13 +470,13 @@ export default function WorkerApplications() {
                       }}
                       className="flex-1 py-4 bg-red-650 hover:bg-red-700 text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg"
                     >
-                      Yes, Confirm
+                      {t('yes_confirm')}
                     </button>
                     <button
                       onClick={() => setConfirmingAction(null)}
                       className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all border border-gray-200"
                     >
-                      Cancel Action
+                      {t('cancel_action')}
                     </button>
                   </div>
                 </div>
@@ -474,7 +496,7 @@ export default function WorkerApplications() {
 
                   <div className="space-y-6 font-sans mb-8">
                     <div>
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Contract / Task Overview</span>
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">{t('contract_task_overview')}</span>
                       <p className="text-sm font-medium text-gray-650 leading-relaxed bg-gray-50 p-4 rounded-2xl border border-gray-100">
                         "{selectedApp.description}"
                       </p>
@@ -482,11 +504,11 @@ export default function WorkerApplications() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Offered Salary</span>
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('offered_salary')}</span>
                         <span className="text-sm font-black text-blue-600 font-sans tracking-tight">{selectedApp.salary}</span>
                       </div>
                       <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Location</span>
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('location')}</span>
                         <span className="text-sm font-bold text-gray-800">{selectedApp.location}</span>
                       </div>
                     </div>
@@ -494,18 +516,18 @@ export default function WorkerApplications() {
                     <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl flex items-start gap-3">
                       <Shield size={18} className="text-blue-600 shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-xs font-black text-blue-900 uppercase tracking-wider">LINEKORA Guard Secure Escrow</p>
+                        <p className="text-xs font-black text-blue-900 uppercase tracking-wider">{t('milestone_secure_escrow')}</p>
                         <p className="text-[11px] text-blue-700 font-medium leading-relaxed mt-0.5">
-                          This job uses our milestone security guarantees. The salary is held in a trust vault prior to milestones being finished to ensure honest payout.
+                          {t('milestone_secure_desc')}
                         </p>
                       </div>
                     </div>
 
                     {(selectedApp.status === 'accepted' || selectedApp.status === 'still_in_progress' || selectedApp.status === 'completion_requested') && (
                       <div className="p-4 bg-green-50/50 border border-green-150 rounded-2xl animate-fade-in">
-                        <span className="text-[9px] font-black text-green-700 uppercase tracking-widest block mb-1">☎ Employer Helpline</span>
-                        <p className="text-xs font-black text-green-950 mb-0.5">Reach Out: {selectedApp.phone || '+250 788 123 456'}</p>
-                        <p className="text-[10px] text-green-700/80 font-medium font-sans">Give them a call or use our workspace chat to discuss onboarding shift guidelines.</p>
+                        <span className="text-[9px] font-black text-green-700 uppercase tracking-widest block mb-1">{t('employer_helpline')}</span>
+                        <p className="text-xs font-black text-green-950 mb-0.5">{t('reach_out', { phone: selectedApp.phone || '+250 788 123 456' })}</p>
+                        <p className="text-[10px] text-green-700/80 font-medium font-sans">{t('helpline_hint')}</p>
                       </div>
                     )}
                   </div>
@@ -518,25 +540,25 @@ export default function WorkerApplications() {
                         onClick={() => handleRequestCompletion(selectedApp.id)}
                         className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-sans font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"
                       >
-                        🚀 Request Completion
+                        {t('request_completion_button')}
                       </button>
                     )}
 
                     {selectedApp.status === 'completion_requested' && (
                       <div className="text-center py-3 bg-indigo-50 border border-indigo-100 rounded-2xl text-xs font-black text-indigo-700 uppercase tracking-wider animate-pulse">
-                        ⏳ Completion Requested & Blocked
+                        {t('completion_requested_blocked')}
                       </div>
                     )}
 
                     {selectedApp.status === 'disputed' && (
                       <div className="text-center py-4 bg-red-50 border border-red-150 rounded-2xl text-xs font-black text-red-700 uppercase tracking-wider">
-                        ⚠️ Disputed: Under LINEKORA Admin Audit
+                        {t('disputed_admin_audit')}
                       </div>
                     )}
 
                     {selectedApp.status === 'not_trusted' && (
                       <div className="text-center py-4 bg-rose-50 border border-rose-150 rounded-2xl text-xs font-black text-rose-700 uppercase tracking-wider">
-                        🚫 Flagged: Not Trusted Penalty
+                        {t('flagged_penalty')}
                       </div>
                     )}
 
@@ -547,13 +569,13 @@ export default function WorkerApplications() {
                             onClick={() => setConfirmingAction('withdraw')}
                             className="flex-1 py-4 bg-red-50 hover:bg-red-100 text-red-650 rounded-2xl font-sans font-black uppercase text-xs tracking-widest transition-all"
                           >
-                            Withdraw
+                            {t('withdraw')}
                           </button>
                           <button
                             onClick={() => setSelectedApp(null)}
                             className="flex-1 py-4 bg-gray-950 hover:bg-gray-800 text-white rounded-2xl font-sans font-black uppercase text-xs tracking-widest transition-all"
                           >
-                            Close Details
+                            {t('close_details')}
                           </button>
                         </>
                       )}
@@ -564,13 +586,13 @@ export default function WorkerApplications() {
                             onClick={() => setConfirmingAction('decline')}
                             className="flex-1 py-4 bg-red-50 hover:bg-red-105 text-red-650 rounded-2xl font-sans font-black uppercase text-xs tracking-widest transition-all"
                           >
-                            Decline Offer
+                            {t('decline_offer')}
                           </button>
                           <button
                             onClick={() => handleAcceptOffer(selectedApp.id)}
                             className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-sans font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 transition-all"
                           >
-                            Accept Offer
+                            {t('accept_offer')}
                           </button>
                         </>
                       )}
@@ -580,7 +602,7 @@ export default function WorkerApplications() {
                           onClick={() => setSelectedApp(null)}
                           className="w-full py-4 bg-gray-950 hover:bg-gray-800 text-white rounded-2xl font-sans font-black uppercase text-xs tracking-widest transition-all"
                         >
-                          Close Details
+                          {t('close_details')}
                         </button>
                       )}
                     </div>

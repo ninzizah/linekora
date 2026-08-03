@@ -42,7 +42,7 @@ export default function Navbar() {
                 to="/admin" 
                 className="flex items-center gap-1.5 rounded-full bg-red-950/10 border border-red-900/30 px-3.5 py-1.5 font-sans text-xs font-black text-red-600 hover:bg-red-600 hover:text-white transition-all uppercase tracking-wider shadow-sm"
               >
-                Admin Portal 🛡️
+                {t('admin_portal')}
               </Link>
             )}
 
@@ -106,7 +106,7 @@ export default function Navbar() {
             <div className="h-px bg-gray-100" />
             {profile?.role === 'ADMIN' && (
               <Link to="/admin" className="font-sans text-base font-bold text-red-600 flex items-center gap-2">
-                Admin Portal 🛡️
+                {t('admin_portal')}
               </Link>
             )}
             {user ? (

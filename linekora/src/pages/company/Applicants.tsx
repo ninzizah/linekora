@@ -8,6 +8,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { getApplications, updateApplication, createNotification } from '../../lib/api';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface Applicant {
   id: number;
@@ -27,6 +28,7 @@ interface Applicant {
 
 export default function CompanyApplicants() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('all');
   const [selectedApplicant, setSelectedApplicant] = useState<any | null>(null);
@@ -36,6 +38,8 @@ export default function CompanyApplicants() {
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
+
+  const statusText = (s: string) => ({ all: t('filter_all'), pending: t('status_pending'), accepted: t('status_accepted'), rejected: t('status_rejected'), active: t('status_active'), closed: t('status_closed'), shortlisted: t('status_shortlisted') }[s] || s);
 
   const loadApplications = async () => {
     if (!profile?.id) return;
@@ -96,18 +100,18 @@ export default function CompanyApplicants() {
       if (app.workerId) {
         await createNotification({
           userId: app.workerId,
-          title: newStatus === 'accepted' ? '🎉 Application Accepted!' : '❌ Application Rejected',
+          title: newStatus === 'accepted' ? t('notif_app_accepted') : t('notif_app_rejected'),
           body: newStatus === 'accepted'
-            ? `Congratulations! Your application for "${app.job?.title || 'the job'}" has been accepted. The employer will contact you soon.`
-            : `Your application for "${app.job?.title || 'the job'}" was not accepted this time. Keep applying!`,
+            ? t('notif_app_accepted_msg', { title: app.job?.title || t('the_job') })
+            : t('notif_app_rejected_msg', { title: app.job?.title || t('the_job') }),
           type: newStatus === 'accepted' ? 'success' : 'info',
         });
       }
       setApplicants(prev => prev.map(a => a.id === appId ? { ...a, status: newStatus } : a));
       if (selectedApplicant?.id === appId) setSelectedApplicant((prev: any) => ({ ...prev, status: newStatus }));
-      showToast(newStatus === 'accepted' ? `✅ Candidate hired & contract initiated!` : `Candidate rejected.`);
+      showToast(newStatus === 'accepted' ? t('toast_candidate_hired') : t('toast_candidate_rejected'));
     } catch (err) {
-      showToast('Failed to update application status.');
+      showToast(t('toast_update_status_failed'));
     } finally {
       setProcessingId(null);
     }
@@ -130,14 +134,14 @@ export default function CompanyApplicants() {
       <div className="max-w-6xl mx-auto">
         <header className="mb-10 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Job Applicants</h1>
+            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('job_applicants')}</h1>
             <p className="text-gray-500 font-sans font-medium mt-1 italic">
-              {loading ? 'Loading...' : `${filteredApplicants.length} ${filteredApplicants.length === 1 ? 'applicant' : 'applicants'} found`}
+              {loading ? t('loading') : `${filteredApplicants.length} ${filteredApplicants.length === 1 ? t('applicant') : t('applicants_plural')} ${t('found')}`}
             </p>
           </div>
           <button onClick={loadApplications} className="flex items-center gap-2 text-xs font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Refresh
+            {t('refresh')}
           </button>
         </header>
 
@@ -154,7 +158,7 @@ export default function CompanyApplicants() {
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
-                {f}
+                {statusText(f)}
               </button>
             ))}
           </div>
@@ -165,7 +169,7 @@ export default function CompanyApplicants() {
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, skill or job..." 
+              placeholder={t('search_placeholder_applicants')} 
               className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white border border-gray-150 shadow-sm focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none font-sans text-sm font-bold"
             />
           </div>
@@ -175,7 +179,7 @@ export default function CompanyApplicants() {
         {loading && (
           <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
             <Loader2 size={24} className="animate-spin" />
-            <span className="font-bold text-sm uppercase tracking-widest font-sans">Loading applicants...</span>
+            <span className="font-bold text-sm uppercase tracking-widest font-sans">{t('loading_applicants')}</span>
           </div>
         )}
 
@@ -220,17 +224,17 @@ export default function CompanyApplicants() {
                     </div>                    <div>
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{workerName}</h3>
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-0.5 rounded-full">Score: {trustScore}</span>
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-2.5 py-0.5 rounded-full">{t('score')}: {trustScore}</span>
                         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
                           applicant.status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' :
                           applicant.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' :
                           'bg-yellow-50 text-yellow-600 border-yellow-105'
                         }`}>
-                          {applicant.status}
+                          {statusText(applicant.status)}
                         </span>
                       </div>
                       <p className="text-sm font-bold text-gray-500 font-sans flex items-center gap-2 mb-2">
-                         Applied for <span className="text-gray-900 italic underline decoration-blue-600/30">{jobTitle}</span>
+                        {t('applied_for')} <span className="text-gray-900 italic underline decoration-blue-600/30">{jobTitle}</span>
                       </p>
                       <div className="flex flex-wrap items-center gap-4 text-gray-400">
                         <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
@@ -238,7 +242,7 @@ export default function CompanyApplicants() {
                           {workerLocation}
                         </div>
                         <div className="text-[10px] font-bold text-gray-400 italic">
-                          Applied {applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString() : 'recently'}
+                          {t('applied_at', { date: applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString() : t('recently') })}
                         </div>
                       </div>
                     </div>
@@ -249,7 +253,7 @@ export default function CompanyApplicants() {
                       onClick={() => setSelectedApplicant(applicant)}
                       className="px-5 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-sans font-black text-xs uppercase tracking-widest transition-all"
                     >
-                      View Details
+                      {t('view_details')}
                     </button>
                     {applicant.status === 'pending' && (
                       <>
@@ -257,7 +261,7 @@ export default function CompanyApplicants() {
                           onClick={() => handleStatusChange(applicant.id, 'rejected')}
                           disabled={processingId === applicant.id}
                           className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all disabled:opacity-50"
-                          title="Reject Application"
+                          title={t('reject_application')}
                         >
                           {processingId === applicant.id ? <Loader2 size={18} className="animate-spin" /> : <XCircle size={18} />}
                         </button>
@@ -266,18 +270,18 @@ export default function CompanyApplicants() {
                           disabled={processingId === applicant.id}
                           className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-sans font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 transition-all flex items-center gap-2 disabled:opacity-50"
                         >
-                          {processingId === applicant.id ? <><Loader2 size={14} className="animate-spin" /> Hiring...</> : <>Hire Now <ChevronRight size={16} /></>}
+                          {processingId === applicant.id ? <><Loader2 size={14} className="animate-spin" /> {t('hiring')}...</> : <>{t('hire_now')} <ChevronRight size={16} /></>}
                         </button>
                       </>
                     )}
                     {applicant.status === 'accepted' && (
                       <span className="text-green-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 bg-green-50 px-4 py-2 rounded-xl">
-                        <CheckCircle2 size={12} /> Hired Successfully
+                        <CheckCircle2 size={12} /> {t('hired_successfully')}
                       </span>
                     )}
                     {applicant.status === 'rejected' && (
                       <span className="text-red-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 bg-red-50 px-4 py-2 rounded-xl">
-                        <XCircle size={12} /> Rejected
+                        <XCircle size={12} /> {t('rejected')}
                       </span>
                     )}
                   </div>
@@ -290,7 +294,7 @@ export default function CompanyApplicants() {
           {filteredApplicants.length === 0 && (
             <div className="bg-white rounded-[3rem] border border-dashed border-gray-200 py-16 text-center">
               <Users className="text-gray-300 mx-auto mb-4" size={36} />
-              <p className="font-sans font-black text-gray-900 uppercase">No applicants found</p>
+              <p className="font-sans font-black text-gray-900 uppercase">{t('no_applicants_found')}</p>
             </div>
           )}
         </div>
@@ -328,7 +332,7 @@ export default function CompanyApplicants() {
                     )}
                   </div>
                   <p className="text-xs font-black text-blue-600 uppercase tracking-widest font-sans mt-0.5">
-                    Trust Score: {selectedApplicant.worker?.trustScore || selectedApplicant.trustScore || 0}
+                    {t('trust_score')}: {selectedApplicant.worker?.trustScore || selectedApplicant.trustScore || 0}
                   </p>
                   {selectedApplicant.worker?.email && (
                     <p className="text-xs text-gray-500 font-bold mt-0.5">{selectedApplicant.worker.email}</p>
@@ -337,13 +341,13 @@ export default function CompanyApplicants() {
                     selectedApplicant.status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' :
                     selectedApplicant.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' :
                     'bg-yellow-50 text-yellow-600 border-yellow-100'
-                  }`}>{selectedApplicant.status}</span>
+                  }`}>{statusText(selectedApplicant.status)}</span>
                 </div>
               </div>
 
               <div className="space-y-6 mb-8 font-sans">
                 <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Applying For Position</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('applying_for_position')}</p>
                   <p className="text-base font-bold text-gray-900 italic">"{selectedApplicant.job?.title || selectedApplicant.job || 'N/A'}"</p>
                 </div>
 
@@ -351,7 +355,7 @@ export default function CompanyApplicants() {
                   <div>
                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
                       <Info size={12} className="text-blue-500" />
-                      Cover Letter
+                      {t('cover_letter')}
                     </h4>
                     <p className="text-sm text-gray-600 leading-relaxed italic bg-blue-50/20 p-4 rounded-xl border border-blue-50/50">
                       "{selectedApplicant.coverLetter}"
@@ -363,7 +367,7 @@ export default function CompanyApplicants() {
                   <div>
                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
                       <Award size={12} className="text-blue-500" />
-                      Worker Bio
+                      {t('worker_bio')}
                     </h4>
                     <p className="text-sm font-bold text-gray-800 leading-relaxed bg-blue-50/20 p-4 rounded-xl border border-blue-50/50">
                       {selectedApplicant.worker.bio}
@@ -373,21 +377,21 @@ export default function CompanyApplicants() {
 
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Contact Line</span>
-                    <span className="font-bold text-gray-900">{selectedApplicant.worker?.phone || selectedApplicant.phone || 'Not provided'}</span>
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('contact_line')}</span>
+                    <span className="font-bold text-gray-900">{selectedApplicant.worker?.phone || selectedApplicant.phone || t('not_provided')}</span>
                   </div>
                   <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Work Location</span>
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('work_location')}</span>
                     <span className="font-bold text-gray-900 truncate block">{selectedApplicant.worker?.location || selectedApplicant.location || 'Kigali'}</span>
                   </div>
                   <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Applied On</span>
-                    <span className="font-bold text-gray-900">{selectedApplicant.createdAt ? new Date(selectedApplicant.createdAt).toLocaleDateString() : 'Recently'}</span>
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('applied_on')}</span>
+                    <span className="font-bold text-gray-900">{selectedApplicant.createdAt ? new Date(selectedApplicant.createdAt).toLocaleDateString() : t('recently')}</span>
                   </div>
                   <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Verification</span>
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('verification')}</span>
                     <span className={`font-black ${selectedApplicant.worker?.verificationStatus === 'verified' ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {selectedApplicant.worker?.verificationStatus || 'Unverified'}
+                      {selectedApplicant.worker?.verificationStatus || t('unverified')}
                     </span>
                   </div>
                 </div>
@@ -395,7 +399,7 @@ export default function CompanyApplicants() {
                 {selectedApplicant.worker?.verificationStatus === 'verified' && (
                   <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-100 rounded-2xl">
                     <CheckCircle2 size={16} className="text-green-600 shrink-0" />
-                    <p className="text-[11px] font-black text-green-900 uppercase tracking-wide">National ID Registration Verified with RDB</p>
+                    <p className="text-[11px] font-black text-green-900 uppercase tracking-wide">{t('national_id_verified')}</p>
                   </div>
                 )}
               </div>
@@ -411,7 +415,7 @@ export default function CompanyApplicants() {
                       }}
                       className="flex-1 py-4 bg-red-50 hover:bg-red-100 text-red-600 font-sans font-black uppercase text-xs tracking-widest rounded-2xl transition-all"
                     >
-                      Reject Application
+                      {t('reject_application')}
                     </button>
                     <button 
                       onClick={() => {
@@ -420,7 +424,7 @@ export default function CompanyApplicants() {
                       }}
                       className="flex-2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-sans font-black uppercase text-xs tracking-widest rounded-2xl shadow-lg shadow-blue-150 transition-all text-center"
                     >
-                      Hire Candidate Indeed
+                      {t('hire_candidate_indeed')}
                     </button>
                   </>
                 ) : (
@@ -428,7 +432,7 @@ export default function CompanyApplicants() {
                     onClick={() => setSelectedApplicant(null)}
                     className="w-full py-4 bg-gray-900 hover:bg-gray-800 text-white font-sans font-black uppercase text-xs tracking-widest rounded-2xl transition-all"
                   >
-                    Close Candidate Profile
+                    {t('close_candidate_profile')}
                   </button>
                 )}
               </div>

@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { createJob } from '../../lib/api';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface NotificationMsg {
   id: string;
@@ -19,6 +20,7 @@ interface NotificationMsg {
 
 export default function PostJob() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [verifiedOnly, setVerifiedOnly] = useState(true);
@@ -67,12 +69,11 @@ export default function PostJob() {
     'Logistics', 'Creative', 'IT & Tech', 'Hospitality'
   ];
 
-  const jobTypes = [
-    { id: 'full-time', label: 'Full-time' },
-    { id: 'part-time', label: 'Part-time' },
-    { id: 'contract', label: 'Contract' },
-    { id: 'on-demand', label: 'On-demand' },
-  ];
+  const jobTypes = ['full-time', 'part-time', 'contract', 'on-demand'];
+
+  const catLabel = (v: string) => ({ Construction: t('category_construction'), 'Domestic Help': t('category_domestic_help'), Mechanical: t('category_mechanical'), Security: t('category_security'), Logistics: t('category_logistics'), Creative: t('category_creative'), 'IT & Tech': t('category_it_tech'), Hospitality: t('category_hospitality') }[v] || v);
+
+  const jobTypeLabel = (v: string) => ({ 'full-time': t('job_type_full_time'), 'part-time': t('job_type_part_time'), contract: t('job_type_contract'), 'on-demand': t('job_type_on_demand') }[v] || v);
 
   // Notifications systems
   const [notifications, setNotifications] = useState<NotificationMsg[]>([]);
@@ -91,7 +92,7 @@ export default function PostJob() {
     setLoading(true);
 
     if (!profile?.id) {
-      addNotification('error', 'Not Authenticated', 'Please sign in before posting a job.');
+      addNotification('error', t('toast_not_authenticated'), t('toast_sign_in_before_posting'));
       setLoading(false);
       return;
     }
@@ -133,10 +134,10 @@ export default function PostJob() {
       setLoading(false);
       setPublishedJobId(dbJob.id);
       setShowSuccessModal(true);
-      addNotification('success', 'Job Published Successfully 🎉', 'Saved to database. Workers can now find and apply!');
+      addNotification('success', t('toast_job_published'), t('toast_job_published_msg'));
     } catch (err: any) {
       setLoading(false);
-      addNotification('error', 'Failed to Publish Job', err.message || 'Server error. Please try again.');
+      addNotification('error', t('toast_publish_failed'), err.message || t('server_error_retry'));
     }
   };
 
@@ -146,31 +147,31 @@ export default function PostJob() {
     setTimeout(() => {
       setExpiredJobs(prev => prev.filter(j => j.id !== id));
       setRenewingJobId(null);
-      addNotification('success', 'Job Posting Renewed 🔄', `"${title}" is reinstated on the matching timeline as active for 30 days.`);
+      addNotification('success', t('toast_job_renewed'), t('toast_job_renewed_timeline_msg', { title }));
     }, 1200);
   };
 
   // Invite candidate logic
   const handleInviteCandidate = (name: string) => {
-    addNotification('invite', 'Direct Invitation Sent ✉️', `Encrypted interview and work coordinates sent directly to ${name}.`);
+    addNotification('invite', t('toast_invitation_sent'), t('toast_invitation_sent_msg', { name }));
   };
 
   // Add Recommended Candidate to shortlist
   const handleShortlistCandidate = (name: string, skill: string) => {
     const newId = Date.now();
     setShortlisted(prev => [...prev, { id: newId, name, role: skill, avatar: name[0], status: 'Shortlisted' }]);
-    addNotification('success', 'Added to Shortlist ⭐', `${name} is added to your secure business matching shortlist.`);
+    addNotification('success', t('toast_added_to_shortlist'), t('toast_added_to_shortlist_msg', { name }));
   };
 
   // Remove from shortlist
   const handleRemoveShortlist = (id: number, name: string) => {
     setShortlisted(prev => prev.filter(s => s.id !== id));
-    addNotification('info', 'Shortlist Updated', `Removed ${name} from your shortlist database catalog.`);
+    addNotification('info', t('toast_shortlist_updated'), t('toast_shortlist_removed_msg', { name }));
   };
 
   // Send Direct Offer
   const handleSendOffer = (name: string) => {
-    addNotification('success', 'Contract Offer Broadcasted 📑', `Legal smart agreement and escrow hold requested for ${name}.`);
+    addNotification('success', t('toast_contract_offer_broadcasted'), t('toast_contract_offer_broadcasted_msg', { name }));
   };
 
   return (
@@ -178,7 +179,7 @@ export default function PostJob() {
       <div className="max-w-4xl mx-auto font-sans">
         <Link to="/dashboard/company" className="inline-flex items-center gap-2 text-gray-400 font-sans font-bold text-xs mb-8 hover:text-gray-900 transition-colors uppercase tracking-widest">
           <ArrowLeft size={14} />
-          Back to Dashboard
+          {t('back_to_dashboard')}
         </Link>
 
         {hasUncompleted ? (
@@ -187,29 +188,29 @@ export default function PostJob() {
               <AlertCircle size={40} className="text-red-600" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight font-sans">Corporate Milestone Blockage 🔒</h2>
-              <p className="text-gray-400 uppercase tracking-widest font-black text-[10px]">LINEKORA Corporate Integrity Guarantee</p>
+              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight font-sans">{t('corporate_blockage_title')}</h2>
+              <p className="text-gray-400 uppercase tracking-widest font-black text-[10px]">{t('corporate_blockage_platform')}</p>
               <p className="text-sm font-sans font-medium text-gray-500 max-w-md mx-auto leading-relaxed">
-                Platform safety directives require corporate clients to first update, evaluate, or approve outstanding active assignments and leave ratings/reviews before posting more new listings.
+                {t('corporate_blockage_desc')}
               </p>
             </div>
             <div className="bg-amber-50 border border-amber-100 p-5 rounded-3xl max-w-lg mx-auto text-left text-amber-900 text-xs font-medium leading-relaxed font-sans">
-              <span className="font-extrabold uppercase tracking-wider block mb-1">💡 Resolve instantly on your Dashboard:</span>
-              Browse down your corporate workspace, select the active contract submitted by your worker, and click <span className="font-bold">"Approve & Complete"</span> to release escrow holdings and rate the performance.
+              <span className="font-extrabold uppercase tracking-wider block mb-1">{t('corporate_resolve_hint')}</span>
+              {t('corporate_resolve_desc_prefix')}<span className="font-bold">"{t('approve_complete')}"</span>{t('corporate_resolve_desc_suffix')}
             </div>
             <button
               onClick={() => navigate('/dashboard/company')}
               className="px-8 py-4 bg-gray-950 hover:bg-gray-800 text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs transition-colors"
             >
-              Go to Corporate Dashboard
+              {t('corporate_go_dashboard')}
             </button>
           </div>
         ) : (
           <>
             <header className="mb-12">
-              <h1 className="text-4xl font-black text-gray-900 font-sans tracking-tight uppercase">Post Job</h1>
+              <h1 className="text-4xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('post_job')}</h1>
               <p className="text-gray-500 font-sans font-medium mt-2 italic text-sm leading-relaxed">
-                Fill in the details below to find your next verified professional.
+                {t('post_job_subtitle')}
               </p>
             </header>
 
@@ -217,11 +218,11 @@ export default function PostJob() {
               <div className="bg-white rounded-[3rem] p-8 md:p-12 border border-gray-105 shadow-sm space-y-10">
             <section className="space-y-6">
               <div>
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Job Title</label>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('job_title')}</label>
                 <input 
                   type="text" 
                   required
-                  placeholder="e.g. Senior Security Specialist" 
+                  placeholder={t('placeholder_job_title')} 
                   className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-black text-sm text-gray-950 transition-all focus:ring-4 focus:ring-blue-50"
                   value={formData.title}
                   onChange={e => setFormData({ ...formData, title: e.target.value })}
@@ -229,11 +230,11 @@ export default function PostJob() {
               </div>
 
               <div>
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Description</label>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('description')}</label>
                 <textarea 
                   rows={4}
                   required
-                  placeholder="Describe the roles, responsibilities and ideal candidate..." 
+                  placeholder={t('placeholder_description')} 
                   className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all focus:ring-4 focus:ring-blue-50 resize-none leading-relaxed"
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
@@ -241,10 +242,10 @@ export default function PostJob() {
               </div>
 
               <div>
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Requirements</label>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('requirements')}</label>
                 <textarea 
                   rows={3}
-                  placeholder="e.g. 5+ years experience, Certification in Safety..." 
+                  placeholder={t('placeholder_requirements')} 
                   className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-medium text-sm text-gray-900 transition-all resize-none italic"
                   value={formData.requirements}
                   onChange={e => setFormData({ ...formData, requirements: e.target.value })}
@@ -253,13 +254,13 @@ export default function PostJob() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Salary / Budget</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('salary_budget')}</label>
                   <div className="relative">
                     <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-450" size={18} />
                     <input 
                       type="text" 
                       required
-                      placeholder="e.g. 15,000 per day" 
+                      placeholder={t('placeholder_salary')} 
                       className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all focus:ring-4 focus:ring-blue-50"
                       value={formData.salary}
                       onChange={e => setFormData({ ...formData, salary: e.target.value })}
@@ -267,13 +268,13 @@ export default function PostJob() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Location</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('location')}</label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-450" size={18} />
                     <input 
                       type="text" 
                       required
-                      placeholder="e.g. Kigali, Gasabo" 
+                      placeholder={t('placeholder_location')} 
                       className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all focus:ring-4 focus:ring-blue-50"
                       value={formData.location}
                       onChange={e => setFormData({ ...formData, location: e.target.value })}
@@ -284,12 +285,12 @@ export default function PostJob() {
 
               {/* Contact Phone */}
               <div>
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Contact Phone Number</label>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('contact_phone_number')}</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-450" size={18} />
                   <input 
                     type="tel"
-                    placeholder="e.g. +250 788 123 456" 
+                    placeholder={t('placeholder_phone_number')} 
                     className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all focus:ring-4 focus:ring-blue-50"
                     value={formData.phone}
                     onChange={e => setFormData({ ...formData, phone: e.target.value })}
@@ -299,17 +300,17 @@ export default function PostJob() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Category</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('category')}</label>
                   <select 
                     className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all pr-10 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22currentColor%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:1.2em_1.2em] bg-[right_1rem_center] bg-no-repeat"
                     value={formData.category}
                     onChange={e => setFormData({ ...formData, category: e.target.value })}
                   >
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    {categories.map(c => <option key={c} value={c}>{catLabel(c)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Deadline</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('deadline')}</label>
                   <div className="relative">
                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-450" size={18} />
                     <input 
@@ -324,20 +325,20 @@ export default function PostJob() {
               </div>
 
               <div className="space-y-4 pt-4">
-                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Job Type</label>
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('job_type')}</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {jobTypes.map((type) => (
                     <button
-                      key={type.id}
+                      key={type}
                       type="button"
-                      onClick={() => setFormData({ ...formData, jobType: type.id })}
+                      onClick={() => setFormData({ ...formData, jobType: type })}
                       className={`py-3 px-4 rounded-xl font-sans font-black text-[10px] uppercase tracking-widest border-2 transition-all ${
-                        formData.jobType === type.id 
+                        formData.jobType === type 
                         ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100' 
                         : 'bg-white text-gray-400 border-gray-100 hover:border-blue-100 hover:text-blue-600'
                       }`}
                     >
-                      {type.label}
+                      {jobTypeLabel(type)}
                     </button>
                   ))}
                 </div>
@@ -352,11 +353,11 @@ export default function PostJob() {
                     </div>
                     <div>
                       <p className="font-sans font-black text-xs uppercase tracking-[0.15em] text-red-955 flex items-center gap-1.5">
-                        🚨 Set as Urgent Task / Local Gig
-                        <span className="bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider">SMS BLAST QUEUE</span>
+                        {t('urgent_task_title')}
+                        <span className="bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider">{t('sms_blast_queue')}</span>
                       </p>
                       <p className="font-sans text-xs text-red-700 font-bold mt-1.5 leading-relaxed">
-                        Flag this as an emergency gig. Real-time SMS blasts and in-app alerts will instantly broadcast to all verified matching workers in this region.
+                        {t('urgent_task_desc')}
                       </p>
                     </div>
                   </div>
@@ -366,9 +367,9 @@ export default function PostJob() {
                     className={`w-16 h-9 rounded-full p-1 cursor-pointer transition-all flex items-center justify-between shrink-0 self-center md:self-start border-2 shadow-inner ${
                       isUrgent ? 'bg-red-600 border-red-700' : 'bg-slate-800 border-slate-900'
                     }`}
-                    aria-label="Toggle Urgent Task"
+                    aria-label={t('toggle_urgent_task')}
                   >
-                    <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${isUrgent ? 'text-white opacity-100' : 'opacity-0'}`}>ON</span>
+                    <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${isUrgent ? 'text-white opacity-100' : 'opacity-0'}`}>{t('on')}</span>
                     <motion.div 
                       layout
                       animate={{ x: isUrgent ? 0 : 0 }}
@@ -376,7 +377,7 @@ export default function PostJob() {
                     >
                       {isUrgent ? '✓' : '✕'}
                     </motion.div>
-                    <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${!isUrgent ? 'text-slate-300 opacity-100' : 'opacity-0'}`}>OFF</span>
+                    <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${!isUrgent ? 'text-slate-300 opacity-100' : 'opacity-0'}`}>{t('off')}</span>
                   </button>
                 </div>
               </div>
@@ -389,8 +390,8 @@ export default function PostJob() {
                     <ShieldCheck size={24} />
                   </div>
                   <div>
-                    <p className="font-sans font-black text-xs uppercase tracking-widest text-gray-900">Verification Required</p>
-                    <p className="font-sans text-[10px] text-gray-500 font-bold mt-0.5">Only fully verified workers with security badges can access</p>
+                    <p className="font-sans font-black text-xs uppercase tracking-widest text-gray-900">{t('verification_required')}</p>
+                    <p className="font-sans text-[10px] text-gray-500 font-bold mt-0.5">{t('verification_required_desc')}</p>
                   </div>
                 </div>
                 <button 
@@ -399,9 +400,9 @@ export default function PostJob() {
                   className={`w-16 h-9 rounded-full p-1 cursor-pointer transition-all flex items-center justify-between shrink-0 border-2 shadow-inner ${
                     verifiedOnly ? 'bg-blue-600 border-blue-700' : 'bg-slate-800 border-slate-900'
                   }`}
-                  aria-label="Toggle Verification Required"
+                  aria-label={t('toggle_verification_required')}
                 >
-                  <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${verifiedOnly ? 'text-white opacity-100' : 'opacity-0'}`}>ON</span>
+                  <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${verifiedOnly ? 'text-white opacity-100' : 'opacity-0'}`}>{t('on')}</span>
                   <motion.div 
                     layout
                     animate={{ x: verifiedOnly ? 0 : 0 }}
@@ -409,7 +410,7 @@ export default function PostJob() {
                   >
                     {verifiedOnly ? '✓' : '✕'}
                   </motion.div>
-                  <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${!verifiedOnly ? 'text-slate-300 opacity-100' : 'opacity-0'}`}>OFF</span>
+                  <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${!verifiedOnly ? 'text-slate-300 opacity-100' : 'opacity-0'}`}>{t('off')}</span>
                 </button>
               </div>
             </section>
@@ -424,11 +425,11 @@ export default function PostJob() {
                 {loading ? (
                   <>
                     <Loader2 size={20} className="animate-spin" />
-                    <span>Broadcasting match vectors...</span>
+                    <span>{t('broadcasting_match_vectors')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Publish & Broadcast Opportunity</span>
+                    <span>{t('publish_broadcast_opportunity')}</span>
                     <Send size={18} />
                   </>
                 )}
@@ -474,15 +475,15 @@ export default function PostJob() {
                 <div className="h-16 w-16 bg-green-50 text-green-600 border border-green-200 rounded-[2.3rem] flex items-center justify-center mb-5 mx-auto animate-bounce shadow-sm">
                   <CheckCircle2 size={32} />
                 </div>
-                <h3 className="text-2xl font-black text-gray-950 font-sans uppercase tracking-tight">Job Alignment Created</h3>
+                <h3 className="text-2xl font-black text-gray-950 font-sans uppercase tracking-tight">{t('job_alignment_created')}</h3>
                 <p className="text-xs text-gray-500 font-sans leading-relaxed mt-2 font-medium italic">
-                  Matched via digital signature. SMS alerts successfully pushed to nearby cell towers to summon certified teams.
+                  {t('job_alignment_created_desc')}
                 </p>
               </div>
 
               <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 mb-8">
                 <p className="text-sm font-sans font-bold text-blue-700 text-center">
-                  Your job has been published to the marketplace. Verified workers matching your category will be able to see and apply for it.
+                  {t('job_published_marketplace_desc')}
                 </p>
                 <button 
                   onClick={() => {
@@ -491,7 +492,7 @@ export default function PostJob() {
                   }}
                   className="mt-3 mx-auto block text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors"
                 >
-                  Browse Workers →
+                  {t('browse_workers')} →
                 </button>
               </div>
 
@@ -505,7 +506,7 @@ export default function PostJob() {
                     }}
                     className="py-4 bg-gray-50 hover:bg-indigo-50 border border-gray-150 hover:border-indigo-200 text-gray-700 hover:text-indigo-650 rounded-2xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all"
                   >
-                    Manage shortlist ({shortlisted.length})
+                    {t('manage_shortlist_count', { count: shortlisted.length })}
                   </button>
                   <button 
                     onClick={() => {
@@ -514,7 +515,7 @@ export default function PostJob() {
                     }}
                     className="py-4 bg-gray-50 hover:bg-red-50 border border-gray-150 hover:border-red-200 text-gray-700 hover:text-red-600 rounded-2xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all"
                   >
-                    View Expired Jobs
+                    {t('view_expired_jobs')}
                   </button>
                 </div>
 
@@ -527,7 +528,7 @@ export default function PostJob() {
                     className="py-4 bg-blue-50 hover:bg-blue-100 border border-blue-100 text-blue-600 rounded-2xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all flex items-center justify-center gap-1.5"
                   >
                     <Users size={12} />
-                    View All Workers
+                    {t('view_all_workers')}
                   </button>
                   <button 
                     onClick={() => {
@@ -536,7 +537,7 @@ export default function PostJob() {
                     }}
                     className="py-4 bg-gray-900 hover:bg-semibold text-white hover:bg-black rounded-2xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all shadow-md shadow-gray-200"
                   >
-                    Close Details
+                    {t('close_details')}
                   </button>
                 </div>
               </div>
@@ -569,8 +570,8 @@ export default function PostJob() {
                 <X size={20} />
               </button>
 
-              <h3 className="text-xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">Expired Job Postings</h3>
-              <p className="text-xs text-gray-400 font-sans italic mb-6">Renew historical assignments instantly for matching with verified candidates.</p>
+              <h3 className="text-xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">{t('expired_job_postings')}</h3>
+              <p className="text-xs text-gray-400 font-sans italic mb-6">{t('expired_job_postings_desc')}</p>
 
               {expiredJobs.length > 0 ? (
                 <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
@@ -579,9 +580,9 @@ export default function PostJob() {
                       <div>
                         <div className="flex items-center justify-between">
                           <h4 className="font-sans font-black text-sm text-gray-900">{job.title}</h4>
-                          <span className="text-[8px] font-black text-red-655 bg-red-50 border border-red-100 px-2 py-0.5 rounded tracking-wide uppercase">Expired {job.expiredAt}</span>
+                          <span className="text-[8px] font-black text-red-655 bg-red-50 border border-red-100 px-2 py-0.5 rounded tracking-wide uppercase">{t('expired_at', { date: job.expiredAt })}</span>
                         </div>
-                        <p className="text-[10px] text-gray-550 mt-1 font-sans">{job.location} • Budget: {job.salary}</p>
+                        <p className="text-[10px] text-gray-550 mt-1 font-sans">{t('job_location_budget', { location: job.location, salary: job.salary })}</p>
                       </div>
 
                       <button 
@@ -592,11 +593,11 @@ export default function PostJob() {
                         {renewingJobId === job.id ? (
                           <>
                             <Loader2 size={12} className="animate-spin" />
-                            <span>Broadcasting Credentials...</span>
+                            <span>{t('broadcasting_credentials')}</span>
                           </>
                         ) : (
                           <>
-                            <span>Renew Job (30 Days Active)</span>
+                            <span>{t('renew_job_30_days')}</span>
                             <Plus size={12} />
                           </>
                         )}
@@ -607,8 +608,8 @@ export default function PostJob() {
               ) : (
                 <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-150">
                   <Clock className="mx-auto text-gray-300 mb-2" size={32} />
-                  <p className="text-xs font-bold text-gray-450 uppercase tracking-wide">No Expired Job Logs</p>
-                  <p className="text-[10px] text-gray-405 italic mt-1 font-sans">All outstanding opportunities are currently active.</p>
+                  <p className="text-xs font-bold text-gray-450 uppercase tracking-wide">{t('no_expired_job_logs')}</p>
+                  <p className="text-[10px] text-gray-405 italic mt-1 font-sans">{t('no_expired_job_logs_desc')}</p>
                 </div>
               )}
 
@@ -619,7 +620,7 @@ export default function PostJob() {
                 }}
                 className="w-full mt-6 py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all"
               >
-                Close History
+                {t('close_history')}
               </button>
             </motion.div>
           </div>
@@ -650,8 +651,8 @@ export default function PostJob() {
                 <X size={20} />
               </button>
 
-              <h3 className="text-xl font-black text-gray-905 font-sans uppercase tracking-tight mb-2">Manage Candidate Shortlist</h3>
-              <p className="text-xs text-gray-400 font-sans italic mb-6">Manage high-match workers currently bookmarked under corporate file records.</p>
+              <h3 className="text-xl font-black text-gray-905 font-sans uppercase tracking-tight mb-2">{t('manage_candidate_shortlist')}</h3>
+              <p className="text-xs text-gray-400 font-sans italic mb-6">{t('manage_candidate_shortlist_desc')}</p>
 
               {shortlisted.length > 0 ? (
                 <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
@@ -672,7 +673,7 @@ export default function PostJob() {
                           onClick={() => handleSendOffer(candidate.name)}
                           className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors"
                         >
-                          Hire
+                          {t('hire')}
                         </button>
                         <button 
                           onClick={() => handleRemoveShortlist(candidate.id, candidate.name)}
@@ -687,8 +688,8 @@ export default function PostJob() {
               ) : (
                 <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-150">
                   <Star className="mx-auto text-gray-300 mb-2" size={32} />
-                  <p className="text-xs font-bold text-gray-450 uppercase tracking-wide">Shortlist is empty</p>
-                  <p className="text-[10px] text-gray-400 mt-1 font-sans italic">Save recommended candidates or browse more workers.</p>
+                  <p className="text-xs font-bold text-gray-450 uppercase tracking-wide">{t('shortlist_empty')}</p>
+                  <p className="text-[10px] text-gray-400 mt-1 font-sans italic">{t('shortlist_empty_desc')}</p>
                 </div>
               )}
 
@@ -699,7 +700,7 @@ export default function PostJob() {
                 }}
                 className="w-full mt-6 py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all"
               >
-                Close List
+                {t('close_list')}
               </button>
             </motion.div>
           </div>

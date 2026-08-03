@@ -1,6 +1,7 @@
 import React from 'react';
 import { User, ShieldCheck, Award, FileText } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useLanguage } from '../lib/LanguageContext';
 
 interface IdentityProps {
   name: string;
@@ -12,6 +13,7 @@ interface IdentityProps {
 }
 
 export default function IdentityCardVisual({ name, type, idType, idNumber, details, code }: IdentityProps) {
+  const { t } = useLanguage();
   // Extract custom numbers out of details if not provided
   const derivedIdNo = idNumber || details?.match(/(?:NID|Passport|Reg Code|Company Reg Code):\s*([A-Za-z0-9-_ \+]+)/)?.[1] || '1199480138402124';
   
@@ -37,30 +39,30 @@ export default function IdentityCardVisual({ name, type, idType, idNumber, detai
           <div className="h-10 w-10 rounded-full border border-amber-800/30 flex items-center justify-center bg-white text-amber-800 mb-2 shadow-sm font-sans font-black text-xs">
             RDB
           </div>
-          <h4 className="text-[10px] font-sans font-black uppercase tracking-widest text-amber-900">Republic of Rwanda</h4>
-          <h3 className="text-xs font-sans font-extrabold uppercase tracking-wider text-amber-800 mt-1">Rwanda Development Board</h3>
-          <p className="text-[14px] font-bold italic mt-2 text-stone-805">Certificate of Incorporation</p>
+          <h4 className="text-[10px] font-sans font-black uppercase tracking-widest text-amber-900">{t('republic_of_rwanda')}</h4>
+          <h3 className="text-xs font-sans font-extrabold uppercase tracking-wider text-amber-800 mt-1">{t('rwanda_development_board')}</h3>
+          <p className="text-[14px] font-bold italic mt-2 text-stone-805">{t('certificate_of_incorporation')}</p>
         </div>
 
         {/* Body content */}
         <div className="space-y-3.5 text-center px-2">
-          <p className="text-[10px] font-sans text-stone-500 uppercase tracking-widest">This is to certify that</p>
+          <p className="text-[10px] font-sans text-stone-500 uppercase tracking-widest">{t('certify_that')}</p>
           
           <p className="text-[15px] font-extrabold text-stone-950 font-serif underline decoration-dotted decoration-amber-600 underline-offset-4 leading-tight">
             {name}
           </p>
 
           <p className="text-[10px] font-sans text-stone-500 leading-relaxed max-w-xs mx-auto">
-            Is officially registered under the Law on State/Worker Administration of Rwanda and maintains credentialed status.
+            {t('registered_statement')}
           </p>
 
           <div className="grid grid-cols-2 gap-4 pt-4 border-t border-amber-850/10 text-left font-sans">
             <div>
-              <span className="text-[8px] font-black uppercase text-stone-500 block mb-0.5 tracking-wider">Registration Number</span>
+              <span className="text-[8px] font-black uppercase text-stone-500 block mb-0.5 tracking-wider">{t('registration_number')}</span>
               <span className="text-[10px] font-mono font-bold text-stone-900">{derivedIdNo}</span>
             </div>
             <div>
-              <span className="text-[8px] font-black uppercase text-stone-500 block mb-0.5 tracking-wider">Registration Date</span>
+              <span className="text-[8px] font-black uppercase text-stone-500 block mb-0.5 tracking-wider">{t('registration_date')}</span>
               <span className="text-[10px] font-mono font-bold text-stone-900">23 June 2026</span>
             </div>
           </div>
@@ -88,9 +90,9 @@ export default function IdentityCardVisual({ name, type, idType, idNumber, detai
         <div className="flex items-center justify-between border-b border-blue-950/60 pb-3 mb-4">
           <div className="flex items-center gap-1.5">
             <span className="text-[9px] font-black uppercase tracking-widest bg-blue-950 px-2 py-0.5 rounded text-blue-400 border border-blue-900/30">RWA</span>
-            <span className="text-[10px] font-black tracking-tight text-white uppercase font-sans">Rwanda Passport</span>
+            <span className="text-[10px] font-black tracking-tight text-white uppercase font-sans">{t('rwanda_passport')}</span>
           </div>
-          <span className="text-[8px] font-mono text-gray-500">Document Code: {code || 'P-98'}</span>
+          <span className="text-[8px] font-mono text-gray-500">{t('document_code', { code: code || 'P-98' })}</span>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
@@ -102,31 +104,31 @@ export default function IdentityCardVisual({ name, type, idType, idNumber, detai
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></span>
               </div>
             </div>
-            <p className="text-[7px] text-center font-mono text-gray-500 uppercase tracking-widest mt-1.5">Facial Verify: Ok</p>
+            <p className="text-[7px] text-center font-mono text-gray-500 uppercase tracking-widest mt-1.5">{t('facial_verify_ok')}</p>
           </div>
 
           {/* Demographics details */}
           <div className="col-span-2 space-y-2.5 text-[10px]">
             <div>
-              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider font-sans mb-0.5">Passport Number</span>
+              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider font-sans mb-0.5">{t('passport_number')}</span>
               <span className="font-mono font-black text-white">{derivedIdNo}</span>
             </div>
             <div>
-              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">Full Name</span>
+              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">{t('full_name')}</span>
               <span className="font-black text-gray-200 uppercase font-sans tracking-tight">{name}</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">Nationality</span>
+                <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">{t('nationality')}</span>
                 <span className="font-bold text-gray-300 font-sans">RWANDAN</span>
               </div>
               <div>
-                <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">Sex</span>
+                <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">{t('sex')}</span>
                 <span className="font-bold text-gray-300 font-sans">{name.includes('Aline') ? 'FEMALE' : 'MALE'}</span>
               </div>
             </div>
             <div>
-              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">Date of Birth</span>
+              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">{t('date_of_birth')}</span>
               <span className="font-bold text-gray-300 font-mono">14 DEC 1995</span>
             </div>
           </div>
@@ -162,11 +164,11 @@ export default function IdentityCardVisual({ name, type, idType, idNumber, detai
         <div className="flex items-center gap-1.5">
           <div className="h-6 w-6 rounded-full bg-blue-900 flex items-center justify-center p-1 text-[8px] font-black text-yellow-405 border border-yellow-800">RWA</div>
           <div>
-            <span className="text-[8px] font-sans font-black uppercase tracking-wider text-gray-400 block mb-0.5 leading-none">Republic of Rwanda</span>
-            <span className="text-[10px] font-sans font-black uppercase text-white tracking-tight leading-none block">National Identity Card</span>
+            <span className="text-[8px] font-sans font-black uppercase tracking-wider text-gray-400 block mb-0.5 leading-none">{t('republic_of_rwanda')}</span>
+            <span className="text-[10px] font-sans font-black uppercase text-white tracking-tight leading-none block">{t('national_identity_card')}</span>
           </div>
         </div>
-        <span className="text-[7px] font-mono text-gray-500 font-black uppercase tracking-widest bg-gray-950 px-1.5 py-0.5 rounded border border-gray-900">NIDA Official</span>
+        <span className="text-[7px] font-mono text-gray-500 font-black uppercase tracking-widest bg-gray-950 px-1.5 py-0.5 rounded border border-gray-900">{t('nida_official')}</span>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -178,26 +180,26 @@ export default function IdentityCardVisual({ name, type, idType, idNumber, detai
               <span className="h-1.5 w-1.5 rounded-full bg-green-400"></span>
             </div>
           </div>
-          <p className="text-[7.5px] text-center font-black text-gray-500 uppercase tracking-widest mt-1.5 font-mono">ID MATCHED</p>
+          <p className="text-[7.5px] text-center font-black text-gray-500 uppercase tracking-widest mt-1.5 font-mono">{t('id_matched')}</p>
         </div>
 
         {/* Details values */}
         <div className="col-span-2 space-y-2.5 text-[10px] font-sans">
           <div>
-            <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">National ID Number (NID)</span>
+            <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">{t('national_id_number')}</span>
             <span className="font-mono font-black text-white">{derivedIdNo}</span>
           </div>
           <div>
-            <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">Full Names</span>
+            <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">{t('full_names')}</span>
             <span className="font-black text-gray-200 uppercase font-sans tracking-tight">{name}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">Gender</span>
+              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">{t('gender')}</span>
               <span className="font-bold text-gray-300 font-sans">{name.includes('Aline') || name.includes('Mukeshimana') ? 'FEMALE' : 'MALE'}</span>
             </div>
             <div>
-              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">Place of Issue</span>
+              <span className="text-[7px] font-black uppercase text-gray-500 block leading-none tracking-wider mb-0.5">{t('place_of_issue')}</span>
               <span className="font-bold text-gray-300 font-sans">KIGALI</span>
             </div>
           </div>

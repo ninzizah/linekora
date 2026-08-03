@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface Toast {
   id: string;
@@ -19,6 +20,7 @@ interface Toast {
 
 export default function Pricing() {
   const { profile, user } = useAuth();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'worker' | 'company'>('worker');
 
   // Persistence for user upgraded plans
@@ -122,6 +124,137 @@ export default function Pricing() {
   // Active Toast notifications list
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  const tierLabel = (n: string) => {
+    const map: Record<string, string> = {
+      'Free Worker': t('tier_free_worker'),
+      'Verified Bronze': t('tier_verified_bronze'),
+      'Verified Silver': t('tier_verified_silver'),
+      'Free Company': t('tier_free_company'),
+      'Verified Company': t('tier_verified_company'),
+    };
+    return map[n] || n;
+  };
+
+  const ctaLabel = (c: string) => {
+    const map: Record<string, string> = {
+      'Current Plan': t('current_plan'),
+      'Downgrade': t('downgrade'),
+      'Verify Now': t('verify_now'),
+      'Go Silver': t('go_silver'),
+      'Join Free': t('join_free'),
+      'Verify Business': t('verify_business'),
+    };
+    return map[c] || c;
+  };
+
+  const subtextLabel = (s?: string) => {
+    if (!s) return t('one_time');
+    const map: Record<string, string> = {
+      'System Review': t('tier_subtext_system_review'),
+      'Admin Approved': t('tier_subtext_admin_approved'),
+      'Verification required': t('tier_subtext_verification_required'),
+    };
+    return map[s] || s;
+  };
+
+  const featureLabel = (f: string) => {
+    const map: Record<string, string> = {
+      'Create account & Basic profile': t('feature_create_account_basic_profile'),
+      'Browse public jobs': t('feature_browse_public_jobs'),
+      'Apply to 1 active job at a time': t('feature_apply_1_active_job'),
+      'Basic location matching': t('feature_basic_location_matching'),
+      'Receive community support': t('feature_receive_community_support'),
+      'View company profiles': t('feature_view_company_profiles'),
+      'Save jobs': t('feature_save_jobs'),
+      'Basic trust score': t('feature_basic_trust_score'),
+      'Everything in Free PLUS:': t('feature_everything_free_plus'),
+      '✔ Verified Bronze Badge': t('feature_verified_bronze_badge'),
+      'ID & Phone Verification': t('feature_id_phone_verification'),
+      '5 active applications': t('feature_5_active_applications'),
+      'Email & SMS Alerts': t('feature_email_sms_alerts'),
+      'Escrow Protection': t('feature_escrow_protection'),
+      'Higher search ranking': t('feature_higher_search_ranking'),
+      'Priority in recommendations': t('feature_priority_recommendations'),
+      'Fraud protection review': t('feature_fraud_protection_review'),
+      'Everything in Bronze PLUS:': t('feature_everything_bronze_plus'),
+      '✔ Silver Verified Badge': t('feature_silver_verified_badge'),
+      'Biometric face matching': t('feature_biometric_face_matching'),
+      'Unlimited Applications': t('feature_unlimited_applications'),
+      'Direct Chat Features': t('feature_direct_chat_features'),
+      'Highest worker visibility': t('feature_highest_worker_visibility'),
+      'Featured in top candidates': t('feature_featured_top_candidates'),
+      'Faster support response': t('feature_faster_support_response'),
+      'Portfolio priority': t('feature_portfolio_priority'),
+      'Create company profile': t('feature_create_company_profile'),
+      'Post limited jobs (max 3)': t('feature_post_limited_jobs_max3'),
+      'Browse workers': t('feature_browse_workers'),
+      'Receive applications': t('feature_receive_applications'),
+      'Basic dashboard': t('feature_basic_dashboard'),
+      'Standard visibility': t('feature_standard_visibility'),
+      'Community support': t('feature_community_support'),
+      '✔ Verified Company Badge': t('feature_verified_company_badge'),
+      'Trusted Employer Label': t('feature_trusted_employer_label'),
+      'Higher job visibility': t('feature_higher_job_visibility'),
+      'Unlimited job postings': t('feature_unlimited_job_postings'),
+      'Candidate recommendations': t('feature_candidate_recommendations'),
+      'Advanced filtering': t('feature_advanced_filtering'),
+      'Priority support': t('feature_priority_support'),
+      'Verified office address': t('feature_verified_office_address'),
+      'Escrow payment trust': t('feature_escrow_payment_trust'),
+    };
+    return map[f] || f;
+  };
+
+  const limitationLabel = (l: string) => {
+    const map: Record<string, string> = {
+      'No verification badge': t('limit_no_verification_badge'),
+      'Lower search ranking': t('limit_lower_search_ranking'),
+      'No direct employer chat': t('limit_no_direct_employer_chat'),
+      'Limited applications': t('limit_limited_applications'),
+      'No verified badge': t('limit_no_verified_badge'),
+      'Lower job visibility': t('limit_lower_job_visibility'),
+      'Limited candidate search': t('limit_limited_candidate_search'),
+      'Fewer active listings': t('limit_fewer_active_listings'),
+    };
+    return map[l] || l;
+  };
+
+  const timeLabel = (d: string) => {
+    const map: Record<string, string> = {
+      'Just now': t('just_now'),
+      '2 hours ago': t('two_hours_ago'),
+      'Pending...': t('status_pending'),
+    };
+    return map[d] || d;
+  };
+
+  const statusLabel = (s: string) => {
+    const map: Record<string, string> = {
+      'paid_awaiting_admin': t('status_paid_awaiting_admin'),
+      'approved': t('status_approved'),
+      'rejected': t('status_rejected'),
+      'request_sent': t('status_request_sent'),
+    };
+    return map[s] || s;
+  };
+
+  const stepLabel = (title: string) => {
+    if (title.startsWith('Transaction Reference ID: ')) {
+      return t('step_transaction_ref_id', { ref: title.slice('Transaction Reference ID: '.length) });
+    }
+    const map: Record<string, string> = {
+      'Billing request sent to device': t('step_billing_request_sent_device'),
+      'User paid & PIN authorized': t('step_user_paid_pin_authorized'),
+      'Awaiting administrator approval': t('step_awaiting_admin_approval'),
+      'Manual MTN MoMo Payment Sent': t('step_manual_momo_payment_sent'),
+      'Awaiting Admin verification at ndivelabs@gmail.com': t('step_awaiting_admin_verification'),
+      'Billing handshake initialized to handset': t('step_billing_handshake_initialized'),
+      'Subscriber PIN verified & telecom funds secured': t('step_subscriber_pin_verified'),
+      'Awaiting administrator escrow release settlement': t('step_awaiting_escrow_release'),
+    };
+    return map[title] || title;
+  };
+
   const addToast = (title: string, message: string, type: 'success' | 'info' | 'error' = 'success') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, title, message, type }]);
@@ -138,8 +271,8 @@ export default function Pricing() {
 
     if (isCurrent) {
       addToast(
-        "Active Plan Alignment", 
-        `Your profile is already associated with the ${tier.name} level specifications!`, 
+        t('toast_active_plan_alignment_title'), 
+        t('toast_active_plan_alignment_body', { tierName: tierLabel(tier.name) }), 
         "info"
       );
       return;
@@ -147,8 +280,8 @@ export default function Pricing() {
 
     if (tier.cta === "Downgrade" || tier.name.includes("Free")) {
       addToast(
-        "Tier Maintained", 
-        `You are on details associated with the standard Free account tier.`, 
+        t('toast_tier_maintained_title'), 
+        t('toast_tier_maintained_body'), 
         "info"
       );
       return;
@@ -169,11 +302,11 @@ export default function Pricing() {
   const handleSecurePurchase = () => {
     if (checkoutMethod === 'momo') {
       if (!checkoutPhone.trim()) {
-        setCheckoutError('Please enter a valid sender mobile money number.');
+        setCheckoutError(t('err_valid_sender_momo_number'));
         return;
       }
       if (!momoTxRef.trim()) {
-        setCheckoutError('Please enter the MTN MoMo Transaction Reference ID.');
+        setCheckoutError(t('err_momo_tx_ref'));
         return;
       }
 
@@ -211,8 +344,8 @@ export default function Pricing() {
         localStorage.setItem('linekora_pricing_upgrade_requests', JSON.stringify(updatedReqs));
 
         addToast(
-          "Payment Details Logged 🔐", 
-          `Payment details for RWF ${selectedTier.price} submitted! Awaiting administrator receipt verification.`, 
+          t('toast_payment_details_logged_title'), 
+          t('toast_payment_logged_body', { price: selectedTier.price }), 
           "success"
         );
       }, 1500);
@@ -220,7 +353,7 @@ export default function Pricing() {
     }
 
     if (checkoutMethod === 'card' && (!checkoutCardNum.trim() || checkoutCardNum.length < 12)) {
-      setCheckoutError('Please supply a valid debit card identity signature.');
+      setCheckoutError(t('err_valid_card'));
       return;
     }
 
@@ -232,8 +365,8 @@ export default function Pricing() {
       setCheckoutLoading(false);
       setShowPinPrompt(true);
       addToast(
-        "Handshake Dispatched 📲", 
-        "Secure 3D Secure Verification code transmitted to your phone.", 
+        t('toast_handshake_dispatched_title'), 
+        t('toast_handshake_dispatched_body'), 
         "info"
       );
     }, 1500);
@@ -242,12 +375,12 @@ export default function Pricing() {
   const handleVerifyAndApprovePayment = () => {
     if (checkoutMethod === 'momo') {
       if (!pinValue.trim() || pinValue.length < 5) {
-        setPinError('Please enter your 5-digit Mobile Money PIN to authenticate.');
+        setPinError(t('err_5_digit_pin'));
         return;
       }
     } else {
       if (!otpValue.trim() || otpValue.length < 6) {
-        setPinError('Please enter the 6-digit SMS OTP verification code.');
+        setPinError(t('err_6_digit_otp'));
         return;
       }
     }
@@ -287,8 +420,8 @@ export default function Pricing() {
       localStorage.setItem('linekora_pricing_upgrade_requests', JSON.stringify(updatedReqs));
 
       addToast(
-        "Escrow Dispatched 🔐", 
-        `Payment of RWF ${selectedTier.price} submitted! Awaiting administrator receipt verification.`, 
+        t('toast_escrow_dispatched_title'), 
+        t('toast_payment_submitted_body', { price: selectedTier.price }), 
         "success"
       );
     }, 2000);
@@ -297,7 +430,7 @@ export default function Pricing() {
   const handleEnterpriseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!entName.trim() || !entEmail.trim()) {
-      addToast("Format Mismatch ❌", "Name and working corporate email address are mandatory.", "error");
+      addToast(t('toast_format_mismatch_title'), t('toast_format_mismatch_body'), "error");
       return;
     }
 
@@ -306,8 +439,8 @@ export default function Pricing() {
       setEntLoading(false);
       setEntSuccess(true);
       addToast(
-        "Proposal Forwarded ✈️", 
-        "Your managed recruitment inquiries have been secured by our Kigali sales office representatives.", 
+        t('toast_proposal_forwarded_title'), 
+        t('toast_proposal_forwarded_body'), 
         "success"
       );
     }, 1200);
@@ -432,10 +565,10 @@ export default function Pricing() {
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-105 px-4 py-1.5 rounded-full mb-6">
             <Sparkles size={14} className="text-blue-600 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-800">Verified Professional Ecosystem</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-blue-800">{t('verified_ecosystem')}</span>
           </div>
 
-          <h1 className="text-5xl font-black text-gray-900 font-sans tracking-tight mb-8 uppercase">Membership Tiers</h1>
+          <h1 className="text-5xl font-black text-gray-900 font-sans tracking-tight mb-8 uppercase">{t('membership_tiers')}</h1>
           
           <div className="inline-flex bg-gray-100 p-1.5 rounded-[2rem] mb-12 shadow-inner border border-gray-200">
             <button 
@@ -445,7 +578,7 @@ export default function Pricing() {
               }`}
             >
               <Users size={16} />
-              I am a Worker
+              {t('i_am_a_worker')}
             </button>
             <button 
               onClick={() => setActiveTab('company')}
@@ -454,12 +587,12 @@ export default function Pricing() {
               }`}
             >
               <Building size={16} />
-              I am an Employer
+              {t('i_am_an_employer')}
             </button>
           </div>
 
           <p className="text-xl text-gray-500 font-sans font-medium max-w-2xl mx-auto italic">
-            {activeTab === 'worker' ? '"Build trust, get hired faster."' : '"Hire verified talent with confidence."'}
+            {activeTab === 'worker' ? t('worker_tagline') : t('employer_tagline')}
           </p>
         </div>
 
@@ -481,13 +614,13 @@ export default function Pricing() {
                   <div className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-widest shadow-lg ${
                     tier.color === 'orange' ? 'bg-orange-500' : tier.color === 'indigo' ? 'bg-indigo-600' : 'bg-blue-600'
                   }`}>
-                    {tier.name === 'Verified Company' ? 'Highly Recommended' : 'Most Trusted'}
+                    {tier.name === 'Verified Company' ? t('highly_recommended') : t('most_trusted')}
                   </div>
                 )}
 
                 {isMyPlan && (
                   <div className="absolute top-4 right-8 bg-blue-100 text-blue-700 font-sans text-[8px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest">
-                    Your Active Plan
+                    {t('your_active_plan')}
                   </div>
                 )}
                 
@@ -496,37 +629,37 @@ export default function Pricing() {
                     tier.color === 'orange' ? 'text-orange-600' : 
                     tier.color === 'blue' ? 'text-blue-600' : 
                     tier.color === 'indigo' ? 'text-indigo-600' : 'text-gray-900'
-                  }`}>{tier.name}</h3>
+                  }`}>{tierLabel(tier.name)}</h3>
                   <div className="mt-4 flex items-baseline gap-1">
                     <span className="text-sm font-black text-gray-400 uppercase font-sans">RWF</span>
                     <span className="text-5xl font-black text-gray-900 font-sans tracking-tighter">{tier.price}</span>
                     <span className="text-gray-400 font-sans font-bold uppercase text-[10px] tracking-widest px-2">
-                      {tier.subtext || 'one-time'}
+                      {subtextLabel(tier.subtext)}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex-1">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Core Benefits</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">{t('core_benefits')}</p>
                   <ul className="space-y-4 mb-10">
                     {tier.features.map((feature, j) => (
                       <li key={j} className="flex items-start gap-3 text-sm font-bold text-gray-700 font-sans leading-tight">
                         <div className={`mt-0.5 shrink-0 h-4 w-4 rounded-full flex items-center justify-center ${feature.startsWith('✔') ? 'bg-green-100' : 'bg-blue-50'}`}>
                           <Check size={10} className={feature.startsWith('✔') ? 'text-green-600' : 'text-blue-600'} strokeWidth={4} />
                         </div>
-                        {feature}
+                        {featureLabel(feature)}
                       </li>
                     ))}
                   </ul>
 
                   {tier.limitations && (
                     <div className="pt-6 border-t border-gray-200/50">
-                      <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-4">Limitations</p>
+                      <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-4">{t('limitations')}</p>
                       <ul className="space-y-3">
                         {tier.limitations.map((limit, j) => (
                           <li key={j} className="flex items-center gap-3 text-xs font-bold text-gray-400 font-sans italic">
                             <Check size={12} className="text-gray-200" strokeWidth={3} />
-                            {limit}
+                            {limitationLabel(limit)}
                           </li>
                         ))}
                       </ul>
@@ -545,7 +678,7 @@ export default function Pricing() {
                       : 'bg-white border-2 border-gray-150 text-gray-900 hover:border-blue-600 hover:text-blue-600 hover:shadow-lg'}
                   `}
                 >
-                  {isMyPlan ? "Current Plan" : tier.cta}
+                  {isMyPlan ? t('current_plan') : ctaLabel(tier.cta)}
                 </button>
               </div>
             );
@@ -569,13 +702,13 @@ export default function Pricing() {
               <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
                   <span className="bg-black text-amber-500 font-sans text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full inline-block mb-3 select-none">
-                    🔔 Action Required: Pending MoMo Request
+                    {t('action_required_pending_momo')}
                   </span>
                   <h3 className="text-xl font-black font-sans tracking-tight text-gray-950 uppercase leading-snug">
-                    MTN Mobile Money hand-off triggered by Kigali Ops Admin
+                    {t('momo_handoff_triggered')}
                   </h3>
                   <p className="text-gray-900 font-sans text-sm mt-1.5 max-w-xl font-medium">
-                    An administrative billing request has been dispatched to <strong>{pendingPrompt.paymentPhoneOrCard}</strong> to unlock your <strong>{pendingPrompt.tierName}</strong>. Since MTN sandbox is active, please authorize and enter your secure PIN to complete.
+                    {t('momo_billing_request_body_1')}<strong>{pendingPrompt.paymentPhoneOrCard}</strong>{t('momo_billing_request_body_2')}<strong>{tierLabel(pendingPrompt.tierName)}</strong>{t('momo_billing_request_body_3')}
                   </p>
                 </div>
                 <button 
@@ -605,12 +738,12 @@ export default function Pricing() {
             <div className="mt-20 bg-gray-50/60 border border-gray-100 rounded-[3rem] p-8 md:p-12 font-sans select-none">
               <div className="border-b border-gray-200/60 pb-5 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <h3 className="text-xs font-black text-gray-405 uppercase tracking-widest">My Billing Escrow Handshakes & Timeline</h3>
-                  <p className="text-gray-905 font-sans font-black text-sm mt-0.5">Track your MoMo verification and admin-level approval progress</p>
+                  <h3 className="text-xs font-black text-gray-405 uppercase tracking-widest">{t('billing_handshakes_title')}</h3>
+                  <p className="text-gray-905 font-sans font-black text-sm mt-0.5">{t('billing_handshakes_subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-100 px-3 py-1 rounded-xl text-yellow-805 text-[10px] font-black uppercase tracking-widest">
                   <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-ping"></span>
-                  MTN MoMo Sandbox Active
+                  {t('momo_sandbox_active')}
                 </div>
               </div>
 
@@ -625,26 +758,26 @@ export default function Pricing() {
                           req.status === 'paid_awaiting_admin' ? 'bg-amber-50 text-amber-700 border border-amber-100 animate-pulse' :
                           'bg-indigo-50 text-indigo-700 border border-indigo-100'
                         }`}>
-                          {req.status === 'paid_awaiting_admin' ? 'paid (awaiting admin)' : req.status.replace('_', ' ')}
+                          {req.status === 'paid_awaiting_admin' ? statusLabel(req.status) : statusLabel(req.status)}
                         </span>
-                        <span className="text-gray-400 font-bold text-[10px] uppercase font-mono">{req.date}</span>
+                        <span className="text-gray-400 font-bold text-[10px] uppercase font-mono">{timeLabel(req.date)}</span>
                       </div>
 
                       <div>
-                        <h4 className="text-base font-black text-gray-905 font-sans">{req.tierName} Verification Shield Upgrade</h4>
-                        <p className="text-xs text-gray-450 mt-0.5 font-sans font-medium">Payment Account: <span className="font-mono text-gray-700">{req.paymentPhoneOrCard}</span> • Review Fee: <strong className="text-blue-600 font-black font-sans">RWF {req.price}</strong></p>
+                        <h4 className="text-base font-black text-gray-905 font-sans">{t('verification_shield_upgrade', { tierName: tierLabel(req.tierName) })}</h4>
+                        <p className="text-xs text-gray-450 mt-0.5 font-sans font-medium">{t('payment_account_label')} <span className="font-mono text-gray-700">{req.paymentPhoneOrCard}</span> {t('review_fee_separator')} <strong className="text-blue-600 font-black font-sans">RWF {req.price}</strong></p>
                       </div>
 
                       {/* Timeline flow */}
                       <div className="pt-2 border-t border-gray-100 max-w-xl">
-                        <p className="text-[9px] font-black text-gray-450 uppercase tracking-widest mb-3 font-sans">Escrow Status Timeline Details</p>
+                        <p className="text-[9px] font-black text-gray-450 uppercase tracking-widest mb-3 font-sans">{t('escrow_status_timeline')}</p>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {req.steps?.map((step: any, idx: number) => (
                             <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-150/50 flex gap-2.5 items-start">
                               <span className={`h-2 w-2 rounded-full shrink-0 mt-1 ${step.done ? 'bg-green-500' : 'bg-gray-300'}`}></span>
                               <div>
-                                <p className="text-[10px] font-black text-gray-800 leading-tight uppercase font-sans">{step.title}</p>
-                                <p className="text-[8px] text-gray-400 font-bold font-mono uppercase mt-0.5">{step.date || 'Pending...'}</p>
+                                <p className="text-[10px] font-black text-gray-800 leading-tight uppercase font-sans">{stepLabel(step.title)}</p>
+                                <p className="text-[8px] text-gray-400 font-bold font-mono uppercase mt-0.5">{timeLabel(step.date || 'Pending...')}</p>
                               </div>
                             </div>
                           ))}
@@ -665,20 +798,20 @@ export default function Pricing() {
                           }}
                           className="w-full md:w-44 py-3 bg-amber-500 hover:bg-amber-600 text-black rounded-xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all shadow-md cursor-pointer"
                         >
-                          Confirm & Enter PIN
+                          {t('confirm_enter_pin')}
                         </button>
                       ) : req.status === 'paid_awaiting_admin' ? (
                         <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl font-mono text-[9px] text-amber-700 uppercase font-black tracking-widest text-center">
-                          Awaiting Admin Settlement
+                          {t('awaiting_admin_settlement')}
                         </div>
                       ) : req.status === 'approved' ? (
                         <div className="p-3 bg-green-50 border border-green-100 rounded-xl font-mono text-[9px] text-green-700 uppercase font-black tracking-widest text-center flex items-center justify-center gap-1.5 leading-none">
                           <Check size={12} className="text-green-600" />
-                          Tier Active Live
+                          {t('tier_active_live')}
                         </div>
                       ) : (
                         <div className="p-3 bg-gray-105 border border-gray-200 rounded-xl font-mono text-[9px] text-gray-400 uppercase font-bold tracking-widest text-center">
-                          Rejected log
+                          {t('rejected_log')}
                         </div>
                       )}
                     </div>
@@ -694,9 +827,9 @@ export default function Pricing() {
           <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none">
             <Building size={400} />
           </div>
-          <h2 className="text-3xl font-black font-sans mb-6 relative z-10">Need a custom plan for your organization?</h2>
+          <h2 className="text-3xl font-black font-sans mb-6 relative z-10">{t('custom_plan_title')}</h2>
           <p className="text-white/80 font-sans text-lg mb-10 max-w-2xl mx-auto font-medium relative z-10">
-            We offer bulk verification, managed hiring pipelines and custom compliance tracking packages for regional developers, hotels, and agricultural cooperatives.
+            {t('custom_plan_desc')}
           </p>
           <button 
             type="button"
@@ -710,7 +843,7 @@ export default function Pricing() {
             }}
             className="bg-white text-blue-600 px-10 py-5 rounded-[2rem] font-sans font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-900/20 hover:scale-105 transition-transform cursor-pointer relative z-10"
           >
-            Contact Enterprise Sales
+            {t('contact_enterprise_sales')}
           </button>
         </div>
       </div>
@@ -747,26 +880,26 @@ export default function Pricing() {
                   <div>
                     <h2 className="text-xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight flex items-center gap-2">
                       <Smartphone className="text-amber-500 animate-pulse" />
-                      {checkoutMethod === 'momo' ? 'MTN MoMo Approve PIN' : 'SMS OTP Code Verification'}
+                      {checkoutMethod === 'momo' ? t('momo_approve_pin') : t('sms_otp_verification')}
                     </h2>
                     <p className="text-xs text-gray-400 font-sans italic mb-4">
                       {checkoutMethod === 'momo' 
-                        ? 'Confirm authorization using your standard secure device PIN code.' 
-                        : 'Verify the security OTP dispatched to complete transaction escrow.'}
+                        ? t('pin_confirm_desc') 
+                        : t('otp_confirm_desc')}
                     </p>
 
                     <div className="mb-4 p-4.5 bg-gray-50 border border-gray-100 rounded-3xl">
                       <div className="text-left space-y-1.5 uppercase font-sans text-[9px] font-black tracking-widest text-gray-500">
                         <div className="flex justify-between">
-                          <span>Pay To:</span>
+                          <span>{t('checkout_pay_to')}</span>
                           <span className="text-gray-955 font-extrabold text-right">LINEKORA LTD</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Service:</span>
-                          <span className="text-gray-955 font-extrabold text-right">{selectedTier.name} Status</span>
+                          <span>{t('checkout_service')}</span>
+                          <span className="text-gray-955 font-extrabold text-right">{t('checkout_service_value', { tierName: tierLabel(selectedTier.name) })}</span>
                         </div>
                         <div className="flex justify-between border-t border-gray-200/60 pt-1.5">
-                          <span>Amount:</span>
+                          <span>{t('checkout_amount')}</span>
                           <span className="text-amber-600 font-extrabold text-right">RWF {selectedTier.price}</span>
                         </div>
                       </div>
@@ -783,7 +916,7 @@ export default function Pricing() {
                       {checkoutMethod === 'momo' ? (
                         <div>
                           <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2 text-center">
-                            Enter Your 5-Digit Mobile Money PIN
+                            {t('checkout_enter_5_digit_pin')}
                           </label>
                           <div className="relative max-w-[160px] mx-auto">
                             <input 
@@ -824,7 +957,7 @@ export default function Pricing() {
                       ) : (
                         <div>
                           <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2 text-center">
-                            Enter the 6-Digit Verification Token (SMS)
+                            {t('checkout_enter_6_digit_otp')}
                           </label>
                           <div className="relative max-w-[200px] mx-auto">
                             <input 
@@ -850,7 +983,7 @@ export default function Pricing() {
                           onClick={() => setShowPinPrompt(false)}
                           className="w-1/3 py-3.5 bg-gray-100 hover:bg-gray-250 text-gray-500 rounded-2xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all cursor-pointer"
                         >
-                          Cancel
+                          {t('cancel')}
                         </button>
                         <button 
                           type="button"
@@ -865,11 +998,11 @@ export default function Pricing() {
                           {verificationInProcess ? (
                             <>
                               <Loader2 size={12} className="animate-spin" />
-                              <span>Charging Wallet...</span>
+                              <span>{t('charging_wallet')}</span>
                             </>
                           ) : (
                             <>
-                              <span>Approve Payment</span>
+                              <span>{t('approve_payment')}</span>
                             </>
                           )}
                         </button>
@@ -878,16 +1011,16 @@ export default function Pricing() {
                   </div>
                 ) : (
                   <div>
-                    <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">Tier Upgrade</h2>
-                    <p className="text-xs text-gray-400 font-sans italic mb-6">Unlock active verified credentials instantly via secured billing handshake</p>
+                    <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">{t('tier_upgrade')}</h2>
+                    <p className="text-xs text-gray-400 font-sans italic mb-6">{t('tier_upgrade_desc')}</p>
 
                     <div className="mb-6 p-5 bg-blue-50/60 border border-blue-100 rounded-3xl flex items-center justify-between">
                       <div>
-                        <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest">Selected Tier</p>
-                        <p className="text-sm font-black text-gray-900 font-sans mt-0.5">{selectedTier.name}</p>
+                        <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest">{t('selected_tier')}</p>
+                        <p className="text-sm font-black text-gray-900 font-sans mt-0.5">{tierLabel(selectedTier.name)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Review Fee</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('review_fee')}</p>
                         <p className="text-lg font-black text-blue-600 font-sans mt-0.5">RWF {selectedTier.price}</p>
                       </div>
                     </div>
@@ -901,7 +1034,7 @@ export default function Pricing() {
 
                     <div className="space-y-6">
                     <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Gateway Billing Partner</label>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('gateway_billing_partner')}</label>
                       <div className="grid grid-cols-2 gap-3">
                         <button 
                           type="button"
@@ -912,7 +1045,7 @@ export default function Pricing() {
                           }`}
                         >
                           <Smartphone size={22} className={checkoutMethod === 'momo' ? 'text-amber-600' : ''} />
-                          <span className="font-sans text-[10px] font-black uppercase tracking-tight">MTN MoMo Gateway</span>
+                          <span className="font-sans text-[10px] font-black uppercase tracking-tight">{t('momo_gateway')}</span>
                         </button>
                         <button 
                           type="button"
@@ -923,7 +1056,7 @@ export default function Pricing() {
                           }`}
                         >
                           <CreditCard size={22} className={checkoutMethod === 'card' ? 'text-blue-600' : ''} />
-                          <span className="font-sans text-[10px] font-black uppercase tracking-tight">Debit Card Gate</span>
+                          <span className="font-sans text-[10px] font-black uppercase tracking-tight">{t('debit_card_gate')}</span>
                         </button>
                       </div>
                     </div>
@@ -932,30 +1065,30 @@ export default function Pricing() {
                       <div className="space-y-4">
                         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4.5 text-xs text-amber-950 font-sans leading-relaxed">
                           <p className="font-extrabold text-[10px] uppercase tracking-wider text-amber-900 mb-1 flex items-center gap-1">
-                            <span>📲 Manual MTN MoMo Payment Instructions</span>
+                            <span>{t('manual_momo_instructions')}</span>
                           </p>
                           <p className="mb-2">
-                            Please send exactly <strong>RWF {selectedTier.price}</strong> from your handset using the following credentials:
+                            {t('momo_send_exact_1')}<strong>RWF {selectedTier.price}</strong>{t('momo_send_exact_2')}
                           </p>
                           <div className="bg-white/80 border border-amber-100 rounded-xl p-3 font-mono text-[11px] space-y-1">
-                            <div><span className="text-gray-500">Momo Code:</span> <strong className="text-gray-900">*182*8*1*+250783274084#</strong></div>
-                            <div><span className="text-gray-500">MTN Number:</span> <strong className="text-gray-900">+250 783 274 084</strong></div>
-                            <div><span className="text-gray-500">Account Name:</span> <strong className="text-gray-900">Ndivelabs Ltd</strong></div>
-                            <div><span className="text-gray-500">Support Email:</span> <strong className="text-gray-900">ndivelabs@gmail.com</strong></div>
+                            <div><span className="text-gray-500">{t('momo_code')}</span> <strong className="text-gray-900">*182*8*1*+250783274084#</strong></div>
+                            <div><span className="text-gray-500">{t('mtn_number')}</span> <strong className="text-gray-900">+250 783 274 084</strong></div>
+                            <div><span className="text-gray-500">{t('account_name')}</span> <strong className="text-gray-900">Ndivelabs Ltd</strong></div>
+                            <div><span className="text-gray-500">{t('support_email')}</span> <strong className="text-gray-900">ndivelabs@gmail.com</strong></div>
                           </div>
                           
                           <div className="mt-3.5 bg-red-50 border border-red-200 text-red-950 p-3 rounded-xl text-[10.5px] font-sans font-bold leading-normal flex flex-col gap-1">
-                            <span className="text-red-750 font-black uppercase text-[9px] tracking-wider">📞 ACTION REQUIRED: CALL ADMIN</span>
-                            <p>Once you send the MoMo payment, you MUST call our Admin at <strong className="text-red-700 underline font-mono text-[11px]">+250 783 274 084</strong> to confirm your payment in the Admin Portal. The admin is the only one who grants profile access after payment confirmation!</p>
+                            <span className="text-red-750 font-black uppercase text-[9px] tracking-wider">{t('action_required_call_admin')}</span>
+                            <p>{t('call_admin_body_1')}<strong className="text-red-700 underline font-mono text-[11px]">+250 783 274 084</strong>{t('call_admin_body_2')}</p>
                           </div>
 
                           <p className="mt-3 text-[10px] text-amber-805">
-                            Once sent, enter your sender phone number and transaction reference details below.
+                            {t('momo_after_sent')}
                           </p>
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-1.5">Your Sender Phone Number</label>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-1.5">{t('sender_phone_number')}</label>
                           <input 
                             type="text" 
                             disabled={checkoutLoading}
@@ -967,13 +1100,13 @@ export default function Pricing() {
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-1.5">MTN Transaction Reference / ID</label>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-1.5">{t('momo_tx_reference')}</label>
                           <input 
                             type="text" 
                             disabled={checkoutLoading}
                             value={momoTxRef}
                             onChange={(e) => setMomoTxRef(e.target.value)}
-                            placeholder="e.g. TxRef-100293482"
+                            placeholder={t('momo_tx_ref_placeholder')}
                             className="w-full p-3.5 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-650 text-gray-950 font-mono"
                           />
                         </div>
@@ -981,7 +1114,7 @@ export default function Pricing() {
                     ) : (
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-1.5">Card Identifier Signature</label>
+                          <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-1.5">{t('card_identifier_signature')}</label>
                           <input 
                             type="text" 
                             disabled={checkoutLoading}
@@ -992,7 +1125,7 @@ export default function Pricing() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-1">Expiry Date</label>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-1">{t('expiry_date')}</label>
                             <input 
                               type="text" 
                               disabled={checkoutLoading}
@@ -1002,7 +1135,7 @@ export default function Pricing() {
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-1">Security Code (CVC)</label>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-1">{t('security_code_cvc')}</label>
                             <input 
                               type="text" 
                               disabled={checkoutLoading}
@@ -1024,10 +1157,10 @@ export default function Pricing() {
                       {checkoutLoading ? (
                         <>
                           <Loader2 size={16} className="animate-spin" />
-                          <span>Submitting Payment Details...</span>
+                          <span>{t('submitting_payment_details')}</span>
                         </>
                       ) : (
-                        <span>{checkoutMethod === 'momo' ? 'Submit MoMo Payment Reference' : 'Verify and Unlock Tier'}</span>
+                        <span>{checkoutMethod === 'momo' ? t('submit_momo_reference') : t('verify_unlock_tier')}</span>
                       )}
                     </button>
                   </div>
@@ -1038,35 +1171,35 @@ export default function Pricing() {
                   <div className="h-16 w-16 bg-green-50 text-green-600 border border-green-200 rounded-full flex items-center justify-center mb-6 mx-auto animate-bounce">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h3 className="text-2xl font-black text-gray-905 font-sans uppercase tracking-tight mb-2">Escrow Sent!</h3>
+                  <h3 className="text-2xl font-black text-gray-905 font-sans uppercase tracking-tight mb-2">{t('escrow_sent')}</h3>
                   <p className="text-xs font-sans text-amber-600 font-extrabold uppercase tracking-widest mb-4 animate-pulse">
-                    Status: Awaiting Admin Approval
+                    {t('status_awaiting_admin_approval')}
                   </p>
                   <p className="text-sm font-sans text-gray-500 leading-relaxed max-w-sm mx-auto mb-6">
-                    Your payment details have been successfully logged. Once the Admin verifies the transfer to our official MTN MoMo number <strong>+250 783 274 084</strong>, your <strong>{selectedTier?.name}</strong> membership tier will be activated. For questions, reach out to <strong>ndivelabs@gmail.com</strong>.
+                    {t('payment_logged_body_1')}<strong>+250 783 274 084</strong>{t('payment_logged_body_2')}<strong>{tierLabel(selectedTier?.name)}</strong>{t('payment_logged_body_3')}<strong>ndivelabs@gmail.com</strong>{t('payment_logged_body_4')}
                   </p>
 
                   <div className="bg-red-50 border border-red-200 text-red-950 rounded-2xl p-4.5 text-xs text-left font-sans leading-relaxed mb-6">
                     <p className="font-extrabold text-[10px] uppercase tracking-wider text-red-900 mb-1 flex items-center gap-1.5">
-                      <span>📞 CALL ADMIN NOW FOR INSTANT ACTIVATION</span>
+                      <span>{t('call_admin_instant_activation')}</span>
                     </p>
                     <p className="mb-2">
-                      Because our system is authenticated and secure, the Admin must manually approve and activate your account inside the Admin Portal once payment is verified.
+                      {t('call_admin_manual_approval')}
                     </p>
                     <div className="bg-white border border-red-100 rounded-xl p-3 text-center space-y-1">
-                      <p className="text-[10px] uppercase font-black tracking-widest text-gray-400">ADMIN PHONE NUMBER TO CALL</p>
+                      <p className="text-[10px] uppercase font-black tracking-widest text-gray-400">{t('admin_phone_to_call')}</p>
                       <p className="text-lg font-black text-red-650 tracking-tight font-mono">+250 783 274 084</p>
-                      <p className="text-[9px] text-gray-500 font-bold italic">Call now to activate your access instantly!</p>
+                      <p className="text-[9px] text-gray-500 font-bold italic">{t('call_now_activate')}</p>
                     </div>
                   </div>
                   
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-left space-y-2 mb-8 uppercase font-sans text-[10px] font-black tracking-widest text-gray-500">
                     <div className="flex justify-between">
-                      <span>Purchased Plan:</span>
-                      <span className="text-gray-955 text-right font-extrabold">{selectedTier.name}</span>
+                      <span>{t('purchased_plan')}</span>
+                      <span className="text-gray-955 text-right font-extrabold">{tierLabel(selectedTier.name)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Merchant Ref:</span>
+                      <span>{t('merchant_ref')}</span>
                       <span className="text-gray-955 text-right font-mono">PAY-TIER-{Math.floor(10000 + Math.random() * 90000)}</span>
                     </div>
                   </div>
@@ -1075,7 +1208,7 @@ export default function Pricing() {
                     onClick={() => setShowCheckoutModal(false)}
                     className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg cursor-pointer"
                   >
-                    Done
+                    {t('done')}
                   </button>
                 </div>
               )}
@@ -1115,16 +1248,16 @@ export default function Pricing() {
                     <MessageSquare size={24} />
                   </div>
                   
-                  <h2 className="text-2xl font-black text-gray-955 font-sans mb-1 uppercase tracking-tight">Enterprise Booking</h2>
-                  <p className="text-xs text-gray-400 font-sans italic mb-4">Get connected to a dedicated Kigali executive on corporate volume hiring</p>
+                  <h2 className="text-2xl font-black text-gray-955 font-sans mb-1 uppercase tracking-tight">{t('enterprise_booking')}</h2>
+                  <p className="text-xs text-gray-400 font-sans italic mb-4">{t('enterprise_booking_desc')}</p>
 
                   <div className="mb-6 p-4 bg-indigo-50/50 border border-indigo-105 rounded-2xl space-y-2 text-[10px] font-sans font-black uppercase tracking-widest text-indigo-900">
                     <div className="flex items-center justify-between">
-                      <span>Phone / WhatsApp:</span>
+                      <span>{t('phone_whatsapp_label')}</span>
                       <a href="https://wa.me/250783274084" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-extrabold">+250 783 274 084</a>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Office Location:</span>
+                      <span>{t('office_location_label')}</span>
                       <span className="text-indigo-600 font-extrabold">Kicukiro, Kigali</span>
                     </div>
                   </div>
@@ -1132,24 +1265,24 @@ export default function Pricing() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">Full Name</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">{t('full_name')}</label>
                         <input 
                           type="text" 
                           required
                           value={entName}
                           onChange={(e) => setEntName(e.target.value)}
-                          placeholder="john..."
+                          placeholder={t('placeholder_ent_name')}
                           className="w-full p-3 rounded-lg border border-gray-200 outline-none text-xs font-bold font-sans bg-gray-50 focus:bg-white focus:border-blue-600"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">Corporate Email</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">{t('corporate_email')}</label>
                         <input 
                           type="email" 
                           required
                           value={entEmail}
                           onChange={(e) => setEntEmail(e.target.value)}
-                          placeholder="linekora@company.rw"
+                          placeholder={t('placeholder_ent_email')}
                           className="w-full p-3 rounded-lg border border-gray-200 outline-none text-xs font-bold font-sans bg-gray-50 focus:bg-white focus:border-blue-600"
                         />
                       </div>
@@ -1157,36 +1290,36 @@ export default function Pricing() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">Organization Name</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">{t('organization_name')}</label>
                         <input 
                           type="text" 
                           value={entOrg}
                           onChange={(e) => setEntOrg(e.target.value)}
-                          placeholder="Linekora Devs Ltd"
+                          placeholder={t('placeholder_ent_org')}
                           className="w-full p-3 rounded-lg border border-gray-200 outline-none text-xs font-bold font-sans bg-gray-50 focus:bg-white focus:border-blue-600"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">Hiring Volume / Size</label>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">{t('hiring_volume_size')}</label>
                         <select 
                           value={entSize}
                           onChange={(e) => setEntSize(e.target.value)}
                           className="w-full p-3 rounded-lg border border-gray-200 outline-none text-xs font-bold font-sans bg-gray-50 focus:bg-white"
                         >
-                          <option value="10-50">10 to 50 active placements</option>
-                          <option value="50-200">50 to 200 workers</option>
-                          <option value="200+">More than 200 workers</option>
+                          <option value="10-50">{t('volume_10_50')}</option>
+                          <option value="50-200">{t('volume_50_200')}</option>
+                          <option value="200+">{t('volume_200_plus')}</option>
                         </select>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">Tell us about your requirements</label>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 px-1">{t('requirements_label')}</label>
                       <textarea 
                         rows={3}
                         value={entMessage}
                         onChange={(e) => setEntMessage(e.target.value)}
-                        placeholder="Need biometric validation, custom monthly pay disbursements and tax escrow compliance..."
+                        placeholder={t('placeholder_ent_message')}
                         className="w-full p-3 rounded-lg border border-gray-200 outline-none text-xs font-bold font-sans bg-gray-50 focus:bg-white text-gray-900 resize-none"
                       />
                     </div>
@@ -1199,10 +1332,10 @@ export default function Pricing() {
                       {entLoading ? (
                         <>
                           <Loader2 size={14} className="animate-spin" />
-                          <span>Dispatching Corporate Request...</span>
+                          <span>{t('dispatching_corporate_request')}</span>
                         </>
                       ) : (
-                        <span>Enquire Enterprise Solution</span>
+                        <span>{t('enquire_enterprise_solution')}</span>
                       )}
                     </button>
                   </div>
@@ -1212,16 +1345,16 @@ export default function Pricing() {
                   <div className="h-16 w-16 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-full flex items-center justify-center mb-6 mx-auto animate-bounce">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h3 className="text-2xl font-black text-gray-905 font-sans uppercase tracking-tight mb-2">Request Processed</h3>
+                  <h3 className="text-2xl font-black text-gray-905 font-sans uppercase tracking-tight mb-2">{t('request_processed')}</h3>
                   <p className="text-sm font-sans text-gray-500 leading-relaxed max-w-sm mx-auto mb-6">
-                    Our team received your hiring parameters summary. We will contact you at <strong>{entEmail}</strong> within 12 standard business hours.
+                    {t('enterprise_contacted_body_1')}<strong>{entEmail}</strong>{t('enterprise_contacted_body_2')}
                   </p>
                   
                   <button 
                     onClick={() => setShowEnterpriseModal(false)}
                     className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg cursor-pointer"
                   >
-                    Close Dialog
+                    {t('close_dialog')}
                   </button>
                 </div>
               )}

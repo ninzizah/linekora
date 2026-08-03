@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, Lock, Unlock, X, Eye, EyeOff, ShieldCheck, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../lib/LanguageContext';
 
 interface AdminUnlockModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface AdminUnlockModalProps {
 }
 
 export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUnlockModalProps) {
+  const { t } = useLanguage();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -44,7 +46,7 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
       if (username === CORRECT_USERNAME && password === CORRECT_PASSWORD) {
         onSuccess();
       } else {
-        setError('UNAUTHORIZED CREDENTIALS. Secure access is denied.');
+        setError(t('unauthorized_credentials'));
         setLoading(false);
       }
     }, 1200);
@@ -88,9 +90,9 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
             }`}>
               <ShieldAlert size={26} />
             </div>
-            <h2 className="text-xl font-black font-sans tracking-tight text-white uppercase">LINEKORA Secure Gate</h2>
+            <h2 className="text-xl font-black font-sans tracking-tight text-white uppercase">{t('secure_gate')}</h2>
             <p className="text-[9px] text-gray-400 font-extrabold uppercase tracking-widest mt-1.5 px-3 py-1 bg-gray-950 rounded border border-gray-850">
-              Operations Control Area
+              {t('operations_control_area')}
             </p>
           </div>
 
@@ -108,7 +110,7 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
             {/* Username Entry */}
             <div>
               <label className="block text-[9px] font-black uppercase text-gray-500 tracking-wider mb-1.5">
-                Admin Username
+                {t('admin_username')}
               </label>
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-650">
@@ -121,7 +123,7 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
                   disabled={loading}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. linekora_admin"
+                  placeholder={t('admin_username_placeholder')}
                   className="w-full pl-11 pr-4 py-3 bg-gray-950 border border-gray-850 rounded-xl text-xs font-bold text-white outline-none focus:border-red-600 transition-colors"
                 />
               </div>
@@ -130,7 +132,7 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
             {/* Password Entry */}
             <div>
               <label className="block text-[9px] font-black uppercase text-gray-500 tracking-wider mb-1.5">
-                Admin Passkey
+                {t('admin_passkey')}
               </label>
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-650">
@@ -157,8 +159,8 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
 
             {/* Explanatory Guide hint */}
             <div className="p-3 bg-gray-950 rounded-xl border border-gray-900 text-[10px] text-gray-400 font-medium leading-relaxed">
-              <span className="font-extrabold text-red-500 uppercase block mb-0.5">Note:</span>
-              Please input terminal administrative operator profile credentials. Keep security credentials confidential.
+              <span className="font-extrabold text-red-500 uppercase block mb-0.5">{t('note')}</span>
+              {t('admin_credentials_hint')}
             </div>
 
             {/* Action button */}
@@ -174,12 +176,12 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
               {loading ? (
                 <>
                   <div className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0"></div>
-                  Verifying Operator...
+                  {t('verifying_operator')}
                 </>
               ) : (
                 <>
                   <Unlock size={13} />
-                  Authorize Portal Access
+                  {t('authorize_portal_access')}
                 </>
               )}
             </button>

@@ -8,11 +8,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { saveVerificationDocs, updateUser } from '../../lib/api';
+import { useLanguage } from '../../lib/LanguageContext';
 
 type VerificationStep = 'intro' | 'documents' | 'address' | 'otp' | 'completed';
 
 export default function CompanyVerification() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [step, setStep] = useState<VerificationStep>('intro');
   const [isUploading, setIsUploading] = useState(false);
   const [tinNumber, setTinNumber] = useState('');
@@ -83,8 +85,8 @@ export default function CompanyVerification() {
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-50 text-blue-600 mb-6 border border-blue-100">
             <ShieldCheck size={32} />
           </div>
-          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Company Verification</h1>
-          <p className="text-gray-500 font-sans font-medium mt-2 italic">Official verification is required for the "Verified Employer" badge.</p>
+          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('company_verification')}</h1>
+          <p className="text-gray-500 font-sans font-medium mt-2 italic">{t('verification_required_employer_badge')}</p>
         </header>
 
         {isAlreadyVerified ? (
@@ -93,16 +95,16 @@ export default function CompanyVerification() {
               <div className="h-24 w-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-8 border border-green-100 shadow-lg shadow-green-100">
                 <ShieldCheck size={48} strokeWidth={2.5} />
               </div>
-              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Already Verified!</h2>
+              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">{t('already_verified')}</h2>
               <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
-                Your company has been verified. Your Verified Company badge is active.
+                {t('company_already_verified_desc')}
               </p>
               <div className="bg-green-50 border border-green-200 p-6 rounded-3xl text-xs font-sans font-bold leading-relaxed mb-8 max-w-md">
-                <span className="text-green-700 font-black uppercase text-[10px] tracking-wider block mb-2">Verified Company Badge Active</span>
-                <p className="text-green-800">Post unlimited jobs and attract verified workers who prioritize trusted employers.</p>
+                <span className="text-green-700 font-black uppercase text-[10px] tracking-wider block mb-2">{t('verified_company_badge_active')}</span>
+                <p className="text-green-800">{t('verified_company_badge_desc')}</p>
               </div>
               <button onClick={() => window.location.href = '/dashboard/company'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
-                Go to Dashboard
+                {t('go_to_dashboard')}
               </button>
             </div>
           </div>
@@ -112,12 +114,12 @@ export default function CompanyVerification() {
               <div className="h-24 w-24 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center mb-8 border border-yellow-100 shadow-lg shadow-yellow-100">
                 <ShieldCheck size={48} strokeWidth={2.5} className="animate-pulse" />
               </div>
-              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Under Review</h2>
+              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">{t('under_review')}</h2>
               <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
-                Your company documents have been submitted and are being reviewed by our admin team.
+                {t('company_under_review_desc')}
               </p>
               <button onClick={() => window.location.href = '/dashboard/company'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
-                Go to Dashboard
+                {t('go_to_dashboard')}
               </button>
             </div>
           </div>
@@ -147,12 +149,12 @@ export default function CompanyVerification() {
           <AnimatePresence mode="wait">
             {step === 'intro' && (
               <motion.div key="intro" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <h3 className="text-2xl font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">Employer Trust Program</h3>
+                <h3 className="text-2xl font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">{t('employer_trust_program')}</h3>
                 <div className="space-y-6 mb-10">
                   {[
-                    { title: "Verified Badge", desc: "Show workers your business is legitimate and verified by admin.", icon: <Building size={20} className="text-blue-600" /> },
-                    { title: "Trust Label", desc: "Attract 3x more professional talent with a 'Trusted Employer' label.", icon: <ShieldCheck size={20} className="text-green-500" /> },
-                    { title: "Unlimited Postings", desc: "Remove limits and post as many job openings as you need.", icon: <Zap size={20} className="text-yellow-500" /> }
+                    { title: t('feat_verified_badge'), desc: t('feat_verified_badge_desc'), icon: <Building size={20} className="text-blue-600" /> },
+                    { title: t('feat_trust_label'), desc: t('feat_trust_label_desc'), icon: <ShieldCheck size={20} className="text-green-500" /> },
+                    { title: t('feat_unlimited_postings'), desc: t('feat_unlimited_postings_desc'), icon: <Zap size={20} className="text-yellow-500" /> }
                   ].map((feat, i) => (
                     <div key={i} className="flex items-start gap-4">
                       <div className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
@@ -166,7 +168,7 @@ export default function CompanyVerification() {
                   ))}
                 </div>
                 <button onClick={() => setStep('documents')} className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] hover:shadow-xl hover:shadow-blue-200 transition-all flex items-center justify-center gap-2">
-                  Start Business Verification
+                  {t('start_business_verification')}
                   <ChevronRight size={20} />
                 </button>
               </motion.div>
@@ -175,23 +177,23 @@ export default function CompanyVerification() {
             {step === 'documents' && (
               <motion.div key="docs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight">Business Registration</h3>
+                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight">{t('business_registration')}</h3>
                   <button
                     type="button"
                     onClick={handleAutoFillSampleCompanyDocs}
                     className="text-xs font-bold text-blue-600 hover:underline font-sans cursor-pointer bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100"
                   >
-                    ⚡ Autofill Sample Docs
+                    {t('autofill_sample_docs')}
                   </button>
                 </div>
-                <p className="text-gray-500 font-sans mb-10 text-sm italic">Upload your official RDB certificate or Business License.</p>
+                <p className="text-gray-500 font-sans mb-10 text-sm italic">{t('upload_rdb_certificate')}</p>
                 
                 <div className="space-y-6 mb-10">
                   <div className="space-y-2 px-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Tax ID / TIN Number</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{t('tax_id_tin_number')}</label>
                     <input 
                       type="text" 
-                      placeholder="e.g. 102345678"
+                      placeholder={t('placeholder_tin')}
                       value={tinNumber}
                       onChange={(e) => setTinNumber(e.target.value)}
                       className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm"
@@ -217,12 +219,12 @@ export default function CompanyVerification() {
                       <Upload size={28} />
                     </div>
                     <p className="text-xs font-black text-gray-900 uppercase tracking-widest italic">
-                      {certFileName ? `Selected: ${certFileName}` : 'Upload Certificate (PDF/Image)'}
+                      {certFileName ? t('selected_file', { name: certFileName }) : t('upload_certificate')}
                     </p>
                     {certFile && (
-                      <p className="text-[10px] text-green-600 font-bold mt-2">✓ Certificate Attached Successfully</p>
+                      <p className="text-[10px] text-green-600 font-bold mt-2">{t('certificate_attached')}</p>
                     )}
-                    <p className="text-[10px] text-gray-400 font-medium mt-2">Max size: 5MB — click here to browse</p>
+                    <p className="text-[10px] text-gray-400 font-medium mt-2">{t('max_size_click_browse')}</p>
                   </label>
                 </div>
 
@@ -235,7 +237,7 @@ export default function CompanyVerification() {
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : 'Confirm & Proceed'}
+                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : t('confirm_and_proceed')}
                   {!isUploading && <ChevronRight size={20} />}
                 </button>
               </motion.div>
@@ -243,17 +245,17 @@ export default function CompanyVerification() {
 
             {step === 'address' && (
               <motion.div key="address" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight text-center">Office Location</h3>
-                <p className="text-gray-500 font-sans mb-10 text-sm italic text-center">Verify where your business operates.</p>
+                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight text-center">{t('office_location')}</h3>
+                <p className="text-gray-500 font-sans mb-10 text-sm italic text-center">{t('verify_business_location')}</p>
                 
                 <div className="space-y-6 mb-10">
                   <div className="space-y-2 px-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Physical Address</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{t('physical_address')}</label>
                     <div className="relative">
                       <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                       <input 
                         type="text" 
-                        placeholder="Kigali City Tower, Floor 4, Suite 402"
+                        placeholder={t('placeholder_physical_address')}
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
                         className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm"
@@ -262,7 +264,7 @@ export default function CompanyVerification() {
                   </div>
 
                   <div className="space-y-2 px-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Company Website (Optional)</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{t('company_website_optional')}</label>
                     <div className="relative">
                       <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                       <input 
@@ -281,28 +283,28 @@ export default function CompanyVerification() {
                   onClick={handleNext} 
                   className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center gap-2"
                 >
-                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : 'Save & Continue'}
+                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : t('save_and_continue')}
                 </button>
               </motion.div>
             )}
 
             {step === 'otp' && (
               <motion.div key="otp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight text-center text-red-600">Admin Matching & Review</h3>
-                <p className="text-gray-500 font-sans mb-6 text-sm italic text-center">Verification matches corporate documents and representative info.</p>
+                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight text-center text-red-600">{t('admin_matching_review')}</h3>
+                <p className="text-gray-500 font-sans mb-6 text-sm italic text-center">{t('verification_matches_corporate')}</p>
                 
                 <div className="bg-red-50 border border-red-200 text-red-950 p-6 rounded-3xl text-xs font-sans font-bold leading-relaxed mb-8 space-y-4">
                   <div>
-                    <span className="text-red-750 font-black uppercase text-[10px] tracking-wider block mb-1">🚫 REPRESENTATIVE PHONE SECURITY BYPASSED</span>
+                    <span className="text-red-750 font-black uppercase text-[10px] tracking-wider block mb-1">{t('phone_security_bypassed_corporate')}</span>
                     <p>
-                      For now, we do not require SMS phone security codes. Instead, we have directly sent a **Direct Review Notification** to our Admin containing your full registration, Corporate ID, address, and representative info!
+                      {t('phone_bypassed_corporate_desc')}
                     </p>
                   </div>
                   
                   <div className="bg-white border border-red-100 rounded-2xl p-4 text-center space-y-1">
-                    <p className="text-[9px] uppercase font-black tracking-widest text-gray-400">ADMIN PHONE NUMBER TO CALL</p>
+                    <p className="text-[9px] uppercase font-black tracking-widest text-gray-400">{t('admin_phone_to_call')}</p>
                     <p className="text-lg font-black text-red-600 tracking-tight font-mono">+250 783 274 084</p>
-                    <p className="text-[9px] text-gray-500 font-bold italic">Speak with the admin to instantly confirm and grant profile access!</p>
+                    <p className="text-[9px] text-gray-500 font-bold italic">{t('admin_phone_hint')}</p>
                   </div>
                 </div>
 
@@ -311,7 +313,7 @@ export default function CompanyVerification() {
                   onClick={handleNext} 
                   className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                 >
-                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : 'Confirm & Proceed to Completed'}
+                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : t('confirm_proceed_completed')}
                   {!isUploading && <ChevronRight size={20} />}
                 </button>
               </motion.div>
@@ -323,25 +325,25 @@ export default function CompanyVerification() {
                   <div className="h-24 w-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-8 border border-blue-100 shadow-lg shadow-blue-100">
                     <ShieldCheck size={48} strokeWidth={2.5} />
                   </div>
-                  <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Under Review!</h2>
+                  <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">{t('under_review_completed')}</h2>
                   <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
-                    Your company details and documents have been sent to our Admin for review.
+                    {t('company_review_sent_desc')}
                   </p>
                   
                   <div className="bg-red-50 border border-red-200 text-red-950 p-6 rounded-3xl text-xs font-sans font-bold leading-relaxed mb-8 max-w-md text-left space-y-3">
-                    <span className="text-red-750 font-black uppercase text-[10px] tracking-wider block">📞 CONTACT ADMIN FOR ACTIVATION</span>
+                    <span className="text-red-750 font-black uppercase text-[10px] tracking-wider block">{t('contact_admin_for_activation')}</span>
                     <p>
-                      To instantly verify your corporate documents, address, and representative details, please contact our administrator directly:
+                      {t('contact_admin_corporate_desc')}
                     </p>
                     <div className="bg-white border border-red-100 rounded-2xl p-4 text-center">
-                      <p className="text-[9px] uppercase font-black tracking-widest text-gray-400">ADMIN PHONE NUMBER</p>
+                      <p className="text-[9px] uppercase font-black tracking-widest text-gray-400">{t('admin_phone_number')}</p>
                       <p className="text-lg font-black text-red-600 tracking-tight font-mono">+250 783 274 084</p>
-                      <p className="text-[9px] text-gray-500 font-bold italic mt-1">Direct call or WhatsApp to confirm your Client Badge!</p>
+                      <p className="text-[9px] text-gray-500 font-bold italic mt-1">{t('admin_whatsapp_hint')}</p>
                     </div>
                   </div>
 
                   <button onClick={() => window.location.href = '/dashboard/company'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
-                    Go to Dashboard
+                    {t('go_to_dashboard')}
                   </button>
                 </div>
               </motion.div>
@@ -354,9 +356,9 @@ export default function CompanyVerification() {
             <ShieldAlert size={20} />
           </div>
           <div>
-            <h4 className="text-xs font-black text-blue-900 font-sans uppercase tracking-widest mb-2">Why Verification Matters?</h4>
+            <h4 className="text-xs font-black text-blue-900 font-sans uppercase tracking-widest mb-2">{t('why_verification_matters')}</h4>
             <p className="text-[10px] text-blue-800 font-bold font-sans italic">
-              "Verified companies can post unlimited jobs and receive applications from 'Silver Verified' workers who only apply to trusted employers."
+              {t('why_verification_matters_desc')}
             </p>
           </div>
         </div>

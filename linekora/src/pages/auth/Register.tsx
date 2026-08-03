@@ -21,7 +21,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
-  const { language, setLanguage } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -63,7 +63,7 @@ export default function Register() {
   };
 
   const handleGoogleRegister = async () => {
-    if (!role) { setError('Please select your account type first.'); return; }
+    if (!role) { setError(t('error_select_account_type')); return; }
     setLoading(true);
     setError(null);
     try {
@@ -74,7 +74,7 @@ export default function Register() {
       navigate('/dashboard');
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') return;
-      setError(err.message || 'Google registration failed.');
+      setError(err.message || t('error_google_registration_failed'));
     } finally {
       setLoading(false);
     }
@@ -104,13 +104,13 @@ export default function Register() {
     } catch (err: any) {
       const code = err.code;
       if (code === 'auth/email-already-in-use') {
-        setError('This email is already registered. Please log in instead.');
+        setError(t('error_email_already_registered'));
       } else if (code === 'auth/weak-password') {
-        setError('Password must be at least 6 characters long.');
+        setError(t('error_weak_password'));
       } else if (code === 'auth/operation-not-allowed') {
-        setError('Email/Password sign-in is not enabled. Please check Firebase Console.');
+        setError(t('error_signin_not_enabled'));
       } else {
-        setError(err.message || 'Registration failed. Please try again.');
+        setError(err.message || t('error_registration_failed'));
       }
     } finally {
       setLoading(false);
@@ -118,9 +118,9 @@ export default function Register() {
   };
 
   const roles = [
-    { id: 'WORKER', label: 'Worker', icon: Briefcase, desc: 'Job seekers, mechanics, cleaners, freelancers.' },
-    { id: 'COMPANY', label: 'Company', icon: Building, desc: 'Businesses hiring professionals and teams.' },
-    { id: 'EMPLOYER', label: 'Individual Employer', icon: User, desc: 'Families hiring nannies, cleaners or gardeners.' },
+    { id: 'WORKER', label: t('role_worker'), icon: Briefcase, desc: t('role_worker_desc') },
+    { id: 'COMPANY', label: t('role_company'), icon: Building, desc: t('role_company_desc') },
+    { id: 'EMPLOYER', label: t('role_employer'), icon: User, desc: t('role_employer_desc') },
   ];
 
   return (
@@ -164,13 +164,13 @@ export default function Register() {
             to="/login"
             className="flex-1 text-center py-3 rounded-xl font-sans text-xs font-bold uppercase tracking-widest text-white/50 hover:text-white transition-colors"
           >
-            Log In
+            {t('login')}
           </Link>
           <Link
             to="/register"
             className="flex-1 text-center py-3 rounded-xl font-sans text-xs font-black uppercase tracking-widest bg-white text-blue-600 shadow-md"
           >
-            Sign Up
+            {t('sign_up')}
           </Link>
         </div>
 
@@ -185,8 +185,8 @@ export default function Register() {
           {/* ── STEP 1: Choose role ── */}
           {step === 1 && (
             <motion.div key="s1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-              <h2 className="font-sans text-3xl font-extrabold text-white text-center mb-2">Join LINEKORA</h2>
-              <p className="text-center text-white/50 font-sans text-sm mb-10">Select your account type to get started.</p>
+              <h2 className="font-sans text-3xl font-extrabold text-white text-center mb-2">{t('join')}</h2>
+              <p className="text-center text-white/50 font-sans text-sm mb-10">{t('select_account_type')}</p>
               <div className="grid grid-cols-1 gap-4">
                 {roles.map((r) => (
                   <button
@@ -211,19 +211,19 @@ export default function Register() {
           {/* ── STEP 2: Credentials ── */}
           {step === 2 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-              <h2 className="font-sans text-2xl font-extrabold text-white text-center mb-2">Create Your Account</h2>
+              <h2 className="font-sans text-2xl font-extrabold text-white text-center mb-2">{t('create_account')}</h2>
               <p className="text-center text-white/50 font-sans text-sm mb-8">
-                Registering as a <span className="text-blue-400 font-bold">{role?.replace('_', ' ')}</span>
+                {t('registering_as', { role: role?.replace('_', ' ') ?? '' })}
               </p>
 
               {user ? (
                 <div className="text-center">
                   <p className="text-white/70 text-sm mb-6">
-                    Signed in as <span className="text-blue-400 font-bold">{user.email}</span>
+                    {t('signed_in_as', { email: user.email ?? '' })}
                   </p>
                   <button type="button" onClick={() => setStep(3)}
                     className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-sans font-bold transition-all shadow-xl shadow-blue-900/40 flex items-center justify-center gap-2">
-                    Continue to Profile Details <ChevronRight size={18} />
+                    {t('continue_to_profile_details')} <ChevronRight size={18} />
                   </button>
                 </div>
               ) : (
@@ -243,19 +243,19 @@ export default function Register() {
                         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                       </svg>
                     )}
-                    {loading ? 'Registering...' : 'Sign up with Google'}
+                    {loading ? t('registering') : t('sign_up_google')}
                   </button>
 
                   <div className="relative my-5">
                     <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
                     <div className="relative flex justify-center">
-                      <span className="bg-transparent px-3 text-white/30 text-xs uppercase font-bold tracking-widest">or with email</span>
+                      <span className="bg-transparent px-3 text-white/30 text-xs uppercase font-bold tracking-widest">{t('or_with_email')}</span>
                     </div>
                   </div>
 
                   <form onSubmit={(e) => { e.preventDefault(); setStep(3); }} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-bold text-white/70 mb-2">Email Address</label>
+                      <label className="block text-sm font-bold text-white/70 mb-2">{t('email_address')}</label>
                       <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
                         <input type="email" required placeholder="you@example.com" {...field('email')}
@@ -263,10 +263,10 @@ export default function Register() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-white/70 mb-2">Password</label>
+                      <label className="block text-sm font-bold text-white/70 mb-2">{t('password')}</label>
                       <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
-                        <input type={showPassword ? 'text' : 'password'} required minLength={6} placeholder="Min. 6 characters" {...field('password')}
+                        <input type={showPassword ? 'text' : 'password'} required minLength={6} placeholder={t('min_6_characters')} {...field('password')}
                           className="w-full pl-12 pr-12 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none font-sans text-white placeholder-white/20 transition-all" />
                         <button type="button" onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors">
@@ -276,14 +276,14 @@ export default function Register() {
                     </div>
                     <button type="submit"
                       className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-sans font-bold transition-all shadow-xl shadow-blue-900/40 flex items-center justify-center gap-2">
-                      Next: Profile Details <ChevronRight size={18} />
+                      {t('next_profile_details')} <ChevronRight size={18} />
                     </button>
                   </form>
                 </>
               )}
 
               <button type="button" onClick={() => setStep(1)} className="w-full py-3 mt-3 text-white/40 font-sans font-bold text-sm hover:text-white/70 transition-colors">
-                ← Go back
+                {t('go_back')}
               </button>
             </motion.div>
           )}
@@ -291,20 +291,20 @@ export default function Register() {
           {/* ── STEP 3: Profile details ── */}
           {step === 3 && (
             <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-              <h2 className="font-sans text-2xl font-extrabold text-white text-center mb-2">Profile Details</h2>
-              <p className="text-center text-white/50 text-sm mb-8">Tell us a bit about yourself.</p>
+              <h2 className="font-sans text-2xl font-extrabold text-white text-center mb-2">{t('profile_details')}</h2>
+              <p className="text-center text-white/50 text-sm mb-8">{t('tell_us_about')}</p>
 
               <form onSubmit={handleFinalSubmit} className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-bold text-white/70 mb-2">
-                      {role === 'COMPANY' ? 'Company Name' : 'Full Name'}
+                      {role === 'COMPANY' ? t('company_name') : t('full_name')}
                     </label>
                     <input type="text" required placeholder={role === 'COMPANY' ? 'Tech Solutions Ltd' : 'Jean Claude'} {...field('displayName')}
                       className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 outline-none font-sans text-white placeholder-white/20 transition-all" />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-white/70 mb-2">Phone Number</label>
+                    <label className="block text-sm font-bold text-white/70 mb-2">{t('phone_number')}</label>
                     <div className="relative">
                       <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
                       <input type="tel" required placeholder="+250..." {...field('phone')}
@@ -314,7 +314,7 @@ export default function Register() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-white/70 mb-2">Location / District</label>
+                  <label className="block text-sm font-bold text-white/70 mb-2">{t('location_district')}</label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
                     <input type="text" required placeholder="e.g. Gasabo, Kigali" {...field('location')}
@@ -325,18 +325,18 @@ export default function Register() {
                 {role === 'WORKER' && (
                   <>
                     <div>
-                      <label className="block text-sm font-bold text-white/70 mb-2">Skills (comma-separated)</label>
+                      <label className="block text-sm font-bold text-white/70 mb-2">{t('skills_comma_separated')}</label>
                       <input type="text" placeholder="Cleaning, Plumbing, Gardening" {...field('skills')}
                         className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 outline-none font-sans text-white placeholder-white/20 transition-all" />
                     </div>
                     <div className="grid grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-sm font-bold text-white/70 mb-2">Years Experience</label>
+                        <label className="block text-sm font-bold text-white/70 mb-2">{t('years_experience')}</label>
                         <input type="number" placeholder="e.g. 3" {...field('experience')}
                           className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 outline-none font-sans text-white placeholder-white/20 transition-all" />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-white/70 mb-2">Education</label>
+                        <label className="block text-sm font-bold text-white/70 mb-2">{t('education')}</label>
                         <input type="text" placeholder="Secondary / Diploma" {...field('education')}
                           className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 outline-none font-sans text-white placeholder-white/20 transition-all" />
                       </div>
@@ -347,12 +347,12 @@ export default function Register() {
                 {role === 'COMPANY' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-bold text-white/70 mb-2">Registration Number</label>
+                      <label className="block text-sm font-bold text-white/70 mb-2">{t('registration_number')}</label>
                       <input type="text" required placeholder="RDB Cert. Number" {...field('registrationNumber')}
                         className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 outline-none font-sans text-white placeholder-white/20 transition-all" />
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-white/70 mb-2">Tax ID (TIN)</label>
+                      <label className="block text-sm font-bold text-white/70 mb-2">{t('tax_id')}</label>
                       <input type="text" required placeholder="Your TIN Number" {...field('taxId')}
                         className="w-full px-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 outline-none font-sans text-white placeholder-white/20 transition-all" />
                     </div>
@@ -371,12 +371,12 @@ export default function Register() {
                   {loading ? (
                     <div className="h-5 w-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <>Complete Registration <ChevronRight size={18} /></>
+                    <>{t('complete_registration')} <ChevronRight size={18} /></>
                   )}
                 </button>
 
                 <button type="button" onClick={() => setStep(2)} className="w-full py-3 text-white/40 font-sans font-bold text-sm hover:text-white/70 transition-colors">
-                  ← Go back
+                  {t('go_back')}
                 </button>
               </form>
             </motion.div>

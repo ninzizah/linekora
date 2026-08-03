@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface ChatItem {
   id: number;
@@ -36,6 +37,7 @@ interface ToastAlert {
 }
 
 export default function CompanyMessages() {
+  const { t } = useLanguage();
   const [activeChat, setActiveChat] = useState<number | null>(null);
   const [message, setMessage] = useState('');
 
@@ -123,11 +125,11 @@ export default function CompanyMessages() {
 
     // Update last message in sidebar listing
     setChatsList(prev => prev.map(chat => 
-      chat.id === activeChat ? { ...chat, lastMsg: message.trim(), time: 'Just now' } : chat
+      chat.id === activeChat ? { ...chat, lastMsg: message.trim(), time: t('just_now') } : chat
     ));
 
     setMessage('');
-    addToast('Message Dispatched 🛫', "Message routed successfully to professional's smartphone pager.", 'success');
+    addToast(t('toast_message_dispatched'), t('toast_message_routed_company'), 'success');
   };
 
   // Action: Toggle Pin Chat
@@ -137,8 +139,8 @@ export default function CompanyMessages() {
       if (chat.id === activeChat) {
         const nextPin = !chat.pinned;
         addToast(
-          nextPin ? 'Pinned Conversation 📌' : 'Unpinned Conversation 📍',
-          nextPin ? `"${chat.name}" is now pinned to the top of talent inbox.` : `"${chat.name}" unpinned from top list.`,
+          nextPin ? t('toast_pinned') : t('toast_unpinned'),
+          nextPin ? t('toast_pinned_msg_company', { name: chat.name }) : t('toast_unpinned_msg_company', { name: chat.name }),
           'success'
         );
         return { ...chat, pinned: nextPin };
@@ -155,8 +157,8 @@ export default function CompanyMessages() {
       if (chat.id === activeChat) {
         const nextMute = !chat.muted;
         addToast(
-          nextMute ? 'Alerts Muted 🔕' : 'Alerts Restored 🔔',
-          nextMute ? `Sound alerts muted for applicant "${chat.name}".` : `Notifications restored for applicant "${chat.name}".`,
+          nextMute ? t('toast_alerts_muted') : t('toast_alerts_restored'),
+          nextMute ? t('toast_muted_msg_company', { name: chat.name }) : t('toast_unmuted_msg_company', { name: chat.name }),
           'info'
         );
         return { ...chat, muted: nextMute };
@@ -177,8 +179,8 @@ export default function CompanyMessages() {
     }));
 
     addToast(
-      'Clean Workspace ✨',
-      `Chat history for ${targetChat?.name} has been refreshed locally.`,
+      t('toast_clean_workspace'),
+      t('toast_purged_msg_company', { name: targetChat?.name }),
       'info'
     );
     setIsHeaderDropdownOpen(false);
@@ -195,8 +197,8 @@ export default function CompanyMessages() {
       setSubmittingReport(false);
       setShowReportModal(false);
       addToast(
-        'Inquest Lodged 🛡️',
-        `Violation report against ${targetChat?.name} submitted to platform security auditors.`,
+        t('toast_inquest_lodged'),
+        t('toast_report_filed_msg_company', { name: targetChat?.name }),
         'success'
       );
     }, 1200);
@@ -211,12 +213,12 @@ export default function CompanyMessages() {
         {/* Sidebar */}
         <div className="w-80 border-r border-gray-50 flex flex-col shrink-0">
           <div className="p-6 border-b border-gray-50">
-            <h2 className="text-xl font-black text-gray-900 font-sans tracking-tight mb-6 uppercase">Talent Messages</h2>
+            <h2 className="text-xl font-black text-gray-900 font-sans tracking-tight mb-6 uppercase">{t('talent_messages')}</h2>
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
               <input 
                 type="text" 
-                placeholder="Search talent..." 
+                placeholder={t('search_talent')} 
                 className="w-full pl-12 pr-4 py-3 rounded-2xl bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all"
               />
             </div>
@@ -276,7 +278,7 @@ export default function CompanyMessages() {
                     <div className="flex items-center gap-1.5">
                       <div className={`h-1.5 w-1.5 rounded-full ${currentChatObj.online ? 'bg-green-500' : 'bg-gray-300'}`} />
                       <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                        {currentChatObj.online ? 'Active Now' : 'Offline'}
+                        {currentChatObj.online ? t('active_now') : t('offline')}
                       </span>
                     </div>
                   </div>
@@ -284,13 +286,13 @@ export default function CompanyMessages() {
                 
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => addToast('Hiring Call Node...', "Initiating LINEKORA corporate vocal bridge setup...", 'info')}
+                    onClick={() => addToast(t('toast_hiring_call_node'), t('toast_hiring_call_msg'), 'info')}
                     className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                   >
                     <Phone size={18} />
                   </button>
                   <button 
-                    onClick={() => addToast('Joining Video Portal...', "Starting corporate high-definition peer stream...", 'info')}
+                    onClick={() => addToast(t('toast_joining_video_portal'), t('toast_joining_video_msg'), 'info')}
                     className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                   >
                     <Video size={18} />
@@ -322,7 +324,7 @@ export default function CompanyMessages() {
                               className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <Pin size={14} className="text-blue-500" />
-                              <span>{currentChatObj.pinned ? 'Unpin Chat' : 'Pin Convers.'}</span>
+                              <span>{currentChatObj.pinned ? t('unpin_chat') : t('pin_chat')}</span>
                             </button>
 
                             <button 
@@ -330,7 +332,7 @@ export default function CompanyMessages() {
                               className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-indigo-650 hover:bg-indigo-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <VolumeX size={14} className="text-indigo-500" />
-                              <span>{currentChatObj.muted ? 'Unmute Alerts' : 'Mute Alerts'}</span>
+                              <span>{currentChatObj.muted ? t('unmute_alerts') : t('mute_alerts')}</span>
                             </button>
 
                             <button 
@@ -338,7 +340,7 @@ export default function CompanyMessages() {
                               className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-red-650 hover:bg-red-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <Trash size={14} className="text-red-400" />
-                              <span>Clear History</span>
+                              <span>{t('clear_history')}</span>
                             </button>
 
                             <div className="border-t border-gray-100 my-1.5" />
@@ -351,7 +353,7 @@ export default function CompanyMessages() {
                               className="w-full text-left px-4 py-3 text-xs font-black text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <Flag size={14} className="text-red-500" />
-                              <span>Report Profile</span>
+                              <span>{t('report_profile')}</span>
                             </button>
                           </motion.div>
                         </>
@@ -365,7 +367,7 @@ export default function CompanyMessages() {
               <div className="flex-1 overflow-y-auto p-8 space-y-6">
                 <div className="flex justify-center">
                   <div className="px-4 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-black text-gray-400 uppercase tracking-widest shadow-sm font-sans">
-                    Hiring Stream Coordinates Secure
+                    {t('hiring_stream_coordinates_secure')}
                   </div>
                 </div>
 
@@ -391,8 +393,8 @@ export default function CompanyMessages() {
                 ) : (
                   <div className="py-24 text-center">
                     <MessageSquare size={36} className="mx-auto text-gray-300 mb-3" />
-                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none">No active transcripts</p>
-                    <p className="text-[10px] text-gray-400 italic mt-1 font-sans">Begin the interview dialogue sequence below.</p>
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none">{t('no_active_transcripts')}</p>
+                    <p className="text-[10px] text-gray-400 italic mt-1 font-sans">{t('begin_interview_dialogue')}</p>
                   </div>
                 )}
               </div>
@@ -400,7 +402,7 @@ export default function CompanyMessages() {
               {/* Input */}
               <div className="p-6 bg-white border-t border-gray-50 flex items-center gap-4">
                 <button 
-                  onClick={() => addToast('Corporate Node Extra', "Contract attachments and billing forms in chat is incoming in v2.4.", 'info')}
+                  onClick={() => addToast(t('toast_corporate_node_extra'), t('toast_corporate_node_msg'), 'info')}
                   className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
                 >
                   <Plus size={24} />
@@ -411,7 +413,7 @@ export default function CompanyMessages() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Send a message to talent..." 
+                    placeholder={t('placeholder_send_message_talent')} 
                     className="w-full pl-6 pr-14 py-4 rounded-[2.5rem] bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all border"
                   />
                   <button 
@@ -428,9 +430,9 @@ export default function CompanyMessages() {
               <div className="h-20 w-20 bg-gray-105 rounded-[2rem] flex items-center justify-center text-gray-300 mb-6">
                 <Users size={32} />
               </div>
-              <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">Hire Verified Talent</h3>
+              <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{t('hire_verified_talent')}</h3>
               <p className="text-gray-500 font-sans text-sm mt-1 max-w-xs italic">
-                Communicate directly with applicants and manage your hiring pipeline.
+                {t('communicate_with_applicants')}
               </p>
             </div>
           )}
@@ -465,30 +467,30 @@ export default function CompanyMessages() {
                 <AlertTriangle size={24} />
               </div>
 
-              <h3 className="text-xl font-black text-gray-955 font-sans uppercase">Report "{currentChatObj.name}"</h3>
-              <p className="text-xs text-gray-400 font-sans italic mt-1 mb-8">Incident files are recorded and filed to LINEKORA Security Center.</p>
+              <h3 className="text-xl font-black text-gray-955 font-sans uppercase">{t('report_user_title', { name: currentChatObj.name })}</h3>
+              <p className="text-xs text-gray-400 font-sans italic mt-1 mb-8">{t('incident_files_recorded')}</p>
 
               <form onSubmit={handleSubmitReport} className="space-y-6">
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Issue / Flag Reason</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('issue_flag_reason')}</label>
                   <select 
                     value={reportReason}
                     onChange={(e) => setReportReason(e.target.value)}
                     className="w-full px-5 py-3.5 rounded-xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-red-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all focus:ring-4 focus:ring-red-10% cursor-pointer"
                   >
-                    <option value="scam">Fake details or proxy profile scamming</option>
-                    <option value="spam">Excessive or duplicate hiring solicitation</option>
-                    <option value="abuse">Unprofessional conduct or abuse</option>
-                    <option value="offload">Trying to collect cash outside escrow locks</option>
+                    <option value="scam">{t('reason_fake_details')}</option>
+                    <option value="spam">{t('reason_excessive_solicitation')}</option>
+                    <option value="abuse">{t('reason_unprofessional_conduct')}</option>
+                    <option value="offload">{t('reason_collect_cash_off_escrow')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Context or Details</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('context_or_details')}</label>
                   <textarea 
                     value={reportComments}
                     onChange={(e) => setReportComments(e.target.value)}
-                    placeholder="Explain what happened. Providing chat logs details is highly recommended..."
+                    placeholder={t('placeholder_report_comments')}
                     className="w-full h-24 px-5 py-3.5 rounded-xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-red-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all focus:ring-4 focus:ring-red-10% resize-none"
                   />
                 </div>
@@ -499,7 +501,7 @@ export default function CompanyMessages() {
                     onClick={() => setShowReportModal(false)}
                     className="py-3.5 bg-gray-50 hover:bg-gray-105 border border-gray-150 text-gray-650 rounded-xl font-sans font-black uppercase text-[10px] tracking-widest transition-all"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button 
                     type="submit"
@@ -507,11 +509,11 @@ export default function CompanyMessages() {
                     className="py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-sans font-black uppercase text-[10px] tracking-widest shadow-lg shadow-red-100 transition-all flex items-center justify-center gap-2"
                   >
                     {submittingReport ? (
-                      <span>Submitting File...</span>
+                      <span>{t('submitting_file')}</span>
                     ) : (
                       <>
                         <Flag size={14} />
-                        <span>Submit Inquest</span>
+                        <span>{t('submit_inquest')}</span>
                       </>
                     )}
                   </button>
@@ -555,4 +557,3 @@ export default function CompanyMessages() {
     </DashboardLayout>
   );
 }
-

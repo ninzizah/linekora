@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { useLanguage } from '../../lib/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface JobItem {
@@ -26,6 +27,7 @@ interface ToastAlert {
 }
 
 export default function CompanyManageJobs() {
+  const { t } = useLanguage();
   const [jobsList, setJobsList] = useState<JobItem[]>([]);
 
   // Dropdown & Modal States
@@ -49,6 +51,8 @@ export default function CompanyManageJobs() {
     }, 4500);
   };
 
+  const statusText = (s: string) => ({ active: t('status_active'), closed: t('status_closed'), pending: t('status_pending'), accepted: t('status_accepted'), rejected: t('status_rejected'), shortlisted: t('status_shortlisted') }[s] || s);
+
   // Toggle dropdown
   const toggleMenu = (id: number) => {
     if (activeMenuId === id) {
@@ -64,8 +68,8 @@ export default function CompanyManageJobs() {
       if (job.id === id) {
         const nextStatus = job.status === 'active' ? 'closed' : 'active';
         addToast(
-          'Status Updated 🔄', 
-          `"${job.title}" status switched to ${nextStatus.toUpperCase()} immediately.`,
+          t('status_updated'), 
+          t('status_updated_msg', { title: job.title, status: nextStatus.toUpperCase() }),
           'success'
         );
         return { ...job, status: nextStatus };
@@ -100,7 +104,7 @@ export default function CompanyManageJobs() {
       return job;
     }));
 
-    addToast('Post Updated 📝', `"${editTitle}" modifications saved to live matching index catalogs.`, 'success');
+    addToast(t('post_updated'), t('post_updated_msg', { title: editTitle }), 'success');
     setEditingJob(null);
   };
 
@@ -117,8 +121,8 @@ export default function CompanyManageJobs() {
     setActiveMenuId(null);
 
     addToast(
-      'Posting Deleted 🗑️', 
-      `"${backupJob.title}" listing has been removed from database registry.`, 
+      t('posting_deleted'), 
+      t('posting_deleted_msg', { title: backupJob.title }), 
       'info'
     );
   };
@@ -128,12 +132,12 @@ export default function CompanyManageJobs() {
       <div className="max-w-6xl mx-auto relative">
         <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Manage Job Postings</h1>
-            <p className="text-gray-500 font-sans font-medium mt-1 italic">Track, edit, and manage your active job listings.</p>
+            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('manage_job_postings')}</h1>
+            <p className="text-gray-500 font-sans font-medium mt-1 italic">{t('manage_job_postings_desc')}</p>
           </div>
           <Link to="/dashboard/company/post" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-sans font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
             <Plus size={20} />
-            Post New Job
+            {t('post_new_job')}
           </Link>
         </header>
 
@@ -148,7 +152,7 @@ export default function CompanyManageJobs() {
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-colors ${
                         job.status === 'active' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-400 border-gray-100'
                       }`}>
-                        {job.status}
+                        {statusText(job.status)}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-4 text-gray-400">
@@ -162,7 +166,7 @@ export default function CompanyManageJobs() {
                       </div>
                       <div className="flex items-center gap-1.5 text-[10px] font-black tracking-widest uppercase">
                         <Clock size={14} />
-                        Posted {job.posted}
+                        {t('posted_at', { date: job.posted })}
                       </div>
                     </div>
                   </div>
@@ -170,15 +174,15 @@ export default function CompanyManageJobs() {
                   <div className="flex items-center gap-10">
                     <div className="text-center">
                       <p className="text-2xl font-black text-blue-600 font-sans leading-none">{job.applicants}</p>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Applicants</p>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">{t('applicants_count')}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-black text-gray-900 font-sans leading-none">{job.views}</p>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Views</p>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">{t('views')}</p>
                     </div>
                     <div className="flex gap-2 relative">
                       <Link to={`/dashboard/company/applicants?jobId=${job.id}`} className="px-6 py-2.5 bg-gray-50 text-gray-700 rounded-xl font-sans font-black text-xs uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600 transition-all">
-                        View Talent
+                        {t('view_talent')}
                       </Link>
                       
                       {/* 3 DOTS MENU CONTAINER */}
@@ -210,12 +214,12 @@ export default function CompanyManageJobs() {
                                   {job.status === 'active' ? (
                                     <>
                                       <ToggleRight size={16} className="text-green-500" />
-                                      <span>Close Application</span>
+                                      <span>{t('close_application')}</span>
                                     </>
                                   ) : (
                                     <>
                                       <ToggleLeft size={16} className="text-gray-400" />
-                                      <span>Publish Active</span>
+                                      <span>{t('publish_active')}</span>
                                     </>
                                   )}
                                 </button>
@@ -225,7 +229,7 @@ export default function CompanyManageJobs() {
                                   className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                                 >
                                   <Edit size={16} className="text-indigo-550" />
-                                  <span>Edit Details</span>
+                                  <span>{t('edit_details')}</span>
                                 </button>
 
                                 <div className="border-t border-gray-100 my-1.5" />
@@ -238,7 +242,7 @@ export default function CompanyManageJobs() {
                                   className="w-full text-left px-4 py-3 text-xs font-black text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider animate-pulse"
                                 >
                                   <Trash2 size={16} />
-                                  <span>Delete Post</span>
+                                  <span>{t('delete_post')}</span>
                                 </button>
                               </motion.div>
                             </>
@@ -254,11 +258,11 @@ export default function CompanyManageJobs() {
         ) : (
           <div className="py-20 text-center bg-white border border-dashed border-gray-200 rounded-[3rem]">
             <Briefcase className="mx-auto text-gray-300 mb-4 animate-bounce" size={48} />
-            <h3 className="text-xl font-black text-gray-900 font-sans uppercase">No Job Postings Tracked</h3>
-            <p className="text-gray-400 font-sans italic text-sm mt-1 max-w-sm mx-auto">Create a new employment matching form to summon security, logistics or creative specialists.</p>
+            <h3 className="text-xl font-black text-gray-900 font-sans uppercase">{t('no_job_postings_tracked')}</h3>
+            <p className="text-gray-400 font-sans italic text-sm mt-1 max-w-sm mx-auto">{t('no_job_postings_tracked_desc')}</p>
             <Link to="/dashboard/company/post" className="inline-flex items-center gap-2 bg-blue-600 text-white mt-8 px-6 py-3.5 rounded-2xl font-sans font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
               <Plus size={16} />
-              Publish First Job
+              {t('publish_first_job')}
             </Link>
           </div>
         )}
@@ -288,12 +292,12 @@ export default function CompanyManageJobs() {
                 <X size={20} />
               </button>
 
-              <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-1">Edit Job Details</h3>
-              <p className="text-xs text-gray-400 font-sans italic mb-8">Update essential parameters for active matching.</p>
+              <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-1">{t('edit_job_details')}</h3>
+              <p className="text-xs text-gray-400 font-sans italic mb-8">{t('edit_job_details_desc')}</p>
 
               <form onSubmit={handleSaveEdit} className="space-y-6">
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Job Title</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('job_title')}</label>
                   <input 
                     type="text" 
                     required
@@ -305,7 +309,7 @@ export default function CompanyManageJobs() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Location/City</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('location_city')}</label>
                     <input 
                       type="text" 
                       required
@@ -315,7 +319,7 @@ export default function CompanyManageJobs() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Salary/Budget</label>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('salary_budget')}</label>
                     <input 
                       type="text" 
                       required
@@ -332,13 +336,13 @@ export default function CompanyManageJobs() {
                     onClick={() => setEditingJob(null)}
                     className="py-4 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-150 text-gray-600 font-sans font-black uppercase text-[10px] tracking-widest transition-all"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button 
                     type="submit"
                     className="py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-sans font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100 transition-all flex items-center justify-center gap-1.5"
                   >
-                    Save Changes
+                    {t('save_changes')}
                   </button>
                 </div>
               </form>
@@ -367,9 +371,9 @@ export default function CompanyManageJobs() {
               <div className="h-14 w-14 bg-red-50 text-red-655 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-bounce">
                 <Trash2 size={24} />
               </div>
-              <h3 className="text-xl font-black text-gray-950 font-sans uppercase">Delete Posting?</h3>
+              <h3 className="text-xl font-black text-gray-950 font-sans uppercase">{t('delete_posting_confirm')}</h3>
               <p className="text-xs text-gray-500 leading-relaxed font-sans font-semibold italic mt-2">
-                This action is irreversible. Nearby professionals will no longer receive match coordinates.
+                {t('delete_posting_confirm_desc')}
               </p>
 
               <div className="mt-8 grid grid-cols-2 gap-3">
@@ -377,13 +381,13 @@ export default function CompanyManageJobs() {
                   onClick={() => setShowDeleteConfirmId(null)}
                   className="py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl font-sans font-black uppercase text-[9px] tracking-widest transition-all"
                 >
-                  No, Keep
+                  {t('no_keep')}
                 </button>
                 <button 
                   onClick={() => handleDeleteJob(showDeleteConfirmId)}
                   className="py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-sans font-black uppercase text-[9px] tracking-widest transition-all"
                 >
-                  Yes, Delete
+                  {t('yes_delete')}
                 </button>
               </div>
             </motion.div>

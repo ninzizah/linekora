@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, ShieldCheck, MapPin, Star, Phone, Mail, Award, CheckCircle2, Briefcase, Zap, FileText
 } from 'lucide-react';
+import { useLanguage } from '../lib/LanguageContext';
 
 export interface PublicProfileUser {
   id?: string | number;
@@ -30,14 +31,15 @@ interface PublicProfileModalProps {
 }
 
 export default function PublicProfileModal({ user, isOpen, onClose }: PublicProfileModalProps) {
+  const { t } = useLanguage();
   if (!isOpen || !user) return null;
 
-  const displayName = user.displayName || user.name || 'User Profile';
-  const roleName = user.role || 'Member';
+  const displayName = user.displayName || user.name || t('user_profile');
+  const roleName = user.role || t('member');
   const isVerified = user.verificationStatus === 'verified' || user.verified;
   const trustScore = user.trustScore || 0;
   const location = user.location || '';
-  const bio = user.bio || 'No bio provided.';
+  const bio = user.bio || t('no_bio_provided');
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
@@ -76,7 +78,7 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
                 )}
               </div>
               {isVerified && (
-                <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-1.5 rounded-xl border-2 border-white shadow-md" title="Verified Profile">
+                <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-1.5 rounded-xl border-2 border-white shadow-md" title={t('verified_profile')}>
                   <ShieldCheck size={16} />
                 </div>
               )}
@@ -86,13 +88,13 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
               <h3 className="text-2xl font-black text-gray-900 tracking-tight">{displayName}</h3>
               {isVerified && (
                 <span className="bg-green-50 text-green-600 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-green-100 flex items-center gap-1">
-                  <CheckCircle2 size={10} /> Verified
+                  <CheckCircle2 size={10} /> {t('status_verified')}
                 </span>
               )}
             </div>
 
             <p className="text-xs font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full mb-3 border border-blue-100">
-              {roleName} • {user.tier || 'Standard Tier'}
+              {roleName} • {user.tier || t('standard_tier')}
             </p>
 
             <p className="text-xs text-gray-500 flex items-center gap-1 font-bold">
@@ -104,7 +106,7 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
           {/* Trust Score & Stats grid */}
           <div className="grid grid-cols-3 gap-3 mb-8">
             <div className="p-4 bg-yellow-50/60 border border-yellow-100 rounded-2xl text-center">
-              <span className="text-[9px] font-black text-yellow-700 uppercase tracking-widest block mb-1">Trust Score</span>
+              <span className="text-[9px] font-black text-yellow-700 uppercase tracking-widest block mb-1">{t('trust_score')}</span>
               <span className="text-xl font-black text-yellow-900 flex items-center justify-center gap-1">
                 <Star size={16} className="fill-yellow-500 text-yellow-500" />
                 {trustScore}
@@ -112,16 +114,16 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
             </div>
 
             <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl text-center">
-              <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest block mb-1">Rating</span>
+              <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest block mb-1">{t('rating_label')}</span>
               <span className="text-xl font-black text-blue-900">
-                {user.rating ? `${user.rating} / 5.0` : 'N/A'}
+                {user.rating ? `${user.rating} / 5.0` : t('not_applicable')}
               </span>
             </div>
 
             <div className="p-4 bg-purple-50/60 border border-purple-100 rounded-2xl text-center">
-              <span className="text-[9px] font-black text-purple-700 uppercase tracking-widest block mb-1">Completed</span>
+              <span className="text-[9px] font-black text-purple-700 uppercase tracking-widest block mb-1">{t('completed_label')}</span>
               <span className="text-xl font-black text-purple-900">
-                {user.completedJobsCount || 0} Gigs
+                {t('gigs_count', { count: user.completedJobsCount || 0 })}
               </span>
             </div>
           </div>
@@ -131,7 +133,7 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
             <div>
               <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                 <Award size={12} className="text-blue-500" />
-                About Member
+                {t('about_member')}
               </h4>
               <p className="text-xs text-gray-700 leading-relaxed font-medium bg-gray-50 p-4 rounded-2xl border border-gray-100 italic">
                 "{bio}"
@@ -142,7 +144,7 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
               <div>
                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <Phone size={12} className="text-blue-500" />
-                  Direct Contact Line
+                  {t('direct_contact_line')}
                 </h4>
                 <div className="p-3.5 bg-blue-50/50 border border-blue-100 rounded-2xl text-xs font-black text-blue-900 font-mono flex items-center justify-between">
                   <span>{user.phone}</span>
@@ -150,7 +152,7 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
                     href={`tel:${user.phone}`}
                     className="px-3 py-1 bg-blue-600 text-white rounded-lg text-[9px] uppercase tracking-wider hover:bg-blue-700 transition-colors font-sans"
                   >
-                    Call Direct
+                    {t('call_direct')}
                   </a>
                 </div>
               </div>
@@ -162,7 +164,7 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
             onClick={onClose}
             className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-gray-200"
           >
-            Close Public Profile
+            {t('close_public_profile')}
           </button>
         </motion.div>
       </div>

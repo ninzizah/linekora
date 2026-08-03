@@ -12,6 +12,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import IdentityCardVisual from '../../components/IdentityCardVisual';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import { getUsers, updateUser, getPendingVerifications } from '../../lib/api';
 
 interface AuditLog {
@@ -37,10 +38,37 @@ interface UserAccount {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'verification' | 'reports' | 'analytics' | 'users' | 'logs' | 'upgrades'>('verification');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'worker' | 'company' | 'individual'>('all');
   const [notification, setNotification] = useState<{ id: number; message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  const statusText = (s: string) => ({
+    active: t('status_active'),
+    warning: t('status_warning'),
+    suspended: t('status_suspended'),
+    unverified: t('status_unverified'),
+    pending: t('status_pending'),
+    verified: t('status_verified'),
+    accepted: t('status_contract_active'),
+    completion_requested: t('status_completion_requested'),
+    completed: t('status_completed'),
+    released: t('status_released'),
+    paid_awaiting_admin: t('status_paid_awaiting'),
+    approved: t('status_approved'),
+    rejected: t('status_rejected'),
+    request_sent: t('status_request_sent'),
+    high: t('status_high'),
+    medium: t('status_medium'),
+    low: t('status_low'),
+  }[s] || s);
+
+  const roleLabel = (r: string) => ({
+    worker: t('role_worker'),
+    company: t('role_company'),
+    individual: t('role_individual'),
+  }[r] || r);
 
   const [inspectingUser, setInspectingUser] = useState<UserAccount | null>(null);
   const [idleTime, setIdleTime] = useState(0);
@@ -87,7 +115,7 @@ export default function AdminDashboard() {
         // Complete the steps
         const completedSteps = req.steps.map((st: any, idx: number) => {
           if (idx === 2) {
-            return { ...st, title: "Payment Verified by Admin", date: "Just now", done: true };
+            return { ...st, title: t('step_payment_verified'), date: t('time_just_now'), done: true };
           }
           return { ...st, done: true };
         });
@@ -118,7 +146,7 @@ export default function AdminDashboard() {
           status: 'approved', 
           steps: [
             ...completedSteps,
-            { title: "Membership Tier Activated", date: "Just now", done: true }
+            { title: t('step_membership_activated'), date: t('time_just_now'), done: true }
           ] 
         };
       }
@@ -131,19 +159,19 @@ export default function AdminDashboard() {
     // Audit Log entry
     const matched = upgradeRequests.find(r => r.id === reqId);
     const logMsg = matched 
-      ? `Settled & Confirmed RWF ${matched.price} MoMo verification payment. Upgraded ${matched.userName} to ${matched.tierName}.`
-      : `Approved credential purchase tier upgrade ${reqId}`;
+      ? t('audit_upgrade_approved', { price: matched.price, userName: matched.userName, tierName: matched.tierName })
+      : t('audit_upgrade_approved_fallback', { reqId });
 
     const newLog: AuditLog = {
       id: `log_${Date.now()}`,
       action: logMsg,
       category: 'FINANCIAL',
-      date: 'Just now',
+      date: t('time_just_now'),
       user: 'Linekora Admin'
     };
     setAuditLogs(prev => [newLog, ...prev]);
 
-    triggerNotification("Upgrade Payment APPROVED. Tier Shield level active! 🚀", "success");
+    triggerNotification(t('toast_upgrade_approved'), "success");
   };
 
   const handleRejectUpgrade = (reqId: string) => {
@@ -154,7 +182,7 @@ export default function AdminDashboard() {
           status: 'rejected', 
           steps: [
             ...req.steps,
-            { title: "Payment Clearance Declined by Admin", date: "Just now", done: false }
+            { title: t('step_payment_declined'), date: t('time_just_now'), done: false }
           ] 
         };
       }
@@ -166,19 +194,19 @@ export default function AdminDashboard() {
 
     const matched = upgradeRequests.find(r => r.id === reqId);
     const logMsg = matched 
-      ? `Declined escrow payment clearance for ${matched.userName}. Wallet release actioned.`
-      : `Rejected upgrade request ${reqId}`;
+      ? t('audit_upgrade_declined', { userName: matched.userName })
+      : t('audit_upgrade_rejected_fallback', { reqId });
 
     const newLog: AuditLog = {
       id: `log_${Date.now()}`,
       action: logMsg,
       category: 'FINANCIAL',
-      date: 'Just now',
+      date: t('time_just_now'),
       user: 'Linekora Admin'
     };
     setAuditLogs(prev => [newLog, ...prev]);
 
-    triggerNotification("Verification Payment Rejected & Escrow Returned.", "error");
+    triggerNotification(t('toast_payment_rejected'), "error");
   };
 
   // Directly initiate a MoMo phone query on behalf of administrative support
@@ -190,7 +218,7 @@ export default function AdminDashboard() {
   const handleCreatePaymentRequest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminSendPhone.trim()) {
-      triggerNotification("Please enter a target phone number to dispatch MoMo handshake.", "error");
+      triggerNotification(t('toast_phone_required'), "error");
       return;
     }
 
@@ -203,7 +231,7 @@ export default function AdminDashboard() {
 
     const newRequest = {
       id: `req_${Date.now()}`,
-      date: "Just now",
+      date: t('time_just_now'),
       userName: matchedUser.name,
       userEmail: matchedUser.email,
       role: adminSendRole,
@@ -213,9 +241,9 @@ export default function AdminDashboard() {
       paymentPhoneOrCard: adminSendPhone,
       status: "request_sent",
       steps: [
-        { title: "Billing request dispatched directly by System Admin", date: "Just now", done: true },
-        { title: "Awaiting user MoMo PIN confirmation payment", date: "Pending...", done: false },
-        { title: "Verification of bank deposit receipt", date: "Pending...", done: false }
+        { title: t('step_billing_dispatched'), date: t('time_just_now'), done: true },
+        { title: t('step_awaiting_pin'), date: t('time_pending'), done: false },
+        { title: t('step_receipt_verification'), date: t('time_pending'), done: false }
       ]
     };
 
@@ -226,14 +254,14 @@ export default function AdminDashboard() {
     // Audit log
     const newLog: AuditLog = {
       id: `log_${Date.now()}`,
-      action: `DISPATCHED BILLING INITIATIVE: Sent MoMo RWF ${targetPrice} billing request to user handset ${adminSendPhone} for ${adminSelectTier}`,
+      action: t('audit_billing_dispatched', { targetPrice, adminSendPhone, adminSelectTier }),
       category: 'SYSTEM',
-      date: 'Just now',
+      date: t('time_just_now'),
       user: 'Linekora Admin'
     };
     setAuditLogs(prev => [newLog, ...prev]);
 
-    triggerNotification(`Billing request sent to user's phone successfully! 📲`, "success");
+    triggerNotification(t('toast_billing_sent'), "success");
     setAdminSendPhone('');
     setAdminSelectUser('');
   };
@@ -276,7 +304,7 @@ export default function AdminDashboard() {
         if (u.verificationStatus === 'pending') {
           const isWorker = u.role === 'WORKER';
           const isCompany = u.role === 'COMPANY';
-          const typeLabel = isWorker ? 'Worker' : isCompany ? 'Company' : 'Individual';
+          const typeLabel = isWorker ? 'worker' : isCompany ? 'company' : 'individual';
           const idType = isWorker ? 'National ID / Passport' : isCompany ? 'Business Registration (TIN)' : 'ID Document';
 
           // Find matching server-side docs by userId
@@ -287,10 +315,10 @@ export default function AdminDashboard() {
             id: `v_${u.id}`,
             user: u.displayName,
             type: typeLabel,
-            date: docs?.date || 'Recently',
+            date: docs?.date || t('time_recently'),
             status: 'pending',
             idType,
-            details: `Uploaded documents waiting for approval. Email: ${u.email}`,
+            details: t('verif_pending_details', { email: u.email }),
             code: `UID-${u.id.slice(0, 4).toUpperCase()}`,
             userId: u.id,
             // Attach actual uploaded images from server-side storage
@@ -362,7 +390,7 @@ export default function AdminDashboard() {
     escrowTotal: activeEscrowSum > 0 ? `RWF ${activeEscrowSum.toLocaleString()}` : 'RWF 0',
     totalUsers: users.length.toString(),
     unpaidCommission: totalCommissions > 0 ? `RWF ${totalCommissions.toLocaleString()}` : 'RWF 0',
-    activeContractsCount: `${contracts.filter(c => c.status === 'accepted' || c.status === 'completion_requested').length} Active`,
+    activeContractsCount: t('stat_active_count', { count: contracts.filter(c => c.status === 'accepted' || c.status === 'completion_requested').length }),
     suspiciousFlags: reports.length.toString()
   };
 
@@ -370,9 +398,9 @@ export default function AdminDashboard() {
   const volumeData: { name: string; Escrowed: number; Commissions: number }[] = [];
 
   const distributionData = [
-    { name: 'Workers', count: users.filter(u => u.role === 'worker').length },
-    { name: 'Companies', count: users.filter(u => u.role === 'company').length },
-    { name: 'Individual Employers', count: users.filter(u => u.role === 'individual').length },
+    { name: t('segment_workers'), count: users.filter(u => u.role === 'worker').length },
+    { name: t('segment_companies'), count: users.filter(u => u.role === 'company').length },
+    { name: t('segment_individuals'), count: users.filter(u => u.role === 'individual').length },
   ];
 
 
@@ -413,7 +441,7 @@ export default function AdminDashboard() {
         // 4.5 minutes (270s) idle triggers secure modal caution
         if (nextTime === 270) {
           setShowInactivityWarning(true);
-          triggerNotification("Compliance Warning: Inactivity detected. Logging out in 30 seconds.", "error");
+          triggerNotification(t('toast_inactivity_warning'), "error");
         }
 
         // 5 minutes (300s) idle triggers secure session destruction
@@ -462,14 +490,14 @@ export default function AdminDashboard() {
     // 4. Create audit log
     const newLog: AuditLog = {
       id: `log_${Date.now()}`,
-      action: `Approved credentials and identity file for ${name} (${id})`,
+      action: t('audit_verification_approved', { name, id }),
       category: 'SECURITY',
-      date: 'Just now',
+      date: t('time_just_now'),
       user: 'Linekora Admin'
     };
     setAuditLogs(prev => [newLog, ...prev]);
 
-    triggerNotification(`Approved Credentials: ${name} is now certified! 🚀`);
+    triggerNotification(t('toast_verification_approved', { name }));
   };
 
   const handleRejectVerification = (id: string, name: string) => {
@@ -489,14 +517,14 @@ export default function AdminDashboard() {
 
     const newLog: AuditLog = {
       id: `log_${Date.now()}`,
-      action: `Rejected identity credentials submission for ${name} (${id})`,
+      action: t('audit_verification_rejected', { name, id }),
       category: 'SECURITY',
-      date: 'Just now',
+      date: t('time_just_now'),
       user: 'Linekora Admin'
     };
     setAuditLogs(prev => [newLog, ...prev]);
 
-    triggerNotification(`Rejected Submission: credentials folder returned for ${name}.`, 'error');
+    triggerNotification(t('toast_verification_rejected', { name }), 'error');
   };
 
   const handleResolveReport = (id: string, reportedName: string) => {
@@ -504,14 +532,14 @@ export default function AdminDashboard() {
     
     const newLog: AuditLog = {
       id: `log_${Date.now()}`,
-      action: `Investigated and dismissed incident logs for ${reportedName}`,
+      action: t('audit_report_resolved', { reportedName }),
       category: 'SAFETY',
-      date: 'Just now',
+      date: t('time_just_now'),
       user: 'Linekora Admin'
     };
     setAuditLogs(prev => [newLog, ...prev]);
 
-    triggerNotification(`Incident resolved: Flag cleared for ${reportedName}`);
+    triggerNotification(t('toast_report_resolved', { reportedName }));
   };
 
   const handleBanAccount = (id: string, reportedName: string, reason: string) => {
@@ -528,14 +556,14 @@ export default function AdminDashboard() {
 
     const newLog: AuditLog = {
       id: `log_${Date.now()}`,
-      action: `ACCOUNT SUSPENDED: ${reportedName} banned due to ${reason}`,
+      action: t('audit_account_banned', { reportedName, reason }),
       category: 'SAFETY',
-      date: 'Just now',
+      date: t('time_just_now'),
       user: 'Linekora Admin'
     };
     setAuditLogs(prev => [newLog, ...prev]);
 
-    triggerNotification(`Locked Profile Account: ${reportedName} has been fully suspended! 🛑`, 'error');
+    triggerNotification(t('toast_account_banned', { reportedName }), 'error');
   };
 
   const handleSetTrustScore = (uid: string, newScore: number) => {
@@ -547,7 +575,7 @@ export default function AdminDashboard() {
       }
       return u;
     }));
-    triggerNotification(`Trust rating index re-evaluated.`);
+    triggerNotification(t('toast_trust_reevaluated'));
   };
 
   const handleToggleUserStatus = (uid: string, currentStatus: string) => {
@@ -568,19 +596,19 @@ export default function AdminDashboard() {
     if (targetUser) {
       const newLog: AuditLog = {
         id: `log_${Date.now()}`,
-        action: `Modified account status for ${targetUser.name} to ${targetStatus.toUpperCase()}`,
+        action: t('audit_status_modified', { name: targetUser.name, status: targetStatus.toUpperCase() }),
         category: 'SYSTEM',
-        date: 'Just now',
+        date: t('time_just_now'),
         user: 'Linekora Admin'
       };
       setAuditLogs(prev => [newLog, ...prev]);
     }
 
-    triggerNotification(`Adjusted account state to ${targetStatus.toUpperCase()}`);
+    triggerNotification(t('toast_status_adjusted', { status: targetStatus.toUpperCase() }));
   };
 
   const handleLogoutAdmin = () => {
-    triggerNotification("Logging out of administrative space...", "info");
+    triggerNotification(t('toast_logging_out'), "info");
     setTimeout(() => {
       window.location.href = '/login';
     }, 800);
@@ -618,18 +646,18 @@ export default function AdminDashboard() {
           </div>
           <div>
             <span className="font-sans text-lg font-black tracking-tight block text-white">LINEKORA Admin</span>
-            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">Super Operations</span>
+            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">{t('badge_super_ops')}</span>
           </div>
         </div>
         
         <nav className="space-y-1 my-2">
           {[
-            { id: 'verification', label: 'Verification Queue', icon: Shield, badge: verificationQueue.length },
-            { id: 'reports', label: 'Safety & Incidents', icon: AlertTriangle, badge: reports.length },
-            { id: 'upgrades', label: 'Payment Upgrades', icon: DollarSign, badge: upgradeRequests.filter(r => r.status === 'paid_awaiting_admin' || r.status === 'request_sent').length },
-            { id: 'analytics', label: 'Financial Analytics', icon: TrendingUp },
-            { id: 'users', label: 'User Directory', icon: Users, badge: users.length },
-            { id: 'logs', label: 'Audit Log Trail', icon: Activity },
+            { id: 'verification', label: t('nav_verification_queue'), icon: Shield, badge: verificationQueue.length },
+            { id: 'reports', label: t('nav_safety_incidents'), icon: AlertTriangle, badge: reports.length },
+            { id: 'upgrades', label: t('nav_payment_upgrades'), icon: DollarSign, badge: upgradeRequests.filter(r => r.status === 'paid_awaiting_admin' || r.status === 'request_sent').length },
+            { id: 'analytics', label: t('nav_financial_analytics'), icon: TrendingUp },
+            { id: 'users', label: t('nav_user_directory'), icon: Users, badge: users.length },
+            { id: 'logs', label: t('nav_audit_log_trail'), icon: Activity },
           ].map((item) => (
             <button
               key={item.id}
@@ -668,7 +696,7 @@ export default function AdminDashboard() {
                 <p className="text-xs font-black text-gray-200 uppercase tracking-wider font-sans leading-none mb-1">Linekora Admin</p>
                 <div className="flex items-center gap-1.5 text-[8px] tracking-[0.1em] font-black uppercase text-red-500 select-none">
                   <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                  Active Session
+                  {t('session_active')}
                 </div>
               </div>
             </div>
@@ -676,7 +704,7 @@ export default function AdminDashboard() {
             <button
               type="button"
               onClick={handleLogoutAdmin}
-              title="Close administrator portal & switch user role"
+              title={t('logout_title')}
               className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-950/20 rounded-xl border border-transparent hover:border-red-950/30 transition-all cursor-pointer shrink-0"
             >
               <LogOut size={16} />
@@ -688,7 +716,7 @@ export default function AdminDashboard() {
             onClick={handleLogoutAdmin}
             className="w-full py-3 bg-red-950/15 border border-red-900/30 hover:border-red-600 text-red-400 hover:text-white rounded-xl text-center text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-sm active:scale-95"
           >
-            End Session
+            {t('end_session')}
           </button>
         </div>
       </aside>
@@ -706,38 +734,38 @@ export default function AdminDashboard() {
               {activeTab === 'analytics' && <TrendingUp className="text-blue-505" size={24} />}
               {activeTab === 'users' && <Users className="text-indigo-505" size={24} />}
               {activeTab === 'logs' && <Activity className="text-teal-505" size={24} />}
-              {activeTab === 'verification' && 'Identity & Credentials Vetting'}
-              {activeTab === 'reports' && 'Safety Control & Reports'}
-              {activeTab === 'upgrades' && 'MTN MoMo Upgrade Escrows'}
-              {activeTab === 'analytics' && 'Financial Ledger Analytics'}
-              {activeTab === 'users' && 'Security Directory Registry'}
-              {activeTab === 'logs' && 'Platform Intelligence Logs'}
+              {activeTab === 'verification' && t('header_identity_vetting')}
+              {activeTab === 'reports' && t('header_safety_reports')}
+              {activeTab === 'upgrades' && t('header_momo_escrows')}
+              {activeTab === 'analytics' && t('header_financial_ledger')}
+              {activeTab === 'users' && t('header_security_registry')}
+              {activeTab === 'logs' && t('header_intelligence_logs')}
             </h1>
             <p className="text-gray-400 font-sans font-black mt-1.5 uppercase tracking-[0.25em] text-[10px] flex items-center gap-1.5 leading-none">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-              Operations Desk • Kigali Gateway Cluster
+              {t('ops_desk_cluster')}
             </p>
           </div>
           
           <div className="flex gap-2">
             <div className="flex bg-gray-900 p-1 rounded-xl border border-gray-800">
-              <button type="button" className="px-3 py-1.5 bg-gray-800 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-gray-700 select-none">Live Ops</button>
+              <button type="button" className="px-3 py-1.5 bg-gray-800 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-gray-700 select-none">{t('live_ops')}</button>
               <button 
                 type="button" 
-                onClick={() => triggerNotification("Archive databases verified & synchronized.")}
+                onClick={() => triggerNotification(t('toast_archive_synced'))}
                 className="px-3 py-1.5 text-gray-500 hover:text-gray-300 text-[9px] font-black uppercase tracking-widest cursor-pointer"
               >
-                Archives
+                {t('archives')}
               </button>
             </div>
             <button 
               type="button"
               onClick={() => {
                 fetchRealUsers();
-                triggerNotification("Relinking nodes... Index up-to-date.");
+                triggerNotification(t('toast_index_up_to_date'));
               }}
               className="p-2.5 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-gray-800 transition-all cursor-pointer"
-              title="Refresh platform operations"
+              title={t('refresh_title')}
             >
               <RefreshCw size={14} className="hover:rotate-180 transition-transform duration-500" />
             </button>
@@ -747,10 +775,10 @@ export default function AdminDashboard() {
         {/* Dynamic Widget Grid for analytics on tab switch */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Active Escrow Held', value: statsOverview.escrowTotal, color: 'text-blue-400', desc: 'Secure project funds' },
-            { label: 'Commissions Due', value: statsOverview.unpaidCommission, color: 'text-green-400', desc: 'Platform service revenue' },
-            { label: 'Registered Directory', value: statsOverview.totalUsers, color: 'text-indigo-400', desc: 'Vetted account files' },
-            { label: 'Unresolved Complaints', value: statsOverview.suspiciousFlags, color: 'text-red-400', desc: 'Dispatched flag reports' },
+            { label: t('stat_active_escrow'), value: statsOverview.escrowTotal, color: 'text-blue-400', desc: t('stat_secure_funds') },
+            { label: t('stat_commissions_due'), value: statsOverview.unpaidCommission, color: 'text-green-400', desc: t('stat_service_revenue') },
+            { label: t('stat_registered_directory'), value: statsOverview.totalUsers, color: 'text-indigo-400', desc: t('stat_vetted_files') },
+            { label: t('stat_unresolved_complaints'), value: statsOverview.suspiciousFlags, color: 'text-red-400', desc: t('stat_flag_reports') },
           ].map((stat, i) => (
             <div key={i} className="p-5 bg-gray-905 border border-gray-900 rounded-[2rem] flex flex-col justify-between">
               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
@@ -771,9 +799,9 @@ export default function AdminDashboard() {
             <div className="lg:col-span-2 space-y-6">
               
               <div className="bg-gray-905 p-6 rounded-[2rem] border border-gray-900">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4">Live Escrow Handshakes & Telecom Billings</h3>
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4">{t('upgrades_title')}</h3>
                 <p className="text-gray-400 text-[10px] uppercase font-bold tracking-wider leading-relaxed mb-6">
-                  List of interactive MoMo transactions dispatched by the platform or requested directly by candidates.
+                  {t('upgrades_desc')}
                 </p>
 
                 <div className="space-y-4">
@@ -793,7 +821,7 @@ export default function AdminDashboard() {
                               req.status === 'paid_awaiting_admin' ? 'bg-amber-955/20 text-amber-400 border border-amber-900/40 animate-pulse' :
                               'bg-indigo-950/45 text-indigo-400 border border-indigo-900/40'
                             }`}>
-                              {req.status === 'paid_awaiting_admin' ? 'paid (verify escrow)' : req.status.replace('_', ' ')}
+                              {statusText(req.status)}
                             </span>
                             <span className="text-gray-550 font-black text-[9px] uppercase tracking-wider">{req.date}</span>
                           </div>
@@ -801,25 +829,25 @@ export default function AdminDashboard() {
                           <div>
                             <h4 className="text-sm font-black text-white leading-tight font-sans">{req.userName}</h4>
                             <p className="text-[10px] text-gray-450 font-mono mt-0.5">
-                              {req.userEmail} • Phone: {req.paymentPhoneOrCard}
-                              {req.momoTxRef && <span className="text-amber-400 font-bold ml-2">TxRef: {req.momoTxRef}</span>}
+                              {req.userEmail} • {t('phone_label')}: {req.paymentPhoneOrCard}
+                              {req.momoTxRef && <span className="text-amber-400 font-bold ml-2">{t('tx_ref')} {req.momoTxRef}</span>}
                             </p>
                           </div>
 
                           <div className="p-3.5 bg-gray-905 rounded-xl border border-gray-900 max-w-sm">
                             <div className="flex justify-between items-center text-[10px] font-bold">
-                              <span className="text-gray-455 uppercase tracking-widest text-[9px]">Selected Tier:</span>
+                              <span className="text-gray-455 uppercase tracking-widest text-[9px]">{t('selected_tier')}</span>
                               <span className="text-white font-black">{req.tierName}</span>
                             </div>
                             <div className="flex justify-between items-center text-[11px] font-extrabold mt-1 border-t border-gray-900/60 pt-1.5">
-                              <span className="text-gray-455 uppercase tracking-widest text-[9px]">Review Fee:</span>
+                              <span className="text-gray-455 uppercase tracking-widest text-[9px]">{t('review_fee')}</span>
                               <span className="text-emerald-400">RWF {req.price}</span>
                             </div>
                           </div>
 
                           {/* Process Timeline Steps inside the list */}
                           <div className="pt-2">
-                            <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-2 font-sans">Process Logs Timeline</p>
+                            <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-2 font-sans">{t('process_logs_timeline')}</p>
                             <div className="space-y-1.5 border-l border-gray-900 pl-3">
                               {req.steps?.map((step: any, sIdx: number) => (
                                 <div key={sIdx} className="flex items-center gap-2">
@@ -843,7 +871,7 @@ export default function AdminDashboard() {
                                 className="w-full sm:w-36 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-1.5"
                               >
                                 <CheckCircle2 size={12} />
-                                Approved Verify
+                                {t('approve_verify')}
                               </button>
                               <button
                                 type="button"
@@ -851,21 +879,21 @@ export default function AdminDashboard() {
                                 className="w-full sm:w-36 py-2.5 px-4 bg-red-950/40 hover:bg-red-950/80 text-red-400 border border-red-900/30 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
                               >
                                 <XCircle size={12} />
-                                Reject Clear
+                                {t('reject_clear')}
                               </button>
                             </>
                           ) : req.status === 'request_sent' ? (
                             <div className="text-center p-3 bg-indigo-950/25 border border-indigo-900/35 rounded-xl font-mono text-[9px] text-indigo-305 uppercase font-black tracking-widest">
                               <Smartphone className="mx-auto mb-1 animate-bounce text-indigo-400" size={16} />
-                              Awaiting User PIN
+                              {t('awaiting_user_pin')}
                             </div>
                           ) : req.status === 'approved' ? (
                             <div className="text-center p-3 bg-emerald-955/10 border border-emerald-900/30 rounded-xl font-mono text-[9px] text-emerald-400 uppercase font-black tracking-widest">
-                              Approved & Shield Live
+                              {t('approved_shield_live')}
                             </div>
                           ) : (
                             <div className="text-center p-3 bg-gray-900 border border-gray-805 rounded-xl font-mono text-[9px] text-gray-500 uppercase font-bold tracking-widest">
-                              Rejected log
+                              {t('rejected_log')}
                             </div>
                           )}
                         </div>
@@ -873,7 +901,7 @@ export default function AdminDashboard() {
                     ))
                   ) : (
                     <div className="p-12 text-center bg-gray-950 border border-gray-904 rounded-2xl">
-                      <p className="text-gray-500 font-sans text-xs italic">No active upgrades queued.</p>
+                      <p className="text-gray-500 font-sans text-xs italic">{t('no_active_upgrades')}</p>
                     </div>
                   )}
                 </div>
@@ -883,14 +911,14 @@ export default function AdminDashboard() {
             {/* Right section: Form query directly on user phone */}
             <div className="space-y-6">
               <div className="bg-gray-905 p-6 rounded-[2rem] border border-gray-900 shadow-sm">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4">Direct Push-Payment Trigger</h3>
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4">{t('direct_push_title')}</h3>
                 <p className="text-gray-400 font-sans text-[10px] leading-relaxed mb-6 font-bold uppercase">
-                  Simulate sending an MTN MoMo payment request transaction to a user handset to prompt them to buy a tier upgrade.
+                  {t('direct_push_desc')}
                 </p>
 
                 <form onSubmit={handleCreatePaymentRequest} className="space-y-4 font-sans">
                   <div>
-                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">Target User Name</label>
+                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('target_user_name')}</label>
                     <input 
                       type="text"
                       required
@@ -902,7 +930,7 @@ export default function AdminDashboard() {
                   </div>
 
                   <div>
-                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">MTN MoMo Mobile Number</label>
+                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('momo_mobile_number')}</label>
                     <input 
                       type="text"
                       required
@@ -914,27 +942,27 @@ export default function AdminDashboard() {
                   </div>
 
                   <div>
-                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">Target Role</label>
+                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('target_role')}</label>
                     <div className="grid grid-cols-2 gap-2 bg-gray-950 p-1 rounded-xl border border-gray-900">
                       <button 
                         type="button" 
                         onClick={() => setAdminSendRole('worker')}
                         className={`py-2 rounded-lg text-[9px] font-black uppercase tracking-wider font-sans cursor-pointer transition-colors ${adminSendRole === 'worker' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-white'}`}
                       >
-                        Worker
+                        {t('role_worker')}
                       </button>
                       <button 
                         type="button" 
                         onClick={() => setAdminSendRole('company')}
                         className={`py-2 rounded-lg text-[9px] font-black uppercase tracking-wider font-sans cursor-pointer transition-colors ${adminSendRole === 'company' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-white'}`}
                       >
-                        Company
+                        {t('role_company')}
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">Membership Shield Level</label>
+                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('membership_shield_level')}</label>
                     <select 
                       value={adminSelectTier}
                       onChange={(e) => setAdminSelectTier(e.target.value)}
@@ -950,7 +978,7 @@ export default function AdminDashboard() {
                     className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2"
                   >
                     <Smartphone size={14} className="animate-bounce" />
-                    Dispatch Handshake
+                    {t('dispatch_handshake')}
                   </button>
                 </form>
               </div>
@@ -985,10 +1013,10 @@ export default function AdminDashboard() {
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-sm font-black text-white font-sans">{item.user}</h3>
-                          <span className="text-[8px] font-black px-2 py-0.5 bg-gray-900 text-gray-400 rounded border border-gray-800 uppercase tracking-widest">{item.type}</span>
+                          <span className="text-[8px] font-black px-2 py-0.5 bg-gray-900 text-gray-400 rounded border border-gray-800 uppercase tracking-widest">{roleLabel(item.type)}</span>
                         </div>
                         <p className="text-gray-400 text-[10px] mt-1 font-semibold">
-                          Submitted File: <span className="font-mono text-gray-300 bg-gray-900 px-1.5 py-0.5 rounded text-[9px] border border-gray-800">{item.idType}</span>
+                          {t('submitted_file')}: <span className="font-mono text-gray-300 bg-gray-900 px-1.5 py-0.5 rounded text-[9px] border border-gray-800">{item.idType}</span>
                         </p>
                       </div>
                     </div>
@@ -1000,13 +1028,13 @@ export default function AdminDashboard() {
                         className="py-2.5 px-3.5 bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-850 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
                       >
                         <Eye size={12} />
-                        Review Folder
+                        {t('review_folder')}
                       </button>
                       <button 
                         type="button"
                         onClick={() => handleApproveVerification(item.id, item.user)}
                         className="p-2.5 bg-green-950/35 hover:bg-green-650 text-green-400 hover:text-white border border-green-900/40 hover:border-green-600 rounded-lg transition-all cursor-pointer"
-                        title="Directly Grant Badge (Approve ID)"
+                        title={t('grant_badge_tip')}
                       >
                         <Check size={14} />
                       </button>
@@ -1014,7 +1042,7 @@ export default function AdminDashboard() {
                         type="button"
                         onClick={() => handleRejectVerification(item.id, item.user)}
                         className="p-2.5 bg-red-950/30 hover:bg-red-650 text-red-400 hover:text-white border border-red-900/30 hover:border-red-600 rounded-lg transition-all cursor-pointer"
-                        title="Mark Deficient & Reject ID"
+                        title={t('reject_id_tip')}
                       >
                         <X size={14} />
                       </button>
@@ -1024,8 +1052,8 @@ export default function AdminDashboard() {
               ) : (
                 <div className="p-12 text-center bg-gray-905 border border-gray-900 rounded-[2.5rem] flex flex-col items-center justify-center">
                   <CheckCircle2 size={40} className="text-green-500/40 mb-3 animate-pulse" />
-                  <p className="font-sans font-black uppercase tracking-wider text-xs text-gray-300">Identity Desk Cleared</p>
-                  <p className="text-gray-500 font-sans text-[10px] mt-1 italic font-semibold">All pending user validation folders successfully processed!</p>
+                  <p className="font-sans font-black uppercase tracking-wider text-xs text-gray-300">{t('identity_desk_cleared')}</p>
+                  <p className="text-gray-500 font-sans text-[10px] mt-1 italic font-semibold">{t('all_pending_processed')}</p>
                 </div>
               )}
             </div>
@@ -1033,8 +1061,8 @@ export default function AdminDashboard() {
             {/* Verification Folder detail pane (Right column) */}
             <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 space-y-6">
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center justify-between border-b border-gray-900 pb-4">
-                <span>Verification File Detail</span>
-                <span className="text-[8px] tracking-normal font-bold bg-gray-900 px-1.5 py-0.5 rounded border border-gray-805">Audit Locker</span>
+                <span>{t('verification_file_detail')}</span>
+                <span className="text-[8px] tracking-normal font-bold bg-gray-900 px-1.5 py-0.5 rounded border border-gray-805">{t('audit_locker')}</span>
               </h3>
 
               {selectedVerification ? (
@@ -1045,50 +1073,50 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <h4 className="font-black text-white text-sm leading-none">{selectedVerification.user}</h4>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Pending {selectedVerification.type} Verification</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">{t('pending_type_verification', { type: roleLabel(selectedVerification.type) })}</p>
                     </div>
                   </div>
 
                   {/* Real uploaded ID document images */}
                   {(selectedVerification.frontId || selectedVerification.backId) ? (
                     <div className="space-y-3">
-                      <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block leading-none">Uploaded ID Documents</span>
+                      <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block leading-none">{t('uploaded_id_documents')}</span>
                       <div className="grid grid-cols-2 gap-3">
                         {selectedVerification.frontId ? (
                           <div className="space-y-1">
-                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">Front ID</p>
+                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">{t('front_id')}</p>
                             <img
                               src={selectedVerification.frontId}
-                              alt="Front ID"
+                              alt={t('front_id')}
                               className="w-full h-28 object-cover rounded-xl border border-gray-800 bg-gray-950"
                             />
                           </div>
                         ) : (
                           <div className="h-28 rounded-xl border border-dashed border-gray-800 bg-gray-950 flex items-center justify-center">
-                            <p className="text-[9px] text-gray-600 font-bold uppercase">No Front ID</p>
+                            <p className="text-[9px] text-gray-600 font-bold uppercase">{t('no_front_id')}</p>
                           </div>
                         )}
                         {selectedVerification.backId ? (
                           <div className="space-y-1">
-                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">Back ID</p>
+                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">{t('back_id')}</p>
                             <img
                               src={selectedVerification.backId}
-                              alt="Back ID"
+                              alt={t('back_id')}
                               className="w-full h-28 object-cover rounded-xl border border-gray-800 bg-gray-950"
                             />
                           </div>
                         ) : (
                           <div className="h-28 rounded-xl border border-dashed border-gray-800 bg-gray-950 flex items-center justify-center">
-                            <p className="text-[9px] text-gray-600 font-bold uppercase">No Back ID</p>
+                            <p className="text-[9px] text-gray-600 font-bold uppercase">{t('no_back_id')}</p>
                           </div>
                         )}
                       </div>
                       {selectedVerification.selfie && (
                         <div className="space-y-1">
-                          <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">Biometric Selfie</p>
+                          <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">{t('biometric_selfie')}</p>
                           <img
                             src={selectedVerification.selfie}
-                            alt="Biometric Selfie"
+                            alt={t('biometric_selfie')}
                             referrerPolicy="no-referrer"
                             className="w-24 h-24 object-cover rounded-2xl border border-gray-800 bg-gray-950"
                           />
@@ -1097,7 +1125,7 @@ export default function AdminDashboard() {
                     </div>
                   ) : (
                     <div className="py-3">
-                      <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block mb-2 leading-none">Scanned Identity Artifact</span>
+                      <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block mb-2 leading-none">{t('scanned_identity_artifact')}</span>
                       <IdentityCardVisual 
                         name={selectedVerification.user}
                         type={selectedVerification.type}
@@ -1111,50 +1139,50 @@ export default function AdminDashboard() {
                   <div className="space-y-3 text-xs leading-relaxed">
                     {selectedVerification.nationalIdNum && (
                       <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">National ID Number</span>
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('national_id_number')}</span>
                         <p className="font-mono font-black text-white tracking-widest">{selectedVerification.nationalIdNum}</p>
                       </div>
                     )}
 
                     <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Uploaded Document Type</span>
+                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('uploaded_document_type')}</span>
                       <p className="font-black text-white">{selectedVerification.idType}</p>
                     </div>
 
                     {selectedVerification.selectedTier && (
                       <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Requested Verification Tier</span>
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('requested_verification_tier')}</span>
                         <p className="font-black text-orange-400 uppercase tracking-wider">{selectedVerification.selectedTier}</p>
                       </div>
                     )}
 
                     {selectedVerification.certFile && (
                       <div className="p-3 bg-gray-950 rounded-xl border border-gray-900 space-y-2">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Business Registration Certificate</span>
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('business_registration_cert')}</span>
                         {selectedVerification.certFile.startsWith('data:') ? (
-                          <img src={selectedVerification.certFile} alt="Business Certificate" className="w-full h-32 object-cover rounded-lg border border-gray-800" />
+                          <img src={selectedVerification.certFile} alt={t('business_certificate_alt')} className="w-full h-32 object-cover rounded-lg border border-gray-800" />
                         ) : (
-                          <p className="font-bold text-gray-300 text-xs">{selectedVerification.certFileName || 'Certificate uploaded'}</p>
+                          <p className="font-bold text-gray-300 text-xs">{selectedVerification.certFileName || t('certificate_uploaded')}</p>
                         )}
                       </div>
                     )}
 
                     {selectedVerification.address && (
                       <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Office / Physical Address</span>
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('office_address')}</span>
                         <p className="font-bold text-gray-200">{selectedVerification.address}</p>
                       </div>
                     )}
 
                     {selectedVerification.website && (
                       <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Company Website</span>
+                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('company_website')}</span>
                         <p className="font-bold text-blue-400">{selectedVerification.website}</p>
                       </div>
                     )}
 
                     <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">Submission Timestamp</span>
+                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('submission_timestamp')}</span>
                       <p className="text-gray-400 font-mono font-bold">{selectedVerification.date}</p>
                     </div>
                   </div>
@@ -1166,7 +1194,7 @@ export default function AdminDashboard() {
                       className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-green-950/20"
                     >
                       <CheckCircle2 size={14} />
-                      Approve File
+                      {t('approve_file')}
                     </button>
                     <button
                       type="button"
@@ -1174,14 +1202,14 @@ export default function AdminDashboard() {
                       className="flex-1 py-3 bg-red-950 hover:bg-red-900 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-red-900/30"
                     >
                       <XCircle size={14} />
-                      Reject Flag
+                      {t('reject_flag')}
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="py-16 text-center text-gray-500 font-sans text-xs italic font-semibold flex flex-col items-center justify-center">
                   <Eye size={24} className="text-gray-502 mb-2 stroke-1" />
-                  Select a candidate folder from queue list to inspect verification documents.
+                  {t('select_folder_hint')}
                 </div>
               )}
             </div>
@@ -1196,19 +1224,19 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
               <div className="p-6 bg-gray-900/50 border-b border-gray-900 flex justify-between items-center">
-                <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest">Active Safety Incidents Log</h3>
-                <span className="text-[9px] font-black uppercase bg-red-955/20 text-red-500 border border-red-900/30 px-2.5 py-0.5 rounded">Emergency Escrow Monitor</span>
+                <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest">{t('active_safety_incidents_log')}</h3>
+                <span className="text-[9px] font-black uppercase bg-red-955/20 text-red-500 border border-red-900/30 px-2.5 py-0.5 rounded">{t('emergency_escrow_monitor')}</span>
               </div>
               
               {reports.length > 0 ? (
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-900 bg-gray-950 text-gray-500 text-[10px] font-black uppercase tracking-widest">
-                      <th className="px-6 py-4">Reported Account</th>
-                      <th className="px-6 py-4">Issue Description</th>
-                      <th className="px-6 py-4 text-center">Severity</th>
-                      <th className="px-6 py-4">Filer Info</th>
-                      <th className="px-6 py-4 text-right">Emergency Red-Button Actions</th>
+                      <th className="px-6 py-4">{t('th_reported_account')}</th>
+                      <th className="px-6 py-4">{t('th_issue_description')}</th>
+                      <th className="px-6 py-4 text-center">{t('th_severity')}</th>
+                      <th className="px-6 py-4">{t('th_filer_info')}</th>
+                      <th className="px-6 py-4 text-right">{t('th_emergency_actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-900 font-sans">
@@ -1233,7 +1261,7 @@ export default function AdminDashboard() {
                           <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
                             report.severity === 'high' ? 'bg-red-950/40 text-red-400 border border-red-900/40' : 'bg-yellow-950/30 text-yellow-500 border border-yellow-905'
                           }`}>
-                            {report.severity}
+                            {statusText(report.severity)}
                           </span>
                         </td>
                         <td className="px-6 py-5 text-xs text-gray-400 font-semibold">{report.reporter}</td>
@@ -1244,7 +1272,7 @@ export default function AdminDashboard() {
                               onClick={() => handleResolveReport(report.id, report.reported)}
                               className="px-3.5 py-1.5 bg-gray-900 hover:bg-gray-800 text-gray-300 rounded-lg text-[9px] font-black uppercase tracking-wider border border-gray-850 cursor-pointer"
                             >
-                              Dismiss False-Alarm
+                              {t('dismiss_false_alarm')}
                             </button>
                             <button
                               type="button"
@@ -1252,7 +1280,7 @@ export default function AdminDashboard() {
                               className="px-3.5 py-1.5 bg-red-650 hover:bg-red-600 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-lg shadow-red-950/20 cursor-pointer flex items-center gap-1"
                             >
                               <Ban size={10} />
-                              Ban Account File
+                              {t('ban_account_file')}
                             </button>
                           </div>
                         </td>
@@ -1263,8 +1291,8 @@ export default function AdminDashboard() {
               ) : (
                 <div className="p-16 text-center flex flex-col items-center justify-center">
                   <ShieldAlert size={48} className="text-green-500/20 mb-3 animate-bounce" />
-                  <p className="font-sans font-black uppercase tracking-wider text-xs text-gray-300">Operations Fully Vetted</p>
-                  <p className="text-gray-500 font-sans text-[10px] mt-1 italic font-semibold">Zero active dispute reports or platform incidents flagged.</p>
+                  <p className="font-sans font-black uppercase tracking-wider text-xs text-gray-300">{t('operations_fully_vetted')}</p>
+                  <p className="text-gray-500 font-sans text-[10px] mt-1 italic font-semibold">{t('zero_active_reports')}</p>
                 </div>
               )}
             </div>
@@ -1282,7 +1310,7 @@ export default function AdminDashboard() {
               
               {/* Main Area Chart: Platform Volume flow */}
               <div className="lg:col-span-2 bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">LINEKORA System Escrow & Platform Volume</h3>
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">{t('system_escrow_volume')}</h3>
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={volumeData}>
@@ -1306,14 +1334,14 @@ export default function AdminDashboard() {
                 <div className="mt-4 flex gap-6 text-[10px] text-gray-500 font-black uppercase tracking-wider">
                   <span className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-red-500"></span>
-                    RWF Cumulative Transferred Volume
+                    RWF {t('cumulative_transferred_volume')}
                   </span>
                 </div>
               </div>
 
               {/* Bar Chart: User Demographics */}
               <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Platform Segment Distribution</h3>
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">{t('platform_segment_distribution')}</h3>
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={distributionData}>
@@ -1328,7 +1356,7 @@ export default function AdminDashboard() {
                   </ResponsiveContainer>
                 </div>
                 <div className="mt-4 text-center text-[9px] text-gray-500 font-bold italic uppercase tracking-wider">
-                  Directory distribution percentages metrics
+                  {t('directory_distribution_metrics')}
                 </div>
               </div>
 
@@ -1338,16 +1366,16 @@ export default function AdminDashboard() {
             <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <h4 className="text-xs font-black text-gray-300 uppercase tracking-widest text-white">Outstanding Platform Commission Controls</h4>
-                  <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">Review or waive outstanding operational commissions from local support transactions</p>
+                  <h4 className="text-xs font-black text-gray-300 uppercase tracking-widest text-white">{t('outstanding_commission_controls')}</h4>
+                  <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">{t('commission_controls_desc')}</p>
                 </div>
                 <div className="flex flex-wrap gap-3 items-center">
                   <div className="px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-xs font-sans">
-                    <span className="text-gray-500 uppercase font-black text-[8px] block mb-0.5 tracking-wider font-sans leading-none">Worker Account Due</span>
+                    <span className="text-gray-500 uppercase font-black text-[8px] block mb-0.5 tracking-wider font-sans leading-none">{t('worker_account_due')}</span>
                     <span className="font-black text-gray-200 font-mono">RWF {workerUnpaid.toLocaleString()}</span>
                   </div>
                   <div className="px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-xs font-sans">
-                    <span className="text-gray-500 uppercase font-black text-[8px] block mb-0.5 tracking-wider font-sans leading-none">Company Account Due</span>
+                    <span className="text-gray-500 uppercase font-black text-[8px] block mb-0.5 tracking-wider font-sans leading-none">{t('company_account_due')}</span>
                     <span className="font-black text-gray-200 font-mono">RWF {companyUnpaid.toLocaleString()}</span>
                   </div>
                   {(workerUnpaid > 0 || companyUnpaid > 0) && (
@@ -1359,18 +1387,18 @@ export default function AdminDashboard() {
                         
                         const logEntry: AuditLog = {
                           id: `log_${Date.now()}`,
-                          action: `WAIVED COMMISSIONS: Reset outstanding commissions for workers and employers back to zero`,
+                          action: t('audit_commissions_waived'),
                           category: 'FINANCIAL',
-                          date: 'Just now',
+                          date: t('time_just_now'),
                           user: 'Linekora Admin'
                         };
                         setAuditLogs(prev => [logEntry, ...prev]);
-                        triggerNotification("System commissions waived and reset to RWF 0 for all users! 🕊️");
+                        triggerNotification(t('toast_commissions_waived'));
                       }}
                       className="px-4 py-3.5 bg-green-650 hover:bg-green-600 border border-transparent text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-lg shadow-green-950/25"
                     >
                       <CheckCircle2 size={12} />
-                      Waive All Commissions
+                      {t('waive_all_commissions')}
                     </button>
                   )}
                 </div>
@@ -1380,18 +1408,18 @@ export default function AdminDashboard() {
             {/* Financial Ledger Details Table - LIVE INFO */}
             <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
               <div className="p-6 bg-gray-900/40 border-b border-gray-900 flex justify-between items-center">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest">Platform Commission & Escrow Audit Ledger</h3>
-                <span className="text-[8px] font-black uppercase tracking-widest bg-blue-950 text-blue-400 px-2.5 py-1 rounded border border-blue-900/30 font-sans">Total Records Count: {contracts.length}</span>
+                <h3 className="text-xs font-black text-white uppercase tracking-widest">{t('commission_escrow_ledger')}</h3>
+                <span className="text-[8px] font-black uppercase tracking-widest bg-blue-950 text-blue-400 px-2.5 py-1 rounded border border-blue-900/30 font-sans">{t('total_records_count', { count: contracts.length })}</span>
               </div>
               <table className="w-full text-left">
                 <thead className="bg-gray-950 text-gray-500 text-[9px] font-black uppercase tracking-widest border-b border-gray-900">
                   <tr>
-                    <th className="px-6 py-4">Transaction / Job Scope</th>
-                    <th className="px-6 py-4">Source Employer</th>
-                    <th className="px-6 py-4">Assigned Worker</th>
-                    <th className="px-6 py-4">Verification Check</th>
-                    <th className="px-6 py-4">Escrow Value</th>
-                    <th className="px-6 py-4 text-right font-black">Authorized Operations</th>
+                    <th className="px-6 py-4">{t('th_transaction_scope')}</th>
+                    <th className="px-6 py-4">{t('th_source_employer')}</th>
+                    <th className="px-6 py-4">{t('th_assigned_worker')}</th>
+                    <th className="px-6 py-4">{t('th_verification_check')}</th>
+                    <th className="px-6 py-4">{t('th_escrow_value')}</th>
+                    <th className="px-6 py-4 text-right font-black">{t('th_authorized_operations')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-900 text-xs font-sans text-gray-300">
@@ -1404,11 +1432,11 @@ export default function AdminDashboard() {
                           <td className="px-6 py-5">
                             <div>
                               <p className="font-extrabold text-gray-250 font-sans text-sm">{contract.jobTitle}</p>
-                              <span className="text-[9px] uppercase font-black text-gray-500 tracking-wider">Locker Token ID: #{contract.id}</span>
+                              <span className="text-[9px] uppercase font-black text-gray-500 tracking-wider">{t('locker_token_id', { id: contract.id })}</span>
                             </div>
                           </td>
                           <td className="px-6 py-5 font-bold text-gray-400">{contract.company || contract.employerName}</td>
-                          <td className="px-6 py-5 font-bold text-gray-400">{contract.workerName || 'Not Assigned'}</td>
+                          <td className="px-6 py-5 font-bold text-gray-400">{contract.workerName || t('not_assigned')}</td>
                           <td className="px-6 py-5">
                             <span className={`text-[9px] font-black px-2.5 py-0.5 border rounded uppercase tracking-widest ${
                               contract.status === 'accepted' ? 'bg-blue-955/20 text-blue-400 border-blue-900/30' :
@@ -1416,9 +1444,7 @@ export default function AdminDashboard() {
                               contract.status === 'completed' ? 'bg-green-955/20 text-green-400 border-green-900/40' :
                               'bg-gray-900 text-gray-500 border-gray-800'
                             }`}>
-                              {contract.status === 'accepted' ? 'Contract active' :
-                               contract.status === 'completion_requested' ? 'Pending verify' :
-                               contract.status === 'completed' ? 'Released' : contract.status}
+                              {statusText(contract.status)}
                             </span>
                           </td>
                           <td className="px-6 py-5 font-sans font-black text-gray-200">{contract.salary}</td>
@@ -1436,28 +1462,28 @@ export default function AdminDashboard() {
                                     // Record audit trail
                                     const logEntry: AuditLog = {
                                       id: `log_${Date.now()}`,
-                                      action: `MANUAL ESCROW RELEASE: Released ${contract.salary} for ${contract.jobTitle} (ID #${contract.id})`,
+                                      action: t('audit_escrow_released', { salary: contract.salary, jobTitle: contract.jobTitle, id: contract.id }),
                                       category: 'FINANCIAL',
-                                      date: 'Just now',
+                                      date: t('time_just_now'),
                                       user: 'Linekora Admin'
                                     };
                                     setAuditLogs(prev => [logEntry, ...prev]);
-                                    triggerNotification(`Released Escrow: ${contract.salary} transferred to ${contract.workerName}! 💰`);
+                                    triggerNotification(t('toast_escrow_released', { salary: contract.salary, workerName: contract.workerName }));
                                   }}
                                   className="px-3.5 py-2 bg-red-650 hover:bg-red-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all shadow-md shadow-red-950/15 cursor-pointer block border border-transparent hover:border-red-500/25 active:scale-95"
                                 >
-                                  Release Escrow
+                                  {t('release_escrow')}
                                 </button>
                               )}
                               
                               <button
                                 type="button"
                                 onClick={() => {
-                                  triggerNotification(`Status active and synced for contract #${contract.id}`);
+                                  triggerNotification(t('toast_contract_synced', { id: contract.id }));
                                 }}
                                 className="px-3.5 py-2 bg-gray-900 hover:bg-gray-850 border border-gray-850 text-gray-400 hover:text-white text-[9px] font-black uppercase tracking-widest rounded-xl cursor-pointer block transition-all"
                               >
-                                Audit File
+                                {t('audit_file')}
                               </button>
                             </div>
                           </td>
@@ -1467,7 +1493,7 @@ export default function AdminDashboard() {
                   ) : (
                     <tr>
                       <td colSpan={6} className="px-6 py-16 text-center text-gray-500 font-sans text-xs italic font-semibold">
-                        No active contracts located in system repository ledger.
+                        {t('no_active_contracts')}
                       </td>
                     </tr>
                   )}
@@ -1492,7 +1518,7 @@ export default function AdminDashboard() {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search user registry, location..."
+                  placeholder={t('search_registry_placeholder')}
                   className="w-full pl-10 pr-4 py-3 bg-gray-950 border border-gray-900 rounded-xl text-xs font-bold outline-none focus:border-red-600 font-sans"
                 />
               </div>
@@ -1509,7 +1535,7 @@ export default function AdminDashboard() {
                         : 'bg-gray-950 border border-gray-850 text-gray-400 hover:text-white'
                     }`}
                   >
-                    {role} Segment
+                    {t('segment_label', { role: roleLabel(role) })}
                   </button>
                 ))}
               </div>
@@ -1520,11 +1546,11 @@ export default function AdminDashboard() {
               <table className="w-full text-left font-sans">
                 <thead className="bg-gray-950 border-b border-gray-900 text-[10px] font-black uppercase text-gray-500 tracking-widest">
                   <tr>
-                    <th className="px-6 py-4">Account File</th>
-                    <th className="px-6 py-4 text-center">Trust Rating Index</th>
-                    <th className="px-6 py-4">Identity Vetting</th>
-                    <th className="px-6 py-4">Active Profile Status</th>
-                    <th className="px-6 py-4 text-right">Force System Overrides</th>
+                    <th className="px-6 py-4">{t('th_account_file')}</th>
+                    <th className="px-6 py-4 text-center">{t('th_trust_rating')}</th>
+                    <th className="px-6 py-4">{t('th_identity_vetting')}</th>
+                    <th className="px-6 py-4">{t('th_profile_status')}</th>
+                    <th className="px-6 py-4 text-right">{t('th_force_overrides')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-900">
@@ -1543,11 +1569,11 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-gray-150 text-sm">{user.name}</span>
                               <span className="text-[8px] tracking-wider font-extrabold uppercase bg-gray-950 text-gray-400 border border-gray-800 px-2 py-0.5 rounded">
-                                {user.role}
+                                {roleLabel(user.role)}
                               </span>
                             </div>
                             <p className="text-[10px] text-gray-500 mt-1 uppercase font-black tracking-wider font-mono">
-                              Email: {user.email} • Loc: {user.location}
+                              {t('email_loc', { email: user.email, loc: user.location })}
                             </p>
                           </div>
                         </td>
@@ -1556,7 +1582,7 @@ export default function AdminDashboard() {
                             <span className={`text-xs font-mono font-black shrink-0 ${
                               user.trustScore >= 80 ? 'text-green-400' : user.trustScore >= 50 ? 'text-yellow-405' : 'text-red-400'
                             }`}>
-                              {user.trustScore}% Vetted
+                              {t('trust_vetted', { score: user.trustScore })}
                             </span>
                             
                             {/* Adjustment slider to dynamically demonstrate editing in real-time */}
@@ -1576,7 +1602,7 @@ export default function AdminDashboard() {
                             user.verificationStatus === 'pending' ? 'bg-yellow-950/30 text-yellow-500 border border-yellow-905' :
                             'bg-gray-900 text-gray-500 border border-gray-800'
                           }`}>
-                            {user.verificationStatus}
+                            {statusText(user.verificationStatus)}
                           </span>
                         </td>
                         <td className="px-6 py-5">
@@ -1590,7 +1616,7 @@ export default function AdminDashboard() {
                               user.status === 'warning' ? 'bg-amber-500 animate-pulse' :
                               'bg-red-500 animate-ping'
                             }`}></span>
-                            {user.status}
+                            {statusText(user.status)}
                           </span>
                         </td>
                         <td className="px-6 py-5 text-right font-sans">
@@ -1599,10 +1625,10 @@ export default function AdminDashboard() {
                               type="button"
                               onClick={() => {
                                 setInspectingUser(user);
-                                triggerNotification(`Credentials audit file requested for ${user.name}`, "info");
+                                triggerNotification(t('toast_audit_requested', { name: user.name }), "info");
                               }}
                               className="p-2 text-gray-500 hover:text-blue-400 hover:bg-gray-950 border border-transparent hover:border-gray-800 rounded-lg transition-all cursor-pointer"
-                              title="Inspect credentials audit folder"
+                              title={t('inspect_folder_tip')}
                             >
                               <Eye size={14} />
                             </button>
@@ -1615,7 +1641,7 @@ export default function AdminDashboard() {
                                 'bg-green-955/20 border-green-900/40 text-green-400 hover:bg-green-650 hover:text-white hover:border-green-600'
                               }`}
                             >
-                              {user.status === 'active' ? 'Warn Profile' : user.status === 'warning' ? 'Suspend Profile' : 'Restore Active'}
+                              {user.status === 'active' ? t('btn_warn_profile') : user.status === 'warning' ? t('btn_suspend_profile') : t('btn_restore_active')}
                             </button>
                           </div>
                         </td>
@@ -1637,19 +1663,19 @@ export default function AdminDashboard() {
               
               <div className="flex justify-between items-center border-b border-gray-900 pb-4">
                 <div>
-                  <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest">Real-Time Core Audit Log Trail</h3>
-                  <p className="text-[10px] text-gray-500 font-bold italic mt-1 uppercase tracking-wider">Linekora Operations Decentralized Ledger Log entries</p>
+                  <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest">{t('core_audit_log_trail')}</h3>
+                  <p className="text-[10px] text-gray-500 font-bold italic mt-1 uppercase tracking-wider">{t('audit_ledger_subtitle')}</p>
                 </div>
                 <button 
                   type="button"
                   onClick={() => {
                     setAuditLogs([]);
-                    triggerNotification("Audit ledger trails cleared from live buffer.");
+                    triggerNotification(t('toast_audit_cleared'));
                   }}
                   className="flex items-center gap-1.5 text-[9px] font-black uppercase text-red-500 hover:text-red-400 hover:underline cursor-pointer"
                 >
                   <Trash2 size={12} />
-                  Clear Ledger
+                  {t('clear_ledger')}
                 </button>
               </div>
 
@@ -1669,14 +1695,14 @@ export default function AdminDashboard() {
                         <p className="text-gray-300 font-sans font-semibold tracking-tight leading-snug">{log.action}</p>
                       </div>
                       <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-gray-900 pt-2 md:pt-0 shrink-0 uppercase tracking-wider text-[9px] text-gray-550 font-bold">
-                        <span>Terminal: {log.user}</span>
+                        <span>{t('terminal_label', { user: log.user })}</span>
                         <span className="text-gray-500 font-mono">{log.date}</span>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="py-16 text-center text-gray-500 font-sans text-xs italic font-semibold">
-                    Core ledger trail currently void. Operations logs auto-flush every 24 hours.
+                    {t('audit_void_msg')}
                   </div>
                 )}
               </div>
@@ -1709,13 +1735,13 @@ export default function AdminDashboard() {
                 <Lock size={28} />
               </div>
 
-              <h3 className="text-lg font-black text-white uppercase tracking-widest leading-tight">Administrative Session Expiring</h3>
-              <p className="text-[10px] text-red-500 uppercase tracking-widest font-sans font-black mt-1">Security Compliance Guard active</p>
+              <h3 className="text-lg font-black text-white uppercase tracking-widest leading-tight">{t('session_expiring')}</h3>
+              <p className="text-[10px] text-red-500 uppercase tracking-widest font-sans font-black mt-1">{t('security_guard_active')}</p>
 
               <div className="my-6 p-4 bg-gray-950 border border-gray-900 rounded-2xl text-[11px] leading-relaxed text-gray-400">
-                <p>For system integrity and personal data compliance in the local Kigali Ops HQ, administrative portals automatically terminate sessions after 5 minutes of idle time.</p>
+                <p>{t('inactivity_modal_desc')}</p>
                 <div className="mt-4 flex items-center justify-center gap-2">
-                  <span className="text-gray-500 uppercase font-black text-[9px] tracking-wider leading-none">Security Timeout In:</span>
+                  <span className="text-gray-500 uppercase font-black text-[9px] tracking-wider leading-none">{t('security_timeout_in')}</span>
                   <span className="font-mono font-black text-white text-base bg-red-955/20 border border-red-900/30 px-2.5 py-0.5 rounded tracking-wide">{300 - idleTime}s</span>
                 </div>
               </div>
@@ -1726,18 +1752,18 @@ export default function AdminDashboard() {
                   onClick={() => {
                     setIdleTime(0);
                     setShowInactivityWarning(false);
-                    triggerNotification("Administrative security session extended! 🛡️", "info");
+                    triggerNotification(t('toast_session_extended'), "info");
                   }}
                   className="w-full py-4 bg-red-650 hover:bg-red-600 border border-transparent text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-1.5 hover:shadow-red-950/10 hover:translate-y-[-1px] select-none"
                 >
-                  Confirm Authorization & Extend
+                  {t('confirm_authorize_extend')}
                 </button>
                 <button
                   type="button"
                   onClick={handleLogoutAdmin}
                   className="w-full py-3.5 bg-gray-900 hover:bg-gray-850 hover:text-white text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer select-none"
                 >
-                  Voluntary Emergency Sign Out
+                  {t('voluntary_sign_out')}
                 </button>
               </div>
             </motion.div>
@@ -1777,14 +1803,14 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-white uppercase tracking-wider font-sans leading-none">{inspectingUser.name}</h3>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1.5">Segment: {inspectingUser.role} • Registry UID: #{inspectingUser.uid}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1.5">{t('segment_registry_uid', { role: roleLabel(inspectingUser.role), uid: inspectingUser.uid })}</p>
                 </div>
               </div>
 
               {/* Subliminal ID Preview Section */}
               <div className="space-y-5">
                 <div>
-                  <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block mb-2 leading-none">Security Dossier Document Vetted</span>
+                  <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block mb-2 leading-none">{t('dossier_document_vetted')}</span>
                   <IdentityCardVisual 
                     name={inspectingUser.name}
                     type={inspectingUser.role === 'company' ? 'Company' : 'Worker'}
@@ -1797,24 +1823,24 @@ export default function AdminDashboard() {
                 {/* Account details & information list */}
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
-                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">Contact Email Address</span>
+                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('contact_email_address')}</span>
                     <span className="font-sans font-bold text-gray-200">{inspectingUser.email}</span>
                   </div>
                   <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
-                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">Geographic Headquarters</span>
+                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('geographic_headquarters')}</span>
                     <span className="font-sans font-bold text-gray-200">{inspectingUser.location}</span>
                   </div>
                 </div>
 
                 {/* Live Overrides Section */}
                 <div className="bg-gray-950/40 border border-gray-900 p-5 rounded-2xl space-y-4">
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-900/60 pb-2">Active Admin Compliance Controls</h4>
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-900/60 pb-2">{t('active_admin_compliance')}</h4>
                   
                   {/* Verification Vetting Overrides */}
                   <div className="flex items-center justify-between gap-4 py-1">
                     <div>
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">Verified Trust Status</span>
-                      <p className="text-[10px] text-gray-500 leading-normal max-w-xs">Approve ID files to award a public verification trust badge on their listing card</p>
+                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('verified_trust_status')}</span>
+                      <p className="text-[10px] text-gray-500 leading-normal max-w-xs">{t('verified_trust_hint')}</p>
                     </div>
 
                     {inspectingUser.verificationStatus === 'verified' ? (
@@ -1829,17 +1855,17 @@ export default function AdminDashboard() {
                           
                           const logEntry: AuditLog = {
                             id: `log_${Date.now()}`,
-                            action: `REVOKED ID BADGE: Removed official verification marker for ${inspectingUser.name}`,
+                            action: t('audit_revoked_badge', { name: inspectingUser.name }),
                             category: 'SECURITY',
-                            date: 'Just now',
+                            date: t('time_just_now'),
                             user: 'Linekora Admin'
                           };
                           setAuditLogs(prev => [logEntry, ...prev]);
-                          triggerNotification(`Revoked verification credentials badge for ${inspectingUser.name}`, "error");
+                          triggerNotification(t('toast_revoked_badge', { name: inspectingUser.name }), "error");
                         }}
                         className="px-3.5 py-2.5 bg-red-950 border border-red-900/30 text-red-400 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-red-900 hover:text-white transition-all cursor-pointer shrink-0"
                       >
-                        Revoke Badge
+                        {t('revoke_badge')}
                       </button>
                     ) : (
                       <button
@@ -1853,17 +1879,17 @@ export default function AdminDashboard() {
 
                           const logEntry: AuditLog = {
                             id: `log_${Date.now()}`,
-                            action: `MANUAL DOCUMENT OPT-IN: Approved credentials and granted trust badge to ${inspectingUser.name}`,
+                            action: t('audit_doc_optin', { name: inspectingUser.name }),
                             category: 'SECURITY',
-                            date: 'Just now',
+                            date: t('time_just_now'),
                             user: 'Linekora Admin'
                           };
                           setAuditLogs(prev => [logEntry, ...prev]);
-                          triggerNotification(`Approved credentials and granted trust badge to ${inspectingUser.name}! 🕊️`);
+                          triggerNotification(t('toast_doc_optin', { name: inspectingUser.name }));
                         }}
                         className="px-3.5 py-2.5 bg-green-950/50 border border-green-900/40 text-green-400 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-green-650 hover:text-white transition-all cursor-pointer shrink-0"
                       >
-                        Approve Credentials
+                        {t('approve_credentials')}
                       </button>
                     )}
                   </div>
@@ -1871,8 +1897,8 @@ export default function AdminDashboard() {
                   {/* Trust Adjuster Slider inside Modal */}
                   <div className="pt-2 border-t border-gray-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">Direct Trust Score Index: {inspectingUser.trustScore}%</span>
-                      <p className="text-[10px] text-gray-500 leading-normal">Drag slider to dynamically modify local safety rank index</p>
+                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('direct_trust_score', { score: inspectingUser.trustScore })}</span>
+                      <p className="text-[10px] text-gray-500 leading-normal">{t('trust_slider_hint')}</p>
                     </div>
                     <input 
                       type="range" 
@@ -1891,8 +1917,8 @@ export default function AdminDashboard() {
                   {/* Profile Status Override buttons */}
                   <div className="pt-2.5 border-t border-gray-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">Force System Interventions</span>
-                      <p className="text-[10px] text-gray-500 leading-normal">Set active suspension state for policy compliance check</p>
+                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('force_system_interventions')}</span>
+                      <p className="text-[10px] text-gray-500 leading-normal">{t('force_state_hint')}</p>
                     </div>
                     <div className="flex gap-1.5">
                       {(['active', 'warning', 'suspended'] as const).map((st) => (
@@ -1907,13 +1933,13 @@ export default function AdminDashboard() {
                             
                             const logEntry: AuditLog = {
                               id: `log_${Date.now()}`,
-                              action: `FORCE STATE INTERVENTION: Modified account status of ${inspectingUser.name} to ${st.toUpperCase()}`,
+                              action: t('audit_force_state', { name: inspectingUser.name, status: st.toUpperCase() }),
                               category: 'SAFETY',
-                              date: 'Just now',
+                              date: t('time_just_now'),
                               user: 'Linekora Admin'
                             };
                             setAuditLogs(prev => [logEntry, ...prev]);
-                            triggerNotification(`Forced audit status of ${inspectingUser.name} to ${st.toUpperCase()}`, st === 'active' ? 'success' : 'error');
+                            triggerNotification(t('toast_force_status', { name: inspectingUser.name, status: st.toUpperCase() }), st === 'active' ? 'success' : 'error');
                           }}
                           className={`px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider rounded border transition-all cursor-pointer ${
                             inspectingUser.status === st 
@@ -1921,7 +1947,7 @@ export default function AdminDashboard() {
                               : 'bg-gray-900 border-gray-850 text-gray-500 hover:text-white'
                           }`}
                         >
-                          {st === 'active' ? 'ACTIVE' : st === 'warning' ? 'WARN' : 'BAN'}
+                          {st === 'active' ? t('state_override_active') : st === 'warning' ? t('state_override_warn') : t('state_override_ban')}
                         </button>
                       ))}
                     </div>
@@ -1936,7 +1962,7 @@ export default function AdminDashboard() {
                   onClick={() => setInspectingUser(null)}
                   className="px-5 py-3 bg-gray-950 border border-gray-900 hover:bg-gray-900 text-gray-400 hover:text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer select-none"
                 >
-                  Close Dossier File
+                  {t('close_dossier_file')}
                 </button>
               </div>
             </motion.div>

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../lib/AuthContext';
+import { useLanguage } from '../lib/LanguageContext';
 import { readScopedStorage, writeScopedStorage } from '../lib/userScopedStorage';
 
 interface Contract {
@@ -30,6 +31,7 @@ interface Contract {
 
 export default function ActiveContractsResolver() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   
@@ -99,8 +101,8 @@ export default function ActiveContractsResolver() {
           return { 
             ...c, 
             status, 
-            date: status === 'still_in_progress' ? 'Revision Pending' : 
-                  status === 'disputed' ? 'Disputed milestone' : 'Flagged Untrusted'
+            date: status === 'still_in_progress' ? t('revision_pending') : 
+                  status === 'disputed' ? t('disputed_milestone') : t('flagged_untrusted')
           };
         }
         return c;
@@ -118,26 +120,26 @@ export default function ActiveContractsResolver() {
         // Add alert notification for admin intervention
         logSystemAlert(
           'urgent',
-          '🚫 Untrusted Penalty Inflicted',
-          `Worker ${profile?.displayName || 'Worker'} has been flagged as "Not Trusted" on contract "${contract.jobTitle}". System strike count is at ${currentStrikes + 1}.`
+          t('untrusted_penalty_inflicted'),
+          t('untrusted_penalty_detail', { name: profile?.displayName || t('worker'), title: contract.jobTitle, strikes: currentStrikes + 1 })
         );
       } else if (status === 'disputed') {
         logSystemAlert(
           'urgent',
-          '⚖️ Dispute Case Opened',
-          `Milestone dispute requested. Initial arbitration reviews have commenced for "${contract.jobTitle}".`
+          t('dispute_case_opened'),
+          t('dispute_case_detail', { title: contract.jobTitle })
         );
       } else if (status === 'still_in_progress') {
         logSystemAlert(
           'info',
-          '⏳ Milestone Returned',
-          `Employer marked "${contract.jobTitle}" as needing completion. Returned to worker workload focus.`
+          t('milestone_returned'),
+          t('milestone_returned_detail', { title: contract.jobTitle })
         );
       }
 
       updateContractInDatabase(updatedContracts as Contract[]);
       setIsSubmitingAction(false);
-      setActionSuccessMessage(`Contract state updated to: ${status.replace('_', ' ').toUpperCase()}`);
+      setActionSuccessMessage(t('contract_state_updated', { status: status.replace('_', ' ').toUpperCase() }));
       setTimeout(() => setActionSuccessMessage(null), 3000);
     }, 1000);
   };
@@ -149,7 +151,7 @@ export default function ActiveContractsResolver() {
       category,
       title,
       details,
-      time: 'Just now',
+      time: t('just_now'),
       read: false
     });
     writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
@@ -167,8 +169,8 @@ export default function ActiveContractsResolver() {
             ...c,
             status: 'completed' as const,
             rating,
-            review: reviewText || 'Perfect execution!',
-            date: 'Contract Approved & Dispatched 🎉'
+            review: reviewText || t('perfect_execution'),
+            date: t('contract_approved')
           };
         }
         return c;
@@ -184,8 +186,8 @@ export default function ActiveContractsResolver() {
       updateContractInDatabase(updatedContracts);
       logSystemAlert(
         'success',
-        '✅ Contract Finalized & Released',
-        `Released escrow payments for "${selectedContract.jobTitle}" and assigned a rating of ${rating} stars.`
+        t('contract_finalized_released'),
+        t('released_escrow_payments', { title: selectedContract.jobTitle, rating })
       );
 
       setIsSubmitingAction(false);
@@ -194,7 +196,7 @@ export default function ActiveContractsResolver() {
       setReviewText('');
       setRating(5);
       
-      setActionSuccessMessage('🎉 Milestone Approved! Escrows dispatched and rating recorded safely.');
+      setActionSuccessMessage(t('milestone_approved_escrow'));
       setTimeout(() => setActionSuccessMessage(null), 3500);
     }, 1200);
   };
@@ -202,17 +204,17 @@ export default function ActiveContractsResolver() {
   const getStatusBadge = (status: Contract['status']) => {
     switch (status) {
       case 'accepted':
-        return <span className="bg-green-50 text-green-600 border border-green-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">Active Contract</span>;
+        return <span className="bg-green-50 text-green-600 border border-green-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">{t('contract_active')}</span>;
       case 'completion_requested':
-        return <span className="bg-indigo-50 text-indigo-600 border border-indigo-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">Completion Requested ⏳</span>;
+        return <span className="bg-indigo-50 text-indigo-600 border border-indigo-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider animate-pulse">{t('completion_requested')}</span>;
       case 'still_in_progress':
-        return <span className="bg-amber-50 text-amber-600 border border-amber-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">In Progress Correction</span>;
+        return <span className="bg-amber-50 text-amber-600 border border-amber-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">{t('in_progress_correction')}</span>;
       case 'disputed':
-        return <span className="bg-rose-50 text-rose-600 border border-rose-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">Arbitration Dispute ⚖️</span>;
+        return <span className="bg-rose-50 text-rose-600 border border-rose-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">{t('arbitration_dispute')}</span>;
       case 'completed':
-        return <span className="bg-emerald-50 text-emerald-600 border border-emerald-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">Finished & Approved</span>;
+        return <span className="bg-emerald-50 text-emerald-600 border border-emerald-150 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">{t('finished_approved')}</span>;
       case 'not_trusted':
-        return <span className="bg-red-50 text-red-600 border border-red-200 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">Flagged Untrusted 🚫</span>;
+        return <span className="bg-red-50 text-red-600 border border-red-200 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider">{t('flagged_untrusted')}</span>;
       default:
         return null;
     }
@@ -226,13 +228,13 @@ export default function ActiveContractsResolver() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h3 className="text-xl font-sans font-black tracking-tight text-gray-900 uppercase">
-            Active Contracts & Milestone Handovers
+            {t('active_contracts_title')}
           </h3>
-          <p className="text-xs text-gray-400 font-sans italic">Approve finished milestones, request progress updates, or flag issues immediately.</p>
+          <p className="text-xs text-gray-400 font-sans italic">{t('active_contracts_desc')}</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="min-h-2 min-w-2 rounded-full bg-blue-600 animate-ping" />
-          <span className="text-[10px] font-black text-gray-400 font-sans uppercase tracking-widest">{activeAndPendingContracts.length} Assignments Active</span>
+          <span className="text-[10px] font-black text-gray-400 font-sans uppercase tracking-widest">{t('assignments_active', { count: activeAndPendingContracts.length })}</span>
         </div>
       </div>
 
@@ -245,7 +247,7 @@ export default function ActiveContractsResolver() {
       {isSubmitingAction && (
         <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-30 flex flex-col items-center justify-center">
           <div className="h-10 w-10 border-4 border-blue-650 border-t-transparent rounded-full animate-spin mb-4" />
-          <span className="text-xs font-black uppercase tracking-widest text-gray-400 font-sans">Updating Blockchain Escrow Status...</span>
+          <span className="text-xs font-black uppercase tracking-widest text-gray-400 font-sans">{t('updating_escrow_status')}</span>
         </div>
       )}
 
@@ -267,11 +269,11 @@ export default function ActiveContractsResolver() {
                   </div>
                   <div>
                     <h4 className="font-sans font-black text-gray-900 leading-snug uppercase tracking-tight">{contract.jobTitle}</h4>
-                    <p className="text-xs font-bold text-gray-500 italic mt-0.5">Worker: <span className="text-gray-800 font-black">{contract.workerName}</span></p>
+                    <p className="text-xs font-bold text-gray-500 italic mt-0.5">{t('worker')}: <span className="text-gray-800 font-black">{contract.workerName}</span></p>
                     <div className="flex flex-wrap gap-3 mt-2 text-[10px] font-black uppercase tracking-wider text-gray-400">
-                      <span>Rate: {contract.salary}</span>
+                      <span>{t('rate_label')}: {contract.salary}</span>
                       <span>•</span>
-                      <span>Loc: {contract.location}</span>
+                      <span>{t('loc_label')}: {contract.location}</span>
                     </div>
                   </div>
                 </div>
@@ -285,8 +287,8 @@ export default function ActiveContractsResolver() {
                 <div className="bg-yellow-50/80 border border-yellow-250 p-4 rounded-xl flex items-start gap-3 text-yellow-800 text-[11px] font-sans leading-relaxed">
                   <AlertTriangle className="shrink-0 text-yellow-600 mt-0.5" size={16} />
                   <div>
-                    <span className="font-black uppercase block tracking-wider mb-0.5">⏳ Automatic 3-Day Overdue Escalation</span>
-                    Worker Shema Honore submitted this completion package 3 days ago. Platform safeguards require prompt review resolution to avoid local search trust index downgrades.
+                    <span className="font-black uppercase block tracking-wider mb-0.5">{t('escalation_warning')}</span>
+                    {t('escalation_desc_detail', { name: 'Shema Honore' })}
                   </div>
                 </div>
               )}
@@ -299,31 +301,31 @@ export default function ActiveContractsResolver() {
                       onClick={() => handleActionClick(contract.id, 'completed')}
                       className="flex-1 py-3 bg-gradient-to-r from-green-550 to-emerald-600 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-md shadow-green-100 transition-transform hover:scale-[1.01]"
                     >
-                      Approve & Complete ✅
+                      {t('approve_complete')}
                     </button>
                     <button
                       onClick={() => handleActionClick(contract.id, 'still_in_progress')}
                       className="flex-1 py-3 bg-white hover:bg-gray-50 border border-gray-200 text-amber-600 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all"
                     >
-                      Need Adjustment ⏳
+                      {t('need_adjustment')}
                     </button>
                     <button
                       onClick={() => handleActionClick(contract.id, 'disputed')}
                       className="py-3 px-4 bg-white hover:bg-gray-50 border border-gray-200 text-rose-500 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all"
                     >
-                      Dispute ⚖️
+                      {t('dispute')}
                     </button>
                     <button
                       onClick={() => handleActionClick(contract.id, 'not_trusted')}
                       className="py-3 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all"
                     >
-                      Mark Untrusted 🚫
+                      {t('mark_untrusted')}
                     </button>
                   </>
                 ) : (
                   <div className="flex items-center gap-2 text-xs font-bold text-gray-400 italic">
                     <Clock size={12} />
-                    Shift contract actively in progress. Waiting for worker completion request.
+                    {t('shift_contract_progress')}
                   </div>
                 )}
               </div>
@@ -334,8 +336,8 @@ export default function ActiveContractsResolver() {
         {activeAndPendingContracts.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center text-gray-400">
             <CheckCircle2 size={32} className="text-gray-200 mb-3" />
-            <p className="text-xs font-black uppercase tracking-widest leading-none">All Contracts Fully Setled</p>
-            <p className="text-[11px] text-gray-400 italic mt-1.5Packed font-medium font-sans">No outstanding handovers or pending completion flags outstanding.</p>
+            <p className="text-xs font-black uppercase tracking-widest leading-none">{t('all_contracts_settled')}</p>
+            <p className="text-[11px] text-gray-400 italic mt-1.5Packed font-medium font-sans">{t('no_outstanding')}</p>
           </div>
         )}
       </div>
@@ -366,10 +368,10 @@ export default function ActiveContractsResolver() {
                     <Award size={28} />
                   </div>
                   <h3 className="text-xl font-black font-sans uppercase tracking-tight text-gray-900">
-                    File Worker Reputation
+                    {t('file_worker_reputation')}
                   </h3>
                   <p className="text-xs text-gray-550 mt-1 max-w-xs mx-auto leading-relaxed">
-                    Provide punctuality, focus, and performance feedback for worker <span className="font-extrabold text-indigo-700">{selectedContract.workerName}</span>.
+                    {t('provide_feedback_for_worker')} <span className="font-extrabold text-indigo-700">{selectedContract.workerName}</span>.
                   </p>
                 </div>
 
@@ -396,19 +398,19 @@ export default function ActiveContractsResolver() {
                     ))}
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                    {rating === 5 ? 'MasterClass Standard (5/5)' :
-                     rating === 4 ? 'Highly Commended (4/5)' :
-                     rating === 3 ? 'Standard Alignment (3/5)' :
-                     rating === 2 ? 'Needs Revision (2/5)' : 'Flagged Poor Work (1/5)'}
+                    {rating === 5 ? t('masterclass_standard') :
+                     rating === 4 ? t('highly_commended') :
+                     rating === 3 ? t('standard_alignment') :
+                     rating === 2 ? t('needs_revision') : t('flagged_poor')}
                   </span>
                 </div>
 
                 {/* TEXT REVIEW */}
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">Written Experience Review</label>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t('written_review')}</label>
                   <textarea
                     rows={3}
-                    placeholder="Describe how the worker performed their masonry, sanitation, or logistics shift..."
+                    placeholder={t('review_placeholder')}
                     className="w-full text-xs font-medium p-4 rounded-2xl border border-gray-200 outline-none focus:border-indigo-600 resize-none font-sans"
                     value={reviewText}
                     onChange={(e) => setReviewText(e.target.value)}
@@ -419,7 +421,7 @@ export default function ActiveContractsResolver() {
                 <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 flex items-start gap-2.5">
                   <ShieldAlert className="text-indigo-600 shrink-0 mt-0.5" size={16} />
                   <p className="text-[10.5px] text-gray-500 leading-relaxed font-sans">
-                    By submitting this rating, you release escrow platform holdings to <span className="font-semibold text-gray-805">{selectedContract.workerName}</span>'s verified MoMo digital wallet instantly. Your review cannot be retracted.
+                    {t('release_escrow_prefix')} <span className="font-semibold text-gray-805">{selectedContract.workerName}</span>{t('release_escrow_suffix')}
                   </p>
                 </div>
 
@@ -428,7 +430,7 @@ export default function ActiveContractsResolver() {
                   onClick={handleApproveAndSubmitReview}
                   className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-650 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs shadow-lg transition-transform hover:scale-[1.01]"
                 >
-                  🚀 Submit & Release Funds (RWF {selectedContract.salary})
+                  {t('submit_release_funds_amount', { amount: selectedContract.salary })}
                 </button>
               </div>
             </motion.div>

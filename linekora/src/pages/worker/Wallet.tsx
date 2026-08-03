@@ -6,6 +6,7 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface Transaction {
   id: number;
@@ -19,6 +20,7 @@ interface Transaction {
 }
 
 export default function WorkerWallet() {
+  const { t } = useLanguage();
   const { profile } = useAuth();
   const walletUid = profile?.firebaseUid || profile?.id || 'guest';
   const wk = (key: string) => `${key}_${walletUid}`;
@@ -91,15 +93,22 @@ export default function WorkerWallet() {
   const [withdrawErrorMsg, setWithdrawErrorMsg] = useState('');
 
   const stats = [
-    { label: 'Available Balance', value: `RWF ${balance.toLocaleString()}`, icon: Wallet },
-    { label: 'Pending (Escrow)', value: `RWF ${pendingBalance.toLocaleString()}`, icon: Clock },
-    { label: 'Total Withdrawn', value: `RWF ${totalWithdrawn.toLocaleString()}`, icon: CheckCircle2 },
+    { label: t('available_balance'), value: `RWF ${balance.toLocaleString()}`, icon: Wallet },
+    { label: t('pending_escrow'), value: `RWF ${pendingBalance.toLocaleString()}`, icon: Clock },
+    { label: t('total_withdrawn'), value: `RWF ${totalWithdrawn.toLocaleString()}`, icon: CheckCircle2 },
   ];
+
+  const statusText = (s: string) => ({
+    completed: t('status_completed'),
+    pending: t('status_pending'),
+    escrow: t('vault_escrow'),
+    all: t('filter_all'),
+  }[s] || s);
 
   const handleDepositConfirm = () => {
     const amt = parseInt(depositAmount, 10);
     if (isNaN(amt) || amt <= 0) {
-      setDepositErrorMsg('Please enter a valid positive deposit amount.');
+      setDepositErrorMsg(t('deposit_invalid_amount'));
       return;
     }
     setDepositErrorMsg('');
@@ -114,10 +123,10 @@ export default function WorkerWallet() {
         id: Date.now(),
         type: 'payment',
         amount: `RWF ${amt.toLocaleString()}`,
-        method: depositMethod === 'momo' ? 'MTN MoMo Deposit' : 'Credit Card Settlement',
+        method: depositMethod === 'momo' ? t('momo_deposit') : t('card_settlement'),
         status: 'completed',
-        date: 'Today',
-        description: 'Funds loaded onto available digital balance to facilitate platform features & matches.',
+        date: t('today'),
+        description: t('deposit_desc'),
         refCode: `DEP-TXN-${Math.floor(Math.random() * 90000) + 10000}`
       };
       setTxList(prev => [newTx, ...prev]);
@@ -127,11 +136,11 @@ export default function WorkerWallet() {
   const handleWithdrawConfirm = () => {
     const amt = parseInt(withdrawAmount, 10);
     if (isNaN(amt) || amt <= 0) {
-      setWithdrawErrorMsg('Please specify a positive integer amount to withdraw.');
+      setWithdrawErrorMsg(t('withdraw_invalid_amount'));
       return;
     }
     if (amt > balance) {
-      setWithdrawErrorMsg(`Insufficient funds. Your maximum cash withdrawal threshold is RWF ${balance.toLocaleString()}.`);
+      setWithdrawErrorMsg(t('insufficient_funds', { amount: balance.toLocaleString() }));
       return;
     }
     setWithdrawErrorMsg('');
@@ -154,8 +163,8 @@ export default function WorkerWallet() {
 
       const descriptionMsg = 
         withdrawType === 'bank' 
-          ? `Commercial bank transfer matching payout processed securely to account ending in ${withdrawBankAcc.slice(-4)}`
-          : `Automated instant telecommunication tower payout transferred securely to registered mobile number ${withdrawPhone}`;
+          ? t('withdraw_bank_desc', { last4: withdrawBankAcc.slice(-4) })
+          : t('withdraw_mobile_desc', { phone: withdrawPhone });
 
       const newTx: Transaction = {
         id: Date.now(),
@@ -163,7 +172,7 @@ export default function WorkerWallet() {
         amount: `RWF ${amt.toLocaleString()}`,
         method: resolvedMethod,
         status: 'completed',
-        date: 'Today',
+        date: t('today'),
         description: descriptionMsg,
         refCode: resolvedRef
       };
@@ -184,8 +193,8 @@ export default function WorkerWallet() {
       <div className="max-w-5xl mx-auto">
         <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Financial Wallet</h1>
-            <p className="text-gray-500 font-sans font-medium mt-1 italic">Manage your earnings, escrow matching balances, and secure instant payouts.</p>
+            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('financial_wallet')}</h1>
+            <p className="text-gray-500 font-sans font-medium mt-1 italic">{t('wallet_subtitle_worker')}</p>
           </div>
           <div className="flex gap-4">
             <button 
@@ -199,7 +208,7 @@ export default function WorkerWallet() {
               className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-sans font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all cursor-pointer"
             >
               <Plus size={20} />
-              Add Funds
+              {t('add_funds')}
             </button>
             <button 
               onClick={() => {
@@ -211,7 +220,7 @@ export default function WorkerWallet() {
               className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl font-sans font-bold shadow-lg hover:bg-black transition-all cursor-pointer"
             >
               <ArrowUpRight size={20} />
-              Withdraw
+              {t('withdraw')}
             </button>
           </div>
         </header>
@@ -235,8 +244,8 @@ export default function WorkerWallet() {
         <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden animate-fade-in">
           <div className="p-8 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 font-sans uppercase tracking-tight">Recent Transactions</h2>
-              <p className="text-xs text-gray-400 font-sans italic mt-0.5 font-medium">Click any row below to view full verification, instructions & security details</p>
+              <h2 className="text-xl font-bold text-gray-900 font-sans uppercase tracking-tight">{t('recent_transactions')}</h2>
+              <p className="text-xs text-gray-400 font-sans italic mt-0.5 font-medium">{t('tx_click_hint')}</p>
             </div>
             <div className="flex bg-gray-50 p-1.5 rounded-2xl border border-gray-100 self-start">
               {(['all', 'escrow', 'completed'] as const).map((tab) => (
@@ -247,7 +256,7 @@ export default function WorkerWallet() {
                     activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'
                   }`}
                 >
-                  {tab}
+                  {statusText(tab)}
                 </button>
               ))}
             </div>
@@ -257,11 +266,11 @@ export default function WorkerWallet() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50/50">
-                  <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">Details</th>
-                  <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">Method</th>
-                  <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">Amount</th>
-                  <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">Status</th>
-                  <th className="px-8 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">Date</th>
+                  <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">{t('details')}</th>
+                  <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">{t('method')}</th>
+                  <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">{t('amount')}</th>
+                  <th className="px-8 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">{t('status')}</th>
+                  <th className="px-8 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">{t('date')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 font-sans">
@@ -285,7 +294,7 @@ export default function WorkerWallet() {
                       </div>
                     </td>
                     <td className="px-8 py-6 text-sm font-semibold text-gray-500 uppercase tracking-tight">
-                      {tx.type === 'withdraw' ? 'Standard Standard' : tx.type === 'escrow' ? 'Vault Escrow' : 'Direct Credit'}
+                      {tx.type === 'withdraw' ? t('standard_standard') : tx.type === 'escrow' ? t('vault_escrow') : t('direct_credit')}
                     </td>
                     <td className="px-8 py-6">
                       <p className={`font-sans font-black text-sm ${
@@ -299,7 +308,7 @@ export default function WorkerWallet() {
                         tx.status === 'completed' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-yellow-50 text-yellow-600 border border-yellow-101'
                       }`}>
                         {tx.status === 'completed' ? <CheckCircle2 size={10} /> : <Clock size={10} />}
-                        {tx.status}
+                        {statusText(tx.status)}
                       </div>
                     </td>
                     <td className="px-8 py-6 text-right text-xs font-bold text-gray-400 font-sans">{tx.date}</td>
@@ -339,7 +348,7 @@ export default function WorkerWallet() {
                 <span className={`px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded ${
                   selectedTx.status === 'completed' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-yellow-50 text-yellow-600 border border-yellow-101'
                 }`}>
-                  {selectedTx.status}
+                  {statusText(selectedTx.status)}
                 </span>
                 <span className="text-[10px] font-mono text-gray-400 font-bold">{selectedTx.refCode}</span>
               </div>
@@ -347,11 +356,11 @@ export default function WorkerWallet() {
               <h3 className="text-xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">
                 {selectedTx.method}
               </h3>
-              <p className="text-xs text-gray-400 font-sans font-medium mb-6">Recorded on {selectedTx.date}</p>
+              <p className="text-xs text-gray-400 font-sans font-medium mb-6">{t('recorded_on', { date: selectedTx.date })}</p>
 
               <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-6 flex items-center justify-between">
                 <div>
-                  <span className="text-[9px] uppercase font-black tracking-widest text-gray-400 block mb-0.5">Amount Transacted</span>
+                  <span className="text-[9px] uppercase font-black tracking-widest text-gray-400 block mb-0.5">{t('amount_transacted')}</span>
                   <span className={`text-2xl font-black font-sans ${
                     selectedTx.type === 'withdraw' ? 'text-red-500' : 'text-green-600'
                   }`}>
@@ -365,7 +374,7 @@ export default function WorkerWallet() {
 
               <div className="space-y-4 mb-8 font-sans">
                 <div>
-                  <span className="text-[9px] uppercase font-black tracking-widest text-gray-400 block mb-1">Transaction description</span>
+                  <span className="text-[9px] uppercase font-black tracking-widest text-gray-400 block mb-1">{t('transaction_description')}</span>
                   <p className="text-xs text-gray-650 font-medium leading-relaxed italic">
                     "{selectedTx.description}"
                   </p>
@@ -375,9 +384,9 @@ export default function WorkerWallet() {
                   <div className="p-4 bg-blue-50/50 border border-blue-105 rounded-2xl flex items-start gap-2.5">
                     <Shield size={16} className="text-blue-500 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[11px] font-black text-blue-900 uppercase">LINEKORA Escrow Secured</p>
+                      <p className="text-[11px] font-black text-blue-900 uppercase">{t('escrow_secured')}</p>
                       <p className="text-[10px] text-blue-700 font-medium leading-relaxed mt-0.5">
-                        These funds are protected. LINEKORA verified the clients deposit into vault before you start. Finish milestone to trigger instant mobile launch.
+                        {t('wallet_escrow_protected_desc')}
                       </p>
                     </div>
                   </div>
@@ -389,7 +398,7 @@ export default function WorkerWallet() {
                 onClick={() => setSelectedTx(null)}
                 className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg cursor-pointer"
               >
-                Close Details
+                {t('close_details')}
               </button>
             </motion.div>
           </div>
@@ -425,8 +434,8 @@ export default function WorkerWallet() {
 
               {!withdrawSuccess ? (
                 <div>
-                  <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">Withdraw Funds</h2>
-                  <p className="text-xs text-gray-400 font-sans italic mb-6 font-medium">Get instantly paid into your registered money channel</p>
+                  <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">{t('withdraw_funds')}</h2>
+                  <p className="text-xs text-gray-400 font-sans italic mb-6 font-medium">{t('withdraw_subtitle')}</p>
                   
                   {withdrawErrorMsg && (
                     <div className="mb-6 p-4 bg-red-50 text-red-600 border border-red-100 text-xs font-bold rounded-2xl flex items-start gap-2 animate-pulse">
@@ -438,8 +447,8 @@ export default function WorkerWallet() {
                   <div className="space-y-6">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans">Amount (RWF)</label>
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">Available: RWF {balance.toLocaleString()}</span>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans">{t('amount_rwf')}</label>
+                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">{t('available_label', { amount: balance.toLocaleString() })}</span>
                       </div>
                       <input 
                         type="number" 
@@ -449,13 +458,13 @@ export default function WorkerWallet() {
                           setWithdrawAmount(e.target.value);
                           setWithdrawErrorMsg('');
                         }}
-                        placeholder="e.g. 5000" 
+                        placeholder={t('amount_placeholder')} 
                         className="w-full p-4 rounded-2xl border-2 border-gray-100 font-sans font-black text-xl outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-50 text-gray-900" 
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Choose Destination operator</label>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('choose_operator')}</label>
                       <div className="grid grid-cols-3 gap-2">
                         <button 
                           type="button"
@@ -495,7 +504,7 @@ export default function WorkerWallet() {
 
                     {withdrawType !== 'bank' ? (
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Registered Mobile Number</label>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('registered_mobile')}</label>
                         <input 
                           type="text" 
                           disabled={withdrawIsLoading}
@@ -507,7 +516,7 @@ export default function WorkerWallet() {
                       </div>
                     ) : (
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">I&M Bank Account Number</label>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('bank_account_number')}</label>
                         <input 
                           type="text" 
                           disabled={withdrawIsLoading}
@@ -528,12 +537,12 @@ export default function WorkerWallet() {
                       {withdrawIsLoading ? (
                         <>
                           <Loader2 size={16} className="animate-spin" />
-                          <span>Processing Payout...</span>
+                          <span>{t('processing_payout')}</span>
                         </>
                       ) : (
                         <>
                           <ArrowRight size={16} />
-                          <span>Request Withdraw</span>
+                          <span>{t('request_withdraw')}</span>
                         </>
                       )}
                     </button>
@@ -544,19 +553,19 @@ export default function WorkerWallet() {
                   <div className="h-16 w-16 bg-green-50 text-green-600 border border-green-200 rounded-full flex items-center justify-center mb-6 mx-auto animate-bounce">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">Payout Succeeded</h3>
+                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">{t('payout_succeeded')}</h3>
                   <p className="text-sm font-sans text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                    RWF {parseInt(withdrawAmount, 10).toLocaleString()} has been successfully securely transferred to your digital channel!
+                    {t('payout_succeeded_msg', { amount: parseInt(withdrawAmount, 10).toLocaleString() })}
                   </p>
                   
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-left space-y-2 mb-8 uppercase font-sans text-[10px] font-black tracking-widest text-gray-500">
                     <div className="flex justify-between">
-                      <span>Method:</span>
-                      <span className="text-gray-900">{withdrawType === 'bank' ? 'I&M Bank Transfer' : 'Mobile Instant'}</span>
+                      <span>{t('method_label')}</span>
+                      <span className="text-gray-900">{withdrawType === 'bank' ? 'I&M Bank Transfer' : t('mobile_instant')}</span>
                     </div>
                     <div className="flex justify-between animate-pulse">
-                      <span>Status:</span>
-                      <span className="text-green-600">Settled Instantly</span>
+                      <span>{t('status_label')}</span>
+                      <span className="text-green-600">{t('settled_instantly')}</span>
                     </div>
                   </div>
 
@@ -564,7 +573,7 @@ export default function WorkerWallet() {
                     onClick={() => setShowWithdraw(false)}
                     className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg cursor-pointer"
                   >
-                    Close Dialog
+                    {t('close_dialog')}
                   </button>
                 </div>
               )}
@@ -602,8 +611,8 @@ export default function WorkerWallet() {
 
               {!depositSuccess ? (
                 <div>
-                  <h2 className="text-xl font-black text-gray-950 font-sans mb-1 text-center uppercase tracking-tight">Add Funds</h2>
-                  <p className="text-xs text-gray-400 font-sans italic mb-6 text-center font-medium">Instantly load funds onto your digital wallet balance</p>
+                  <h2 className="text-xl font-black text-gray-950 font-sans mb-1 text-center uppercase tracking-tight">{t('add_funds')}</h2>
+                  <p className="text-xs text-gray-400 font-sans italic mb-6 text-center font-medium">{t('deposit_subtitle')}</p>
 
                   {depositErrorMsg && (
                     <div className="mb-6 p-4 bg-red-50 text-red-600 border border-red-100 text-xs font-bold rounded-2xl flex items-start gap-2 animate-pulse">
@@ -614,7 +623,7 @@ export default function WorkerWallet() {
 
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Amount (RWF)</label>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('amount_rwf')}</label>
                       <input 
                         type="number" 
                         disabled={depositIsLoading}
@@ -637,7 +646,7 @@ export default function WorkerWallet() {
                         }`}
                       >
                         <Smartphone size={24} />
-                        <span className="font-sans text-[10px] font-black uppercase tracking-tighter">Mobile Money</span>
+                        <span className="font-sans text-[10px] font-black uppercase tracking-tighter">{t('mobile_money')}</span>
                       </button>
                       <button 
                         type="button"
@@ -648,7 +657,7 @@ export default function WorkerWallet() {
                         }`}
                       >
                         <CreditCard size={24} />
-                        <span className="font-sans text-[10px] font-black uppercase tracking-tighter">Debit Card</span>
+                        <span className="font-sans text-[10px] font-black uppercase tracking-tighter">{t('debit_card')}</span>
                       </button>
                     </div>
                     <button 
@@ -659,10 +668,10 @@ export default function WorkerWallet() {
                       {depositIsLoading ? (
                         <>
                           <Loader2 size={18} className="animate-spin" />
-                          <span>Processing Placement...</span>
+                          <span>{t('processing_placement')}</span>
                         </>
                       ) : (
-                        <span>Confirm Deposit</span>
+                        <span>{t('confirm_deposit')}</span>
                       )}
                     </button>
                   </div>
@@ -672,19 +681,19 @@ export default function WorkerWallet() {
                   <div className="h-16 w-16 bg-green-50 text-green-600 border border-green-200 rounded-full flex items-center justify-center mb-6 mx-auto animate-bounce">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">Deposit Succeeded</h3>
+                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">{t('deposit_succeeded')}</h3>
                   <p className="text-sm font-sans text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                    RWF {parseInt(depositAmount, 10).toLocaleString()} has been successfully loaded into your available balance!
+                    {t('deposit_succeeded_msg', { amount: parseInt(depositAmount, 10).toLocaleString() })}
                   </p>
 
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-left space-y-2 mb-8 uppercase font-sans text-[10px] font-black tracking-widest text-gray-500">
                     <div className="flex justify-between">
-                      <span>Method:</span>
-                      <span className="text-gray-900">{depositMethod === 'momo' ? 'Mobile Money Transfer' : 'Direct Card Credit'}</span>
+                      <span>{t('method_label')}</span>
+                      <span className="text-gray-900">{depositMethod === 'momo' ? t('method_mobile_transfer') : t('method_card_credit')}</span>
                     </div>
                     <div className="flex justify-between animate-pulse">
-                      <span>Security:</span>
-                      <span className="text-green-650">Escrow Protected</span>
+                      <span>{t('security_label')}</span>
+                      <span className="text-green-650">{t('escrow_protected')}</span>
                     </div>
                   </div>
 
@@ -692,7 +701,7 @@ export default function WorkerWallet() {
                     onClick={() => setShowDeposit(false)}
                     className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg cursor-pointer"
                   >
-                    Close Dialog
+                    {t('close_dialog')}
                   </button>
                 </div>
               )}

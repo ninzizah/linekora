@@ -412,6 +412,12 @@ app.post('/api/reviews', async (req, res) => {
 
 // ─── START SERVER ────────────────────────────────────────────────────────────
 
-app.listen(port, () => {
-  console.log(`✅  Linekora API running on http://localhost:${port}`);
-});
+// Vercel serverless: export the Express app as default
+export default app;
+
+// Local dev: start the server normally
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
+    console.log(`✅  Linekora API running on http://localhost:${port}`);
+  });
+}

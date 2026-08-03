@@ -7,6 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import { motion, AnimatePresence } from 'motion/react';
 import { createJob } from '../../lib/api';
@@ -65,9 +66,56 @@ interface Toast {
 
 export default function EmployerPostTask() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+
+  const catLabel = (v: string) => ({
+    'Domestic Cleaning': t('category_domestic_cleaning'),
+    'Plumbing Repairs': t('category_plumbing_repairs'),
+    'Garden Work': t('category_garden_work'),
+    'Mechanical Repairs': t('category_mechanical_repairs'),
+    'Security / Guard': t('category_security_guard'),
+    'Event Helper': t('category_event_helper'),
+    'Moving Support': t('category_moving_support'),
+  }[v] || v);
+
+  const tagLabel = (v: string) => ({
+    'Floor Mopping': t('tag_floor_mopping'),
+    'Dishes & Kitchen': t('tag_dishes_kitchen'),
+    'Laundry / Ironing': t('tag_laundry_ironing'),
+    'Window Washing': t('tag_window_washing'),
+    'Bathroom Sanitation': t('tag_bathroom_sanitation'),
+    'Dusting': t('tag_dusting'),
+    'Pipe Fitting': t('tag_pipe_fitting'),
+    'Emergency Leaks': t('tag_emergency_leaks'),
+    'Clogged Drain': t('tag_clogged_drain'),
+    'Sewer Check': t('tag_sewer_check'),
+    'Tap & Shower Install': t('tag_tap_shower_install'),
+    'Lawn Mowing': t('tag_lawn_mowing'),
+    'Hedge Trimming': t('tag_hedge_trimming'),
+    'Weed Control': t('tag_weed_control'),
+    'Soil Tilling': t('tag_soil_tilling'),
+    'Fencing repair': t('tag_fencing_repair'),
+    'Car Alternator': t('tag_car_alternator'),
+    'Brake Pads Replacement': t('tag_brake_pads_replacement'),
+    'Engine Noise Check': t('tag_engine_noise_check'),
+    'Moto Maintenance': t('tag_moto_maintenance'),
+    'Battery Boost': t('tag_battery_boost'),
+    'Overnight Patrol': t('tag_overnight_patrol'),
+    'Gate Registry': t('tag_gate_registry'),
+    'CCTV Setup Check': t('tag_cctv_setup_check'),
+    'Access Control': t('tag_access_control'),
+    'Marquee Decor': t('tag_marquee_decor'),
+    'Server & Catering': t('tag_server_catering'),
+    'Guest ushering': t('tag_guest_ushering'),
+    'Exhibition Clean up': t('tag_exhibition_clean_up'),
+    'Heavy Couch Lifting': t('tag_heavy_couch_lifting'),
+    'Fragile packing': t('tag_fragile_packing'),
+    'Truck loading': t('tag_truck_loading'),
+    'Furniture reassembly': t('tag_furniture_reassembly'),
+  }[v] || v);
 
   // Check if there are active uncompleted contracts in database
   const [hasUncompleted, setHasUncompleted] = useState(() => {
@@ -106,7 +154,7 @@ export default function EmployerPostTask() {
       setSelectedTags(prev => prev.filter(t => t !== tag));
     } else {
       if (selectedTags.length >= 4) {
-        addToast('Maximum 4 tag attributes are permitted.', 'info');
+        addToast(t('toast_max_4_tags'), 'info');
         return;
       }
       setSelectedTags(prev => [...prev, tag]);
@@ -119,7 +167,7 @@ export default function EmployerPostTask() {
     if (meta) {
       const median = Math.round((meta.min + meta.max) / 2);
       setBudget(median.toString());
-      addToast(`Budget calibrated to standard median: RWF ${median.toLocaleString()}`, 'success');
+      addToast(t('toast_budget_calibrated', { amount: median.toLocaleString() }), 'success');
     }
   };
 
@@ -135,10 +183,10 @@ export default function EmployerPostTask() {
         const dataUrl = reader.result as string;
         setAttachedPhotos(prev => {
           if (prev.length >= 5) {
-            addToast('Maximum 5 photos allowed.', 'info');
+            addToast(t('toast_max_5_photos'), 'info');
             return prev;
           }
-          addToast('Photo attached successfully!', 'success');
+          addToast(t('toast_photo_attached'), 'success');
           return [...prev, dataUrl];
         });
       };
@@ -149,32 +197,32 @@ export default function EmployerPostTask() {
 
   const handleRemovePhoto = (url: string) => {
     setAttachedPhotos(prev => prev.filter(u => u !== url));
-    addToast('Attachment removed.', 'info');
+    addToast(t('toast_attachment_removed'), 'info');
   };
 
   // Validation before changing steps
   const handleNextStep = () => {
     if (step === 1) {
       if (!title.trim()) {
-        addToast('Please input a clear title context for the task.', 'error');
+        addToast(t('toast_title_required'), 'error');
         return;
       }
       if (!location.trim()) {
-        addToast('Please declare the work neighborhood/sector.', 'error');
+        addToast(t('toast_location_required'), 'error');
         return;
       }
       if (!description.trim()) {
-        addToast('Describe the task details briefly so workers can scope it.', 'error');
+        addToast(t('toast_description_required'), 'error');
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (!budget || Number(budget) <= 0) {
-        addToast('Value must represent a positive RWF budget.', 'error');
+        addToast(t('toast_positive_budget'), 'error');
         return;
       }
       if (!startDate) {
-        addToast('Please specify a target commencement date.', 'error');
+        addToast(t('toast_start_date_required'), 'error');
         return;
       }
       setStep(3);
@@ -185,7 +233,7 @@ export default function EmployerPostTask() {
     setLoading(true);
 
     if (!profile?.id) {
-      addToast('Please sign in to post a task.', 'error');
+      addToast(t('toast_sign_in_to_post'), 'error');
       setLoading(false);
       return;
     }
@@ -228,10 +276,10 @@ export default function EmployerPostTask() {
 
       setLoading(false);
       setShowSuccessBlast(true);
-      addToast('Task dispatched to database! Workers can now find it.', 'success');
+      addToast(t('toast_task_dispatched'), 'success');
     } catch (err: any) {
       setLoading(false);
-      addToast(err.message || 'Server error. Please try again.', 'error');
+      addToast(err.message || t('server_error_retry'), 'error');
     }
   };
 
@@ -243,8 +291,8 @@ export default function EmployerPostTask() {
     <DashboardLayout>
       <div className="max-w-5xl mx-auto px-4 font-sans">
         <header className="mb-8 text-center">
-          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Post a Task</h1>
-          <p className="text-gray-500 font-sans font-medium mt-1 italic text-sm">Draft dynamic micro-gigs & instant verification alerts in Kigali</p>
+          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('post_task')}</h1>
+          <p className="text-gray-500 font-sans font-medium mt-1 italic text-sm">{t('post_task_subtitle')}</p>
         </header>
 
         {hasUncompleted ? (
@@ -253,21 +301,21 @@ export default function EmployerPostTask() {
               <AlertCircle size={40} />
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight font-sans">Active Milestone Blockage 🔒</h2>
-              <p className="text-gray-400 uppercase tracking-widest font-black text-[10px]">LINEKORA Platform Quality Guarantee</p>
+              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight font-sans">{t('milestone_blockage_title')}</h2>
+              <p className="text-gray-400 uppercase tracking-widest font-black text-[10px]">{t('milestone_blockage_platform')}</p>
               <p className="text-sm font-sans font-medium text-gray-500 max-w-md mx-auto leading-relaxed">
-                Platform safety directives require clients to first update, evaluate, or approve outstanding active assignments and leave ratings/reviews before posting more new listings.
+                {t('milestone_blockage_desc')}
               </p>
             </div>
             <div className="bg-amber-50 border border-amber-100 p-5 rounded-3xl max-w-lg mx-auto text-left text-amber-900 text-xs font-medium leading-relaxed font-sans">
-              <span className="font-extrabold uppercase tracking-wider block mb-1">💡 Resolve instantly on your Dashboard:</span>
-              Browse down your workspace, select the active task submitted by your worker, and click <span className="font-bold">"Approve & Complete"</span> to release escrow holdings and rate the performance.
+              <span className="font-extrabold uppercase tracking-wider block mb-1">{t('milestone_resolve_hint')}</span>
+              {t('milestone_resolve_desc')}
             </div>
             <button
               onClick={() => navigate('/dashboard/employer')}
               className="px-8 py-4 bg-gray-950 hover:bg-gray-800 text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs transition-colors"
             >
-              Go to Workspace Dashboard
+              {t('milestone_go_dashboard')}
             </button>
           </div>
         ) : showSuccessBlast ? (
@@ -276,13 +324,13 @@ export default function EmployerPostTask() {
               <CheckCircle size={40} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight">Active Dispatch!</h2>
+              <h2 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight">{t('post_success_title')}</h2>
               <p className="text-sm font-sans font-medium text-gray-500 mt-2">
-                Your gig <span className="text-blue-600 font-black">"{title}"</span> is validated. It is now published live onto the LINEKORA worker dashboard.
+                {t('post_success_desc', { title })}
               </p>
             </div>
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-mono">
-              Redirecting you back to your workspace...
+              {t('post_success_redirect')}
             </div>
           </div>
         ) : (
@@ -290,9 +338,9 @@ export default function EmployerPostTask() {
             {/* Steps Left Panel */}
             <div className="lg:col-span-3 space-y-3">
               {[
-                { n: 1, text: 'Basic Info' },
-                { n: 2, text: 'Budget & Time' },
-                { n: 3, text: 'Live Card Preview' }
+                { n: 1, text: t('step_basic_info') },
+                { n: 2, text: t('step_budget_time') },
+                { n: 3, text: t('step_live_preview') }
               ].map((s) => (
                 <div key={s.n} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${
                   step === s.n ? 'bg-blue-600 text-white shadow-xl shadow-blue-300/30 border-blue-600' : 'bg-white text-gray-400 border-gray-100'
@@ -310,10 +358,10 @@ export default function EmployerPostTask() {
               <div className="p-5 bg-blue-50/70 border border-blue-100 rounded-3xl mt-6 hidden lg:block">
                 <p className="text-[10px] font-black text-blue-800 uppercase tracking-widest mb-1.5 flex items-center gap-1">
                   <Shield size={12} />
-                  Safe Job Escrow
+                  {t('safe_job_escrow')}
                 </p>
                 <p className="text-[11px] text-blue-700/85 font-medium leading-normal font-sans">
-                  Kigali LINEKORA maintains locklots of task wages statically inside a digital wallet until works are finalized. No upfront direct-cash risk!
+                  {t('safe_job_escrow_desc')}
                 </p>
               </div>
             </div>
@@ -326,19 +374,19 @@ export default function EmployerPostTask() {
                 {step === 1 && (
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">What do you need help with?</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('what_do_you_need_help')}</label>
                       <input 
                         type="text" 
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        placeholder="e.g., Immediate Living Room Painting or Office Cleaning" 
+                        placeholder={t('placeholder_living_room')} 
                         className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all text-base border"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">Task Category</label>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('task_category')}</label>
                         <select 
                           value={category}
                           onChange={(e) => {
@@ -347,25 +395,25 @@ export default function EmployerPostTask() {
                           }}
                           className="w-full px-5 py-4 rounded-xl bg-gray-50 border border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all cursor-pointer"
                         >
-                          <option value="Domestic Cleaning">Domestic Cleaning</option>
-                          <option value="Plumbing Repairs">Plumbing Repairs</option>
-                          <option value="Garden Work">Garden Work</option>
-                          <option value="Mechanical Repairs">Mechanical Repairs</option>
-                          <option value="Security / Guard">Security / Guard</option>
-                          <option value="Event Helper">Event Helper</option>
-                          <option value="Moving Support">Moving Support</option>
+                          <option value="Domestic Cleaning">{catLabel('Domestic Cleaning')}</option>
+                          <option value="Plumbing Repairs">{catLabel('Plumbing Repairs')}</option>
+                          <option value="Garden Work">{catLabel('Garden Work')}</option>
+                          <option value="Mechanical Repairs">{catLabel('Mechanical Repairs')}</option>
+                          <option value="Security / Guard">{catLabel('Security / Guard')}</option>
+                          <option value="Event Helper">{catLabel('Event Helper')}</option>
+                          <option value="Moving Support">{catLabel('Moving Support')}</option>
                         </select>
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">Detailed Hub Location</label>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('detailed_hub_location')}</label>
                         <div className="relative">
                           <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                           <input 
                             type="text" 
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
-                            placeholder="e.g. Nyarugenge, Kiyovu, Hill 4" 
+                            placeholder={t('placeholder_location')} 
                             className="w-full pl-11 pr-4 py-4 rounded-xl bg-gray-50 border border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all"
                           />
                         </div>
@@ -373,7 +421,7 @@ export default function EmployerPostTask() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">Contact Phone Number (WhatsApp / Direct Call)</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('contact_phone_label')}</label>
                       <div className="relative">
                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                         <input 
@@ -390,10 +438,10 @@ export default function EmployerPostTask() {
                     <div className="space-y-3 bg-gray-50/50 p-5 rounded-2xl border border-gray-100">
                       <div className="flex justify-between items-center">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans">
-                          Identify Work Specifics (Max 4)
+                          {t('identify_work_specifics')}
                         </label>
                         <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase">
-                          {selectedTags.length} / 4 Selected
+                          {t('tags_selected', { count: selectedTags.length })}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -411,7 +459,7 @@ export default function EmployerPostTask() {
                               }`}
                             >
                               {isActive ? <Check size={12} strokeWidth={3} /> : <Plus size={12} />}
-                              {tag}
+                              {tagLabel(tag)}
                             </button>
                           );
                         })}
@@ -421,13 +469,13 @@ export default function EmployerPostTask() {
                     {/* TASK PHOTOS UPLOADER */}
                     <div className="space-y-3">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">
-                        Attach Reference Photos
+                        {t('attach_reference_photos')}
                       </label>
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                         <div className="md:col-span-4 border-2 border-dashed border-gray-200 hover:border-blue-500 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-gray-50/50" onClick={() => document.getElementById('photo-upload')?.click()}>
                           <Camera className="mx-auto text-gray-400 mb-2" size={24} />
-                          <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider">Click to upload</p>
-                          <p className="text-[9px] text-gray-400 italic font-sans mt-0.5">Max 5 photos</p>
+                          <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider">{t('click_to_upload')}</p>
+                          <p className="text-[9px] text-gray-400 italic font-sans mt-0.5">{t('max_5_photos')}</p>
                           <input id="photo-upload" type="file" accept="image/*" multiple className="hidden" onChange={handleRealUpload} />
                         </div>
                       </div>
@@ -437,7 +485,7 @@ export default function EmployerPostTask() {
                         <div className="flex gap-2.5 pt-1.5">
                           {attachedPhotos.map((url, index) => (
                             <div key={index} className="relative h-14 w-14 rounded-xl overflow-hidden border border-gray-200 shadow-sm group">
-                              <img src={url} className="h-full w-full object-cover" alt="Attachment" />
+                              <img src={url} className="h-full w-full object-cover" alt={t('attachment')} />
                               <button
                                 type="button"
                                 onClick={() => handleRemovePhoto(url)}
@@ -452,12 +500,12 @@ export default function EmployerPostTask() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">Describe what needs to be done</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('describe_task')}</label>
                       <textarea 
                         rows={4}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        placeholder="State any specific details or physical labor required, timing details, or access entry points..."
+                        placeholder={t('placeholder_task_description')}
                         className="w-full px-5 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all resize-none border"
                       />
                     </div>
@@ -471,11 +519,11 @@ export default function EmployerPostTask() {
                           </div>
                           <div>
                             <p className="font-sans font-black text-[10.5px] uppercase tracking-wider text-red-950 flex items-center gap-1.5">
-                              🚨 Flag as Urgent Gig
-                              <span className="bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase">Instant alert blast</span>
+                              {t('flag_as_urgent_gig')}
+                              <span className="bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded uppercase">{t('instant_alert_blast')}</span>
                             </p>
                             <p className="font-sans text-[10.5px] text-red-700 font-bold mt-0.5 leading-tight">
-                              Triggers instant real-time SMS broadcasts and matches to closest verified Kigali professionals immediately.
+                              {t('urgent_gig_desc')}
                             </p>
                           </div>
                         </div>
@@ -485,9 +533,9 @@ export default function EmployerPostTask() {
                           className={`w-16 h-9 rounded-full p-1 cursor-pointer transition-all flex items-center justify-between shrink-0 self-center md:self-start border-2 shadow-inner ${
                             isUrgent ? 'bg-red-600 border-red-700' : 'bg-slate-800 border-slate-900'
                           }`}
-                          aria-label="Toggle Urgent Gig"
+                          aria-label={t('toggle_urgent_gig')}
                         >
-                          <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${isUrgent ? 'text-white opacity-100' : 'opacity-0'}`}>ON</span>
+                          <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${isUrgent ? 'text-white opacity-100' : 'opacity-0'}`}>{t('on')}</span>
                           <motion.div 
                             layout
                             animate={{ x: isUrgent ? 0 : 0 }}
@@ -495,7 +543,7 @@ export default function EmployerPostTask() {
                           >
                             {isUrgent ? '✓' : '✕'}
                           </motion.div>
-                          <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${!isUrgent ? 'text-slate-300 opacity-100' : 'opacity-0'}`}>OFF</span>
+                          <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${!isUrgent ? 'text-slate-300 opacity-100' : 'opacity-0'}`}>{t('off')}</span>
                         </button>
                       </div>
                     </div>
@@ -505,10 +553,9 @@ export default function EmployerPostTask() {
                       onClick={handleNextStep}
                       className="w-full py-4.5 bg-blue-600 text-white rounded-2xl font-sans font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 text-xs"
                     >
-                      Next: Budget Details
+                      {t('next_budget_details')}
                       <ChevronRight size={16} />
-                    </button>
-                  </div>
+                    </button>                  </div>
                 )}
 
                 {/* STEP 2: Budget & Time */}
@@ -522,28 +569,28 @@ export default function EmployerPostTask() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <p className="text-[10px] font-black text-indigo-900 uppercase tracking-wider">
-                            ✨ Real-time Pricing estimate ({category})
+                            {t('real_time_pricing_estimate', { category: catLabel(category) })}
                           </p>
                           <span className="text-[9px] bg-indigo-200/50 text-indigo-800 font-black px-2 py-0.5 rounded-full uppercase leading-none">
-                            High Demand today
+                            {t('high_demand_today')}
                           </span>
                         </div>
                         <p className="text-xs text-indigo-950 font-bold mt-1 font-sans">
-                          Kigali market rate: <span className="text-indigo-600 font-extrabold">{activeCategoryMeta.range}</span>. Matching standard rates yields 4.5x quicker worker acceptances.
+                          {t('kigali_market_rate', { range: activeCategoryMeta.range })}
                         </p>
                         <button
                           type="button"
                           onClick={handleApplyRecommendedBudget}
                           className="mt-2 text-[10px] font-black text-indigo-700 uppercase tracking-widest hover:text-indigo-900 transition-colors underline decoration-dotted leading-none"
                         >
-                          ⚡ Apply Standard rate ({Math.round((activeCategoryMeta.min + activeCategoryMeta.max)/2).toLocaleString()} RWF)
+                          {t('apply_standard_rate', { amount: Math.round((activeCategoryMeta.min + activeCategoryMeta.max)/2).toLocaleString() })}
                         </button>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">Budget (RWF)</label>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('budget_label')}</label>
                         <div className="relative">
                           <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                           <input 
@@ -557,21 +604,21 @@ export default function EmployerPostTask() {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">Payment Type</label>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('payment_type')}</label>
                         <select 
                           value={paymentType}
                           onChange={(e) => setPaymentType(e.target.value)}
                           className="w-full px-5 py-4 rounded-xl bg-gray-50 border border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all appearance-none cursor-pointer"
                         >
-                          <option value="Per Task">Per Task flat</option>
-                          <option value="Per Hour">Per Hour rate</option>
-                          <option value="Per Day">Per Day rate</option>
+                          <option value="Per Task">{t('payment_per_task_flat')}</option>
+                          <option value="Per Hour">{t('payment_per_hour_rate')}</option>
+                          <option value="Per Day">{t('payment_per_day_rate')}</option>
                         </select>
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">When should it start?</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('when_should_it_start')}</label>
                       <div className="relative">
                         <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                         <input 
@@ -588,9 +635,9 @@ export default function EmployerPostTask() {
                         <Shield size={18} />
                       </div>
                       <div>
-                        <p className="text-xs font-black text-blue-900 font-sans uppercase tracking-wider">Escrow System Active</p>
+                        <p className="text-xs font-black text-blue-900 font-sans uppercase tracking-wider">{t('escrow_system_active')}</p>
                         <p className="text-[11px] text-blue-700 font-medium font-sans mt-0.5 leading-normal">
-                          Lodge your funding confidently. Funds are only triggered for payout once the partner uploads photographic proof of completed work.
+                          {t('escrow_system_desc')}
                         </p>
                       </div>
                     </div>
@@ -601,14 +648,14 @@ export default function EmployerPostTask() {
                         onClick={() => setStep(1)}
                         className="flex-1 py-4 bg-gray-50 text-gray-500 rounded-xl font-sans font-black uppercase text-[10px] tracking-widest hover:bg-gray-100 transition-all border"
                       >
-                        Back
+                        {t('back')}
                       </button>
                       <button 
                         type="button"
                         onClick={handleNextStep}
                         className="flex-[2] py-4 bg-blue-600 text-white rounded-xl font-sans font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                       >
-                        Review Preview
+                        {t('review_preview')}
                         <ChevronRight size={14} />
                       </button>
                     </div>
@@ -619,9 +666,9 @@ export default function EmployerPostTask() {
                 {step === 3 && (
                   <div className="space-y-8">
                     <div className="text-center">
-                      <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight uppercase">Task Card Feed Preview</h3>
+                      <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('task_card_feed_preview')}</h3>
                       <p className="text-[11px] text-gray-400 italic font-sans max-w-sm mx-auto mt-0.5">
-                        Below is exactly how close workers will see your posting inside their search grid:
+                        {t('task_card_feed_preview_desc')}
                       </p>
                     </div>
 
@@ -630,17 +677,17 @@ export default function EmployerPostTask() {
                       {isUrgent && (
                         <div className="absolute top-0 right-0 left-0 bg-red-600 text-white text-[8px] font-black uppercase tracking-widest py-1.5 text-center flex items-center justify-center gap-1">
                           <span className="h-1.5 w-1.5 bg-white rounded-full animate-ping" />
-                          🔴 High Priority Urgent Alert Broadcast Active
+                          {t('urgent_alert_broadcast')}
                         </div>
                       )}
                       
                       <div className={`flex items-start justify-between gap-4 ${isUrgent ? 'mt-4' : ''}`}>
                         <div>
                           <span className="bg-blue-50 text-blue-600 text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full border border-blue-100">
-                            {category}
+                            {catLabel(category)}
                           </span>
-                          <h4 className="text-base font-black text-gray-950 font-sans tracking-tight mt-2">{title || 'General Gig Task'}</h4>
-                          <p className="text-[10px] text-gray-400 font-sans uppercase font-black tracking-widest mt-0.5">By {profile?.displayName || 'Individual Employer'}</p>
+                          <h4 className="text-base font-black text-gray-950 font-sans tracking-tight mt-2">{title || t('general_gig_task')}</h4>
+                          <p className="text-[10px] text-gray-400 font-sans uppercase font-black tracking-widest mt-0.5">{t('posted_by', { name: profile?.displayName || t('individual_tasks_employer') })}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-sm font-black text-blue-600">RWF {Number(budget).toLocaleString()}</p>
@@ -649,7 +696,7 @@ export default function EmployerPostTask() {
                       </div>
 
                       <p className="text-xs text-gray-650 font-sans font-medium mt-3 leading-relaxed whitespace-pre-line bg-gray-50/50 p-3 rounded-xl border border-gray-100">
-                        {description || 'No specialized directions attached...'}
+                        {description || t('no_specialized_directions')}
                       </p>
 
                       {/* Display active tags if any */}
@@ -667,7 +714,7 @@ export default function EmployerPostTask() {
                       {attachedPhotos.length > 0 && (
                         <div className="grid grid-cols-3 gap-2 mt-4">
                           {attachedPhotos.map((url, idx) => (
-                            <img key={idx} src={url} className="h-12 w-full object-cover rounded-lg border" alt="Job Snapshot" />
+                            <img key={idx} src={url} className="h-12 w-full object-cover rounded-lg border" alt={t('job_snapshot')} />
                           ))}
                         </div>
                       )}
@@ -675,11 +722,11 @@ export default function EmployerPostTask() {
                       <div className="border-t border-gray-100 mt-4 pt-3 flex items-center justify-between text-[10px] font-black uppercase text-gray-400 tracking-wider">
                         <span className="flex items-center gap-1">
                           <MapPin size={12} className="text-blue-500" />
-                          {location || 'Kigali Hub'}
+                          {location || t('kigali_hub')}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock size={12} className="text-green-500" />
-                          Start: {startDate}
+                          {t('start_date_label', { date: startDate })}
                         </span>
                       </div>
                     </div>
@@ -690,7 +737,7 @@ export default function EmployerPostTask() {
                         onClick={() => setStep(2)}
                         className="flex-1 py-4 bg-gray-50 text-gray-650 rounded-2xl font-sans font-black uppercase text-[10px] tracking-widest hover:bg-gray-100 transition-all border"
                       >
-                        Adjust pricing info
+                        {t('adjust_pricing_info')}
                       </button>
                       <button 
                         type="button"
@@ -698,7 +745,7 @@ export default function EmployerPostTask() {
                         disabled={loading}
                         className="flex-2 py-4 bg-blue-600 text-white rounded-2xl font-sans font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                       >
-                        {loading ? 'Publishing Lockslot...' : 'Confirm & Post Task Now'}
+                        {loading ? t('publishing_lockslot') : t('confirm_post_task_now')}
                       </button>
                     </div>
                   </div>
@@ -709,7 +756,7 @@ export default function EmployerPostTask() {
               <div className="mt-6 flex items-center gap-3 px-6">
                  <Info className="text-blue-400 shrink-0" size={16} />
                  <p className="text-[11px] text-gray-400 font-bold font-sans italic">
-                   Once posted, the escrow fee of 0.0% is applied. You can edit or delete this task inside your dashboard at any point.
+                   {t('escrow_fee_note')}
                  </p>
               </div>
             </div>
@@ -732,7 +779,7 @@ export default function EmployerPostTask() {
                 t.type === 'error' ? 'bg-red-500' : 'bg-green-500'
               }`} />
               <div className="flex-1 pl-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Task Wizard</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t('task_wizard')}</span>
                 <p className="font-sans text-[11px] font-bold text-gray-800 leading-normal mt-0.5">{t.message}</p>
               </div>
               <button 

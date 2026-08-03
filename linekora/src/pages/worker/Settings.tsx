@@ -9,8 +9,10 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { updateUser } from '../../lib/api';
+import { useLanguage } from '../../lib/LanguageContext';
 
 export default function WorkerSettings() {
+  const { t } = useLanguage();
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const navigate = useNavigate();
@@ -69,7 +71,7 @@ export default function WorkerSettings() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      setUploadError('Photo must be smaller than 2MB.');
+      setUploadError(t('photo_size_error'));
       return;
     }
     setUploadError('');
@@ -116,7 +118,7 @@ export default function WorkerSettings() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      setCvError('File size must be under 5MB.');
+      setCvError(t('cv_size_error'));
       return;
     }
     setCvError('');
@@ -159,17 +161,17 @@ export default function WorkerSettings() {
   };
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'portfolio', label: 'CV & Portfolio', icon: FileText },
-    { id: 'payments', label: 'Billing', icon: CreditCard },
+    { id: 'profile', label: t('profile'), icon: User },
+    { id: 'portfolio', label: t('cv_portfolio'), icon: FileText },
+    { id: 'payments', label: t('billing'), icon: CreditCard },
   ];
 
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto px-2 sm:px-4">
         <header className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 font-sans tracking-tight">Account Settings</h1>
-          <p className="text-gray-500 font-sans font-medium mt-1 italic text-sm">Manage your profile, photo and account preferences.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 font-sans tracking-tight">{t('account_settings')}</h1>
+          <p className="text-gray-500 font-sans font-medium mt-1 italic text-sm">{t('account_settings_subtitle')}</p>
         </header>
 
         {/* Tab Bar — horizontal scroll on mobile */}
@@ -193,7 +195,7 @@ export default function WorkerSettings() {
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl font-sans font-bold text-xs whitespace-nowrap shrink-0 text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 transition-all ml-auto"
           >
             <LogOut size={15} />
-            Sign Out
+            {t('sign_out')}
           </button>
         </div>
 
@@ -245,11 +247,11 @@ export default function WorkerSettings() {
                   />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-gray-900 font-sans mb-1">{displayName || 'Your Name'}</h3>
-                  <p className="text-sm font-bold text-gray-400 font-sans uppercase tracking-[0.2em]">{profile?.role || 'Worker'}</p>
+                  <h3 className="text-xl font-black text-gray-900 font-sans mb-1">{displayName || t('your_name')}</h3>
+                  <p className="text-sm font-bold text-gray-400 font-sans uppercase tracking-[0.2em]">{profile?.role || t('worker')}</p>
                   <p className="text-xs text-gray-400 mt-2">
-                    Tap the <span className="text-blue-600 font-bold">camera icon</span> to upload your profile photo or logo.<br/>
-                    Max size: 2MB. JPG, PNG, or WEBP.
+                    {t('camera_upload_hint')}<br/>
+                    {t('max_size_hint')}
                   </p>
                   {uploadError && (
                     <p className="text-xs text-red-500 font-bold mt-1">{uploadError}</p>
@@ -260,7 +262,7 @@ export default function WorkerSettings() {
               <form onSubmit={handleSave} className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">Full Name</label>
+                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('full_name')}</label>
                     <input 
                       type="text" 
                       value={displayName} 
@@ -269,7 +271,7 @@ export default function WorkerSettings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">Location</label>
+                    <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('location')}</label>
                     <input 
                       type="text" 
                       value={location} 
@@ -280,7 +282,7 @@ export default function WorkerSettings() {
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">Email Address</label>
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('email_address')}</label>
                   <input 
                     type="email" 
                     defaultValue={profile?.email} 
@@ -290,7 +292,7 @@ export default function WorkerSettings() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">Phone Number</label>
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('phone_number')}</label>
                   <input 
                     type="tel" 
                     value={phone} 
@@ -301,12 +303,12 @@ export default function WorkerSettings() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">Professional Bio</label>
+                  <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('professional_bio')}</label>
                   <textarea 
                     rows={4}
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
-                    placeholder="Tell employers about your skills and experience..."
+                    placeholder={t('settings_bio_placeholder')}
                     className="w-full px-5 py-3.5 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all text-sm resize-none"
                   />
                 </div>
@@ -314,7 +316,7 @@ export default function WorkerSettings() {
                 <div className="pt-4 border-t border-gray-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   {isSaved ? (
                     <span className="text-xs font-black uppercase text-green-600 animate-pulse font-sans">
-                      ✅ Profile saved successfully!
+                      {t('profile_saved_success')}
                     </span>
                   ) : <span />}
                   <button 
@@ -322,7 +324,7 @@ export default function WorkerSettings() {
                     className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-sans font-black text-sm shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all cursor-pointer"
                   >
                     <Save size={18} />
-                    Save Changes
+                    {t('save_changes')}
                   </button>
                 </div>
               </form>
@@ -332,8 +334,8 @@ export default function WorkerSettings() {
           {activeTab === 'portfolio' && (
             <div className="space-y-8 font-sans">
               <div>
-                <h3 className="text-xl font-black text-gray-900 font-sans mb-1">CV & Work Portfolio</h3>
-                <p className="text-xs text-gray-500 font-sans italic">Upload your Curriculum Vitae (CV), certifications, or work portfolio to show prospective employers.</p>
+                <h3 className="text-xl font-black text-gray-900 font-sans mb-1">{t('cv_work_portfolio')}</h3>
+                <p className="text-xs text-gray-500 font-sans italic">{t('cv_portfolio_desc')}</p>
               </div>
 
               <input 
@@ -353,9 +355,9 @@ export default function WorkerSettings() {
                     {isUploadingCv ? <Loader2 size={32} className="animate-spin text-blue-600" /> : <Upload size={32} />}
                   </div>
                   <h4 className="text-base font-black text-gray-900 uppercase tracking-tight font-sans">
-                    {isUploadingCv ? 'Uploading Document...' : 'Upload CV or Portfolio Document'}
+                    {isUploadingCv ? t('uploading_document') : t('upload_cv_portfolio')}
                   </h4>
-                  <p className="text-xs text-gray-400 font-sans mt-1">PDF, DOC, DOCX, PNG, or JPG (Max 5MB)</p>
+                  <p className="text-xs text-gray-400 font-sans mt-1">{t('file_types_hint')}</p>
                   
                   {isUploadingCv && (
                     <div className="w-full max-w-md mx-auto bg-gray-200 h-2 rounded-full overflow-hidden mt-4">
@@ -377,9 +379,9 @@ export default function WorkerSettings() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h5 className="font-sans font-black text-sm text-gray-900 leading-tight">{cvFile.name}</h5>
-                          <span className="bg-green-100 text-green-700 text-[8px] font-black uppercase px-2 py-0.5 rounded">Active CV</span>
+                          <span className="bg-green-100 text-green-700 text-[8px] font-black uppercase px-2 py-0.5 rounded">{t('active_cv')}</span>
                         </div>
-                        <p className="text-xs text-gray-500 font-sans font-medium mt-0.5">Size: {cvFile.size} • Uploaded: {cvFile.date}</p>
+                        <p className="text-xs text-gray-500 font-sans font-medium mt-0.5">{t('cv_meta', { size: cvFile.size, date: cvFile.date })}</p>
                       </div>
                     </div>
 
@@ -388,7 +390,7 @@ export default function WorkerSettings() {
                         href={cvFile.dataUrl} 
                         download={cvFile.name}
                         className="p-3 bg-white text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl border border-blue-200 shadow-sm transition-all"
-                        title="Download CV"
+                        title={t('download_cv')}
                       >
                         <Download size={16} />
                       </a>
@@ -396,7 +398,7 @@ export default function WorkerSettings() {
                         type="button"
                         onClick={handleRemoveCv}
                         className="p-3 bg-white text-red-500 hover:bg-red-500 hover:text-white rounded-xl border border-red-100 shadow-sm transition-all"
-                        title="Remove CV"
+                        title={t('remove_cv')}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -405,8 +407,8 @@ export default function WorkerSettings() {
                 ) : (
                   <div className="text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                     <File size={28} className="mx-auto text-gray-300 mb-2" />
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-sans">No CV Uploaded Yet</p>
-                    <p className="text-[10px] text-gray-400 mt-1 font-sans italic">Click above to select and upload your resume file.</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-sans">{t('no_cv_uploaded')}</p>
+                    <p className="text-[10px] text-gray-400 mt-1 font-sans italic">{t('no_cv_hint')}</p>
                   </div>
                 )}
               </div>
@@ -415,11 +417,11 @@ export default function WorkerSettings() {
 
           {activeTab === 'payments' && (
             <div className="space-y-6">
-              <h3 className="text-xl font-black text-gray-900 font-sans">Billing & Payments</h3>
+              <h3 className="text-xl font-black text-gray-900 font-sans">{t('billing_payments')}</h3>
               <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 text-center">
                 <CreditCard size={32} className="mx-auto text-blue-400 mb-3" />
-                <p className="font-bold text-blue-700 text-sm">No active subscriptions</p>
-                <p className="text-xs text-blue-500 mt-1">You are on the Free Account tier. Upgrade for premium features.</p>
+                <p className="font-bold text-blue-700 text-sm">{t('no_active_subscriptions')}</p>
+                <p className="text-xs text-blue-500 mt-1">{t('free_tier_upgrade')}</p>
               </div>
             </div>
           )}

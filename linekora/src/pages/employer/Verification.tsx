@@ -6,12 +6,14 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { updateUser, saveVerificationDocs } from '../../lib/api';
+import { useLanguage } from '../../lib/LanguageContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 type VerificationStep = 'intro' | 'documents' | 'address' | 'selfie' | 'completed';
 
 export default function EmployerVerification() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const [step, setStep] = useState<VerificationStep>('intro');
   const [idNumber, setIdNumber] = useState('');
   const [sector, setSector] = useState('');
@@ -202,8 +204,8 @@ export default function EmployerVerification() {
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-50 text-blue-600 mb-6 border border-blue-100">
             <ShieldCheck size={32} />
           </div>
-          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Get Verified Client Badge</h1>
-          <p className="text-gray-500 font-sans font-medium mt-2">Verified employers build secure pathways and attract top-tier local workers.</p>
+          <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('get_verified_client_badge')}</h1>
+          <p className="text-gray-500 font-sans font-medium mt-2">{t('verification_subtitle')}</p>
         </header>
 
         {isAlreadyVerified ? (
@@ -212,16 +214,16 @@ export default function EmployerVerification() {
               <div className="h-24 w-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-8 border border-green-100 shadow-lg shadow-green-100">
                 <CheckCircle2 size={48} strokeWidth={2.5} />
               </div>
-              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Already Verified!</h2>
+              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">{t('already_verified')}</h2>
               <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
-                Your identity has been audited and approved. Your Verified Employer badge is active on your profile.
+                {t('already_verified_desc')}
               </p>
               <div className="bg-green-50 border border-green-200 p-6 rounded-3xl text-xs font-sans font-bold leading-relaxed mb-8 max-w-md">
-                <span className="text-green-700 font-black uppercase text-[10px] tracking-wider block mb-2">Verified Employer Badge Active</span>
-                <p className="text-green-800">Workers prioritize your job listings. You can post unlimited gigs and receive applications from verified workers.</p>
+                <span className="text-green-700 font-black uppercase text-[10px] tracking-wider block mb-2">{t('verified_employer_badge_active')}</span>
+                <p className="text-green-800">{t('verified_badge_active_desc')}</p>
               </div>
               <button onClick={() => window.location.href = '/dashboard/employer'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
-                Go to Dashboard
+                {t('go_to_dashboard')}
               </button>
             </div>
           </div>
@@ -231,12 +233,12 @@ export default function EmployerVerification() {
               <div className="h-24 w-24 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center mb-8 border border-yellow-100 shadow-lg shadow-yellow-100">
                 <Loader2 size={48} strokeWidth={2.5} className="animate-spin" />
               </div>
-              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Under Review</h2>
+              <h2 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">{t('under_review')}</h2>
               <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
-                Your verification documents have been submitted and are being reviewed by our admin team.
+                {t('under_review_desc')}
               </p>
               <button onClick={() => window.location.href = '/dashboard/employer'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
-                Go to Dashboard
+                {t('go_to_dashboard')}
               </button>
             </div>
           </div>
@@ -264,12 +266,12 @@ export default function EmployerVerification() {
           <AnimatePresence mode="wait">
             {step === 'intro' && (
               <motion.div key="intro" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                <h3 className="text-2xl font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">Verified Employer Program</h3>
+                <h3 className="text-2xl font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">{t('verified_employer_program')}</h3>
                 <div className="space-y-6 mb-10">
                   {[
-                    { title: "Top-Tier Talent", desc: "Attract trusted, premium-tier workers who prefer verified job escrow safety.", icon: <User size={20} className="text-blue-600" /> },
-                    { title: "Secure Transactions", desc: "Guaranteed smooth escrows on wallet deposits and job milestones.", icon: <ShieldCheck size={20} className="text-green-500" /> },
-                    { title: "Priority Support", desc: "Dedicated line for high-volume gig placements and residential support.", icon: <MapPin size={20} className="text-yellow-500" /> }
+                    { title: t('verif_feature_top_tier_talent'), desc: t('verif_feature_top_tier_talent_desc'), icon: <User size={20} className="text-blue-600" /> },
+                    { title: t('verif_feature_secure_transactions'), desc: t('verif_feature_secure_transactions_desc'), icon: <ShieldCheck size={20} className="text-green-500" /> },
+                    { title: t('verif_feature_priority_support'), desc: t('verif_feature_priority_support_desc'), icon: <MapPin size={20} className="text-yellow-500" /> }
                   ].map((feat, i) => (
                     <div key={i} className="flex items-start gap-4">
                       <div className="h-10 w-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100">
@@ -283,7 +285,7 @@ export default function EmployerVerification() {
                   ))}
                 </div>
                 <button onClick={() => setStep('documents')} className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] hover:shadow-xl hover:shadow-blue-200 transition-all flex items-center justify-center gap-2">
-                  Begin Verification
+                  {t('begin_verification')}
                   <ChevronRight size={20} />
                 </button>
               </motion.div>
@@ -291,17 +293,17 @@ export default function EmployerVerification() {
 
             {step === 'documents' && (
               <motion.div key="docs" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight">ID Documentation</h3>
-                <p className="text-gray-500 font-sans mb-8 text-sm italic">Provide details to securely match against national registrate databases.</p>
+                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight">{t('id_documentation')}</h3>
+                <p className="text-gray-500 font-sans mb-8 text-sm italic">{t('id_documentation_desc')}</p>
                 
                 <div className="space-y-6 mb-10">
                   <div className="space-y-2 px-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">National ID / Passport Number</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{t('national_id_passport')}</label>
                     <input 
                       type="text" 
                       value={idNumber}
                       onChange={(e) => setIdNumber(e.target.value)}
-                      placeholder="e.g. 1 1990 8 0000000 0 00"
+                      placeholder={t('placeholder_id_number')}
                       className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm text-center"
                     />
                   </div>
@@ -321,9 +323,9 @@ export default function EmployerVerification() {
                       />
                       {frontId ? (
                         <>
-                          <img src={frontId} alt="Front ID Preview" className="absolute inset-0 w-full h-full object-cover" />
+                          <img src={frontId} alt={t('front_id_preview')} className="absolute inset-0 w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <span className="text-white text-[10px] font-black uppercase tracking-wider">Change Front ID</span>
+                            <span className="text-white text-[10px] font-black uppercase tracking-wider">{t('change_front_id')}</span>
                           </div>
                         </>
                       ) : (
@@ -331,7 +333,7 @@ export default function EmployerVerification() {
                           <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-400 mb-3 group-hover:text-blue-600 shadow-sm transition-all">
                             <Upload size={20} />
                           </div>
-                          <p className="text-xs font-black text-gray-900 uppercase tracking-widest italic">Front of ID Document</p>
+                          <p className="text-xs font-black text-gray-900 uppercase tracking-widest italic">{t('front_of_id_document')}</p>
                         </>
                       )}
                     </div>
@@ -350,9 +352,9 @@ export default function EmployerVerification() {
                       />
                       {backId ? (
                         <>
-                          <img src={backId} alt="Back ID Preview" className="absolute inset-0 w-full h-full object-cover" />
+                          <img src={backId} alt={t('back_id_preview')} className="absolute inset-0 w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <span className="text-white text-[10px] font-black uppercase tracking-wider">Change Back ID</span>
+                            <span className="text-white text-[10px] font-black uppercase tracking-wider">{t('change_back_id')}</span>
                           </div>
                         </>
                       ) : (
@@ -360,7 +362,7 @@ export default function EmployerVerification() {
                           <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-gray-400 mb-3 group-hover:text-blue-600 shadow-sm transition-all">
                             <Upload size={20} />
                           </div>
-                          <p className="text-xs font-black text-gray-900 uppercase tracking-widest italic">Back of ID Document</p>
+                          <p className="text-xs font-black text-gray-900 uppercase tracking-widest italic">{t('back_of_id_document')}</p>
                         </>
                       )}
                     </div>
@@ -372,7 +374,7 @@ export default function EmployerVerification() {
                   onClick={handleNext} 
                   className="w-full py-5 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center gap-2"
                 >
-                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : 'Confirm & Proceed'}
+                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : t('confirm_and_proceed')}
                   {!isUploading && <ChevronRight size={20} />}
                 </button>
               </motion.div>
@@ -380,28 +382,28 @@ export default function EmployerVerification() {
 
             {step === 'address' && (
               <motion.div key="address" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight">Residential Address</h3>
-                <p className="text-gray-500 font-sans mb-8 text-sm italic">Localize where workers will carry out your posted tasks.</p>
+                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight">{t('residential_address')}</h3>
+                <p className="text-gray-500 font-sans mb-8 text-sm italic">{t('residential_address_desc')}</p>
 
                 <div className="space-y-6 mb-10">
                   <div className="space-y-2 px-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Sector</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{t('sector')}</label>
                     <input 
                       type="text" 
                       value={sector}
                       onChange={(e) => setSector(e.target.value)}
-                      placeholder="e.g. Kimihurura"
+                      placeholder={t('placeholder_sector')}
                       className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm"
                     />
                   </div>
 
                   <div className="space-y-2 px-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Cell / Village name</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{t('cell_village_name')}</label>
                     <input 
                       type="text" 
                       value={cell}
                       onChange={(e) => setCell(e.target.value)}
-                      placeholder="e.g. Rugando / Rebero"
+                      placeholder={t('placeholder_cell')}
                       className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm"
                     />
                   </div>
@@ -412,7 +414,7 @@ export default function EmployerVerification() {
                   onClick={handleNext} 
                   className="w-full py-5 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all flex items-center justify-center gap-2"
                 >
-                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : 'Map Address & Next'}
+                  {isUploading ? <Loader2 size={24} className="animate-spin" /> : t('map_address_next')}
                   {!isUploading && <ChevronRight size={20} />}
                 </button>
               </motion.div>
@@ -420,8 +422,8 @@ export default function EmployerVerification() {
 
             {step === 'selfie' && (
               <motion.div key="selfie" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight">Biometric Photo</h3>
-                <p className="text-gray-500 font-sans mb-6 text-sm italic font-medium">Quick facial scan to match your uploaded National ID.</p>
+                <h3 className="text-2xl font-black text-gray-900 font-sans mb-2 uppercase tracking-tight">{t('biometric_photo')}</h3>
+                <p className="text-gray-500 font-sans mb-6 text-sm italic font-medium">{t('biometric_photo_desc')}</p>
                 
                 <div className="relative mx-auto w-64 h-64 border-4 border-blue-600 rounded-[3rem] flex flex-col items-center justify-center overflow-hidden mb-8 bg-gray-950 shadow-2xl group">
                   {cameraActive ? (
@@ -457,7 +459,7 @@ export default function EmployerVerification() {
                     <div className="absolute inset-0 w-full h-full">
                       <img 
                         src={capturedPhoto} 
-                        alt="Snapped Face" 
+                        alt={t('snapped_face')} 
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover rounded-[2.8rem]" 
                       />
@@ -470,8 +472,8 @@ export default function EmployerVerification() {
                     <div className="text-center p-6 flex flex-col items-center justify-center space-y-4">
                       <Camera size={44} className="text-gray-600 group-hover:scale-110 transition-transform" />
                       <div>
-                        <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">Camera Off</p>
-                        <p className="text-[9px] text-gray-500 italic mt-1 max-w-[160px]">Click start local device scanner below to calibrate your webcam stream.</p>
+                        <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">{t('camera_off')}</p>
+                        <p className="text-[9px] text-gray-500 italic mt-1 max-w-[160px]">{t('camera_off_desc')}</p>
                       </div>
                     </div>
                   )}
@@ -480,7 +482,7 @@ export default function EmployerVerification() {
                   {isScanning && (
                     <div className="absolute top-4 right-4 bg-cyan-500/90 text-white rounded-full px-3 py-1 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest shadow-md z-20">
                       <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
-                      Scanning {scanProgress}%
+                      {t('scanning_progress', { progress: scanProgress })}
                     </div>
                   )}
                 </div>
@@ -493,7 +495,7 @@ export default function EmployerVerification() {
                       className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2"
                     >
                       <Camera size={16} />
-                      Open Camera Sandbox
+                      {t('open_camera_sandbox')}
                     </button>
                   ) : cameraActive ? (
                     <button 
@@ -505,12 +507,12 @@ export default function EmployerVerification() {
                       {isScanning ? (
                         <>
                           <Loader2 size={18} className="animate-spin" />
-                          <span>Analysing Biometrics...</span>
+                          <span>{t('analysing_biometrics')}</span>
                         </>
                       ) : (
                         <>
                           <Camera size={18} />
-                          <span>Initiate Biometric Scan</span>
+                          <span>{t('initiate_biometric_scan')}</span>
                         </>
                       )}
                     </button>
@@ -522,7 +524,7 @@ export default function EmployerVerification() {
                         className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline flex items-center justify-center gap-1.5 mx-auto"
                       >
                         <RefreshCw size={12} />
-                        Retake Photo
+                        {t('retake_photo')}
                       </button>
                     </div>
                   )}
@@ -536,25 +538,25 @@ export default function EmployerVerification() {
                   <div className="h-24 w-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-8 border border-green-100 shadow-lg shadow-green-100">
                     <CheckCircle2 size={48} strokeWidth={2.5} />
                   </div>
-                  <h3 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">Under Review!</h3>
+                  <h3 className="text-3xl font-black text-gray-900 font-sans mb-4 tracking-tight uppercase">{t('under_review_completed')}</h3>
                   <p className="text-gray-500 font-sans text-sm mb-6 leading-relaxed max-w-sm italic">
-                    Your verification details, ID documents, and selfie have been sent to our Admin for review.
+                    {t('under_review_completed_desc')}
                   </p>
                   
                   <div className="bg-red-50 border border-red-200 text-red-950 p-6 rounded-3xl text-xs font-sans font-bold leading-relaxed mb-8 max-w-md text-left space-y-3">
-                    <span className="text-red-750 font-black uppercase text-[10px] tracking-wider block">📞 CONTACT ADMIN FOR ACTIVATION</span>
+                    <span className="text-red-750 font-black uppercase text-[10px] tracking-wider block">{t('contact_admin_for_activation')}</span>
                     <p>
-                      To instantly verify your uploaded Front & Back ID documents, registered Names, and Selfie matching status, please contact our administrator directly:
+                      {t('contact_admin_desc')}
                     </p>
                     <div className="bg-white border border-red-100 rounded-2xl p-4 text-center">
-                      <p className="text-[9px] uppercase font-black tracking-widest text-gray-400">ADMIN PHONE NUMBER</p>
+                      <p className="text-[9px] uppercase font-black tracking-widest text-gray-400">{t('admin_phone_number')}</p>
                       <p className="text-lg font-black text-red-600 tracking-tight font-mono">+250 783 274 084</p>
-                      <p className="text-[9px] text-gray-500 font-bold italic mt-1">Direct call or WhatsApp to confirm your Client Badge!</p>
+                      <p className="text-[9px] text-gray-500 font-bold italic mt-1">{t('admin_whatsapp_hint')}</p>
                     </div>
                   </div>
 
                   <button onClick={() => window.location.href = '/dashboard/employer'} className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:translate-y-[-2px] transition-all">
-                    Go to Dashboard
+                    {t('go_to_dashboard')}
                   </button>
                 </div>
               </motion.div>

@@ -22,7 +22,7 @@ export default function Login() {
   const [resetError, setResetError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { refreshProfile } = useAuth();
-  const { language, setLanguage } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
 
   const handleAfterAuth = async (uid: string, email?: string) => {
     try {
@@ -63,11 +63,11 @@ export default function Login() {
     } catch (err: any) {
       const code = err.code;
       if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        setError('Invalid email or password. Please try again.');
+        setError(t('error_invalid_credentials'));
       } else if (code === 'auth/too-many-requests') {
-        setError('Too many attempts. Please wait a moment and try again.');
+        setError(t('error_too_many_attempts'));
       } else {
-        setError(err.message || 'Login failed. Please try again.');
+        setError(err.message || t('error_login_failed'));
       }
     } finally {
       setLoading(false);
@@ -83,11 +83,11 @@ export default function Login() {
       await handleAfterAuth(result.user.uid, result.user.email || undefined);
     } catch (err: any) {
       if (err.code === 'auth/operation-not-allowed') {
-        setError('Google sign-in is not enabled. Please enable it in the Firebase Console.');
+        setError(t('error_google_not_enabled'));
       } else if (err.code === 'auth/popup-closed-by-user') {
         setError(null); // User just closed the popup, no error needed
       } else {
-        setError(err.message || 'Google login failed.');
+        setError(err.message || t('error_google_failed'));
       }
     } finally {
       setGoogleLoading(false);
@@ -97,7 +97,7 @@ export default function Login() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail.trim()) {
-      setResetError("Please enter your email address.");
+      setResetError(t('error_email_required'));
       return;
     }
     setResetLoading(true);
@@ -105,11 +105,11 @@ export default function Login() {
     setResetError(null);
     try {
       await sendPasswordResetEmail(auth, resetEmail.trim());
-      setResetMessage("Password reset email sent! Check your inbox.");
+      setResetMessage(t('reset_email_sent'));
       setResetEmail('');
     } catch (err: any) {
       console.error(err);
-      setResetError(err.message || "Failed to send password reset email. Please try again.");
+      setResetError(err.message || t('error_reset_email_failed'));
     } finally {
       setResetLoading(false);
     }
@@ -156,18 +156,18 @@ export default function Login() {
             to="/login"
             className="flex-1 text-center py-3 rounded-xl font-sans text-xs font-black uppercase tracking-widest bg-white text-blue-600 shadow-md"
           >
-            Log In
+            {t('login')}
           </Link>
           <Link
             to="/register"
             className="flex-1 text-center py-3 rounded-xl font-sans text-xs font-bold uppercase tracking-widest text-white/50 hover:text-white transition-colors"
           >
-            Sign Up
+            {t('sign_up')}
           </Link>
         </div>
 
-        <h2 className="font-sans text-3xl font-extrabold text-white text-center mb-1">Welcome back</h2>
-        <p className="text-center text-white/50 font-sans text-sm mb-8">Sign in to your Linekora account</p>
+        <h2 className="font-sans text-3xl font-extrabold text-white text-center mb-1">{t('welcome_back')}</h2>
+        <p className="text-center text-white/50 font-sans text-sm mb-8">{t('login_subtitle')}</p>
 
         {/* Google Login */}
         <button
@@ -186,20 +186,20 @@ export default function Login() {
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
           )}
-          {googleLoading ? 'Signing in...' : 'Continue with Google'}
+          {googleLoading ? t('signing_in') : t('continue_with_google')}
         </button>
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
           <div className="relative flex justify-center">
-            <span className="bg-transparent px-3 text-white/30 text-xs uppercase font-bold tracking-widest">or with email</span>
+            <span className="bg-transparent px-3 text-white/30 text-xs uppercase font-bold tracking-widest">{t('or_with_email')}</span>
           </div>
         </div>
 
         {/* Email/Password form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold font-sans text-white/70 mb-2">Email Address</label>
+            <label className="block text-sm font-bold font-sans text-white/70 mb-2">{t('email_address')}</label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
               <input
@@ -216,7 +216,7 @@ export default function Login() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold font-sans text-white/70 mb-2">Password</label>
+            <label className="block text-sm font-bold font-sans text-white/70 mb-2">{t('password')}</label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
               <input
@@ -247,7 +247,7 @@ export default function Login() {
                 }}
                 className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
               >
-                Forgot Password?
+                {t('forgot_password')}
               </button>
             </div>
           </div>
@@ -271,16 +271,16 @@ export default function Login() {
             {loading ? (
               <div className="h-5 w-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
             ) : (
-              <>Log In <ChevronRight size={20} /></>
+              <>{t('login')} <ChevronRight size={20} /></>
             )}
           </button>
         </form>
       </motion.div>
 
       <p className="mt-8 font-sans text-white/40 text-sm">
-        Don't have an account?{' '}
+        {t('no_account_prompt')}{' '}
         <Link to="/register" className="text-blue-400 font-bold hover:text-blue-300 transition-colors">
-          Join LINEKORA
+          {t('join')}
         </Link>
       </p>
 
@@ -298,13 +298,13 @@ export default function Login() {
             >
               &times;
             </button>
-            <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tight">Reset Password</h3>
+            <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tight">{t('reset_password')}</h3>
             <p className="text-white/60 text-xs mb-6 leading-relaxed">
-              Enter your registered email address and we'll send you link instructions to reset your password.
+              {t('reset_password_hint')}
             </p>
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Email Address</label>
+                <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">{t('email_address')}</label>
                 <input
                   type="email"
                   required
@@ -332,7 +332,7 @@ export default function Login() {
                 disabled={resetLoading}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all disabled:opacity-60"
               >
-                {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                {resetLoading ? t('sending') : t('send_reset_link')}
               </button>
             </form>
           </motion.div>

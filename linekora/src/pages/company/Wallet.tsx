@@ -7,6 +7,7 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface CompanyTransaction {
   id: number;
@@ -21,8 +22,11 @@ interface CompanyTransaction {
 
 export default function CompanyWallet() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const walletUid = profile?.firebaseUid || profile?.id || 'guest';
   const wk = (key: string) => `${key}_${walletUid}`;
+
+  const tabStatusText = (s: string) => ({ all: t('filter_all'), escrow: t('filter_escrow'), completed: t('filter_completed'), pending: t('status_pending') })[s] || s;
   
   const [filter, setFilter] = useState<'all' | 'escrow' | 'completed'>('all');
   const [showDeposit, setShowDeposit] = useState(false);
@@ -80,15 +84,15 @@ export default function CompanyWallet() {
   }, [transactions]);
 
   const stats = [
-    { label: 'Company Balance', value: `RWF ${balance.toLocaleString()}`, icon: Wallet, color: 'text-blue-600' },
-    { label: 'Funds in Escrow', value: `RWF ${escrowBalance.toLocaleString()}`, icon: Clock, color: 'text-yellow-600' },
-    { label: 'Total Spent', value: `RWF ${totalSpent.toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600' },
+    { label: t('company_balance'), value: `RWF ${balance.toLocaleString()}`, icon: Wallet, color: 'text-blue-600' },
+    { label: t('funds_in_escrow'), value: `RWF ${escrowBalance.toLocaleString()}`, icon: Clock, color: 'text-yellow-600' },
+    { label: t('total_spent'), value: `RWF ${totalSpent.toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600' },
   ];
 
   const handleDepositConfirm = () => {
     const amt = parseInt(depositAmount, 10);
     if (isNaN(amt) || amt <= 0) {
-      setDepositErrorMsg('Please set a valid positive deposit amount.');
+      setDepositErrorMsg(t('deposit_amount_invalid'));
       return;
     }
     setDepositErrorMsg('');
@@ -100,7 +104,7 @@ export default function CompanyWallet() {
       setDepositSuccess(true);
       setBalance(prev => prev + amt);
 
-      const paymentMethodName = depositMethod === 'momo' ? 'MTN MoMo Deposit' : 'Credit Card Gateway';
+      const paymentMethodName = depositMethod === 'momo' ? t('payment_method_mtn_momo_deposit') : t('payment_method_card_gateway');
       const randRef = `DEP-CORP-${Math.floor(10000 + Math.random() * 90000)}`;
 
       const newTx: CompanyTransaction = {
@@ -109,8 +113,8 @@ export default function CompanyWallet() {
         amount: `RWF ${amt.toLocaleString()}`,
         recipient: paymentMethodName,
         status: 'completed',
-        date: 'Today',
-        role: 'Inbound',
+        date: t('today'),
+        role: t('inbound'),
         refCode: randRef
       };
 
@@ -131,8 +135,8 @@ export default function CompanyWallet() {
         <header className="mb-10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Corporate Wallet</h1>
-              <p className="text-gray-500 font-sans font-bold mt-1 text-sm italic opacity-85 leading-tight tracking-tight">MANAGE YOUR HIRING BUDGET AND SECURE ESCROW PAYMENTS.</p>
+              <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('corporate_wallet')}</h1>
+              <p className="text-gray-500 font-sans font-bold mt-1 text-sm italic opacity-85 leading-tight tracking-tight">{t('wallet_subtitle_corporate')}</p>
             </div>
             <button 
               onClick={() => {
@@ -144,13 +148,13 @@ export default function CompanyWallet() {
               className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-sans font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all cursor-pointer text-sm uppercase tracking-wider"
             >
               <Plus size={20} />
-              Deposit Funds
+              {t('deposit_funds')}
             </button>
           </div>
           <div className="mt-6 bg-blue-50/60 border border-blue-100 p-4 rounded-2xl flex items-center gap-3">
              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
              <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest italic">
-               Live Integrations Connected: <span className="text-green-600 font-extrabold uppercase bg-green-50 px-2 py-0.5 rounded border border-green-150">Active Payment Sandbox</span> • MTN MoMo and Cards are operational.
+               {t('live_integrations_connected')} <span className="text-green-600 font-extrabold uppercase bg-green-50 px-2 py-0.5 rounded border border-green-150">{t('active_payment_sandbox')}</span> {t('mtn_momo_cards_operational')}
              </p>
           </div>
         </header>
@@ -176,8 +180,8 @@ export default function CompanyWallet() {
           <div className="lg:col-span-2 space-y-6">
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-150 pb-4">
                <div>
-                  <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">Recent Transactions</h3>
-                  <p className="text-xs text-gray-400 font-sans italic mt-0.5 font-medium">Verify historical pay periods and locked talent milestones</p>
+                  <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{t('recent_transactions')}</h3>
+                  <p className="text-xs text-gray-400 font-sans italic mt-0.5 font-medium">{t('verify_historical_pay')}</p>
                </div>
                
                <div className="flex bg-gray-55 p-1 rounded-xl border border-gray-150 shadow-inner bg-gray-100/70">
@@ -191,7 +195,7 @@ export default function CompanyWallet() {
                          : 'text-gray-400 hover:text-gray-650'
                      }`}
                    >
-                     {f}
+                     {tabStatusText(f)}
                    </button>
                  ))}
                </div>
@@ -220,7 +224,7 @@ export default function CompanyWallet() {
                      <span className={`text-[10px] font-black uppercase tracking-widest ${
                        tx.status === 'completed' ? 'text-green-500' : 'text-yellow-500'
                      }`}>
-                       {tx.status}
+                       {tabStatusText(tx.status)}
                      </span>
                    </div>
                  </div>
@@ -228,7 +232,7 @@ export default function CompanyWallet() {
 
                {filteredTransactions.length === 0 && (
                  <div className="bg-white rounded-[2rem] border border-dashed border-gray-200 py-12 text-center text-gray-400 font-sans italic text-sm">
-                   No transactions recorded in this filter.
+                   {t('no_transactions_in_filter')}
                  </div>
                )}
              </div>
@@ -237,31 +241,31 @@ export default function CompanyWallet() {
           <div className="space-y-6">
             <div className="bg-blue-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-blue-200">
               <Shield className="mb-4 opacity-50" size={32} />
-              <h4 className="text-lg font-black font-sans mb-2">Escrow Protection</h4>
+              <h4 className="text-lg font-black font-sans mb-2">{t('escrow_protected')}</h4>
               <p className="text-sm font-medium text-blue-55 leading-relaxed mb-6 font-sans">
-                Funds are held securely by Linekora and only released over instant mobile wallets when you mark milestones as met on active jobs.
+                {t('escrow_protected_desc_corporate')}
               </p>
               <button className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl font-sans font-black text-xs uppercase tracking-widest transition-all">
-                Learn About Security
+                {t('learn_about_security')}
               </button>
             </div>
 
             <div className="bg-gray-900 p-8 rounded-[2.5rem] text-white">
-              <h4 className="text-lg font-black font-sans mb-6">Linked Payment Accounts</h4>
+              <h4 className="text-lg font-black font-sans mb-6">{t('linked_payment_accounts')}</h4>
               <div className="space-y-3">
                 <div className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
                   <div className="flex items-center gap-3">
                     <CreditCard size={20} className="text-blue-400" />
                     <span className="text-sm font-bold font-sans">Corporate Card **** 7810</span>
                   </div>
-                  <span className="text-[9px] font-bold uppercase text-gray-400">Primary</span>
+                  <span className="text-[9px] font-bold uppercase text-gray-400">{t('primary')}</span>
                 </div>
                 <div className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
                   <div className="flex items-center gap-3">
                     <Smartphone size={20} className="text-yellow-400" />
                     <span className="text-sm font-bold font-sans">MTN MoMo (Active)</span>
                   </div>
-                  <span className="text-[9px] font-bold uppercase text-green-400">Billing On</span>
+                  <span className="text-[9px] font-bold uppercase text-green-400">{t('billing_on')}</span>
                 </div>
               </div>
             </div>
@@ -298,8 +302,8 @@ export default function CompanyWallet() {
 
               {!depositSuccess ? (
                 <div>
-                  <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">Deposit Funds</h2>
-                  <p className="text-xs text-gray-400 font-sans italic mb-6 font-medium">Top up your corporate available hiring balance instantly</p>
+                  <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">{t('deposit_funds')}</h2>
+                  <p className="text-xs text-gray-400 font-sans italic mb-6 font-medium">{t('corporate_deposit_subtitle')}</p>
                   
                   {depositErrorMsg && (
                     <div className="mb-6 p-4 bg-red-50 text-red-655 border border-red-100 text-xs font-bold rounded-2xl flex items-start gap-2 animate-pulse">
@@ -311,8 +315,8 @@ export default function CompanyWallet() {
                   <div className="space-y-6">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans">Top Up Amount (RWF)</label>
-                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Active Balance: RWF {balance.toLocaleString()}</span>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans">{t('top_up_amount_rwf')}</label>
+                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{t('active_balance', { balance: balance.toLocaleString() })}</span>
                       </div>
                       <input 
                         type="number" 
@@ -322,13 +326,13 @@ export default function CompanyWallet() {
                           setDepositAmount(e.target.value);
                           setDepositErrorMsg('');
                         }}
-                        placeholder="e.g. 500000" 
+                        placeholder={t('placeholder_e_g_500000')} 
                         className="w-full p-4 rounded-2xl border-2 border-gray-100 font-sans font-black text-xl outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-50 text-gray-900 animate-fade-in" 
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Choose Billing Profile</label>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('choose_billing_profile')}</label>
                       <div className="grid grid-cols-2 gap-3">
                         <button 
                           type="button"
@@ -339,7 +343,7 @@ export default function CompanyWallet() {
                           }`}
                         >
                           <Smartphone size={22} className={depositMethod === 'momo' ? 'text-amber-550' : ''} />
-                          <span className="font-sans text-[10px] font-black uppercase tracking-tight">MTN Mobile Money</span>
+                          <span className="font-sans text-[10px] font-black uppercase tracking-tight">{t('mtn_mobile_money')}</span>
                         </button>
                         <button 
                           type="button"
@@ -350,14 +354,14 @@ export default function CompanyWallet() {
                           }`}
                         >
                           <CreditCard size={22} className={depositMethod === 'card' ? 'text-blue-600' : ''} />
-                          <span className="font-sans text-[10px] font-black uppercase tracking-tight">Corporate Card</span>
+                          <span className="font-sans text-[10px] font-black uppercase tracking-tight">{t('corporate_card')}</span>
                         </button>
                       </div>
                     </div>
 
                     {depositMethod === 'momo' && (
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">MoMo Phone Number PIN Target</label>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('momo_phone_pin_target')}</label>
                         <input 
                           type="text" 
                           disabled={depositIsLoading}
@@ -378,10 +382,10 @@ export default function CompanyWallet() {
                       {depositIsLoading ? (
                         <>
                           <Loader2 size={16} className="animate-spin" />
-                          <span>Waiting for MoMo Merchant Handshake PIN...</span>
+                          <span>{t('waiting_momo_handshake')}</span>
                         </>
                       ) : (
-                        <span>Initiate Secure Deposit</span>
+                        <span>{t('initiate_secure_deposit')}</span>
                       )}
                     </button>
                   </div>
@@ -391,18 +395,18 @@ export default function CompanyWallet() {
                   <div className="h-16 w-16 bg-green-50 text-green-600 border border-green-200 rounded-full flex items-center justify-center mb-6 mx-auto animate-bounce">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">Deposit Secured</h3>
+                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">{t('deposit_secured')}</h3>
                   <p className="text-sm font-sans text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                    RWF {parseInt(depositAmount, 10).toLocaleString()} was instantly added to your available Corporate Balance.
+                    {t('deposit_secured_desc', { amount: parseInt(depositAmount, 10).toLocaleString() })}
                   </p>
                   
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-left space-y-2 mb-8 uppercase font-sans text-[10px] font-black tracking-widest text-gray-500">
                     <div className="flex justify-between">
-                      <span>Ref Code:</span>
+                      <span>{t('ref_code')}</span>
                       <span className="text-gray-900">DEP-CORP-{Math.floor(10000 + Math.random() * 90000)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Channel:</span>
+                      <span>{t('channel')}</span>
                       <span className="text-gray-900">{depositMethod === 'momo' ? 'MTN Airpay Merchant' : 'Commercial Gateway'}</span>
                     </div>
                   </div>
@@ -411,7 +415,7 @@ export default function CompanyWallet() {
                     onClick={() => setShowDeposit(false)}
                     className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg cursor-pointer"
                   >
-                    Done
+                    {t('done')}
                   </button>
                 </div>
               )}

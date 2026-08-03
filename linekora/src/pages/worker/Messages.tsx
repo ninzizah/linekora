@@ -8,6 +8,7 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface ChatItem {
   id: number;
@@ -37,6 +38,7 @@ interface ToastAlert {
 }
 
 export default function WorkerMessages() {
+  const { t } = useLanguage();
   const { profile } = useAuth();
   const uid = profile?.id || 'default';
   const CHATS_KEY = `linekora_worker_chats_${uid}`;
@@ -126,11 +128,11 @@ export default function WorkerMessages() {
 
     // Update last message in sidebar listing
     setChatsList(prev => prev.map(chat => 
-      chat.id === activeChat ? { ...chat, lastMsg: message.trim(), time: 'Just now' } : chat
+      chat.id === activeChat ? { ...chat, lastMsg: message.trim(), time: t('just_now') } : chat
     ));
 
     setMessage('');
-    addToast('Message Dispatched 🛫', "Your secure message has been routed to client's chat interface.", 'success');
+    addToast(t('toast_message_dispatched'), t('toast_message_routed'), 'success');
   };
 
   // Action: Toggle Pin Chat
@@ -140,8 +142,8 @@ export default function WorkerMessages() {
       if (chat.id === activeChat) {
         const nextPin = !chat.pinned;
         addToast(
-          nextPin ? 'Pinned Conversation 📌' : 'Unpinned Conversation 📍',
-          nextPin ? `"${chat.name}" is now prioritized at top of column.` : `"${chat.name}" removed from top hierarchy.`,
+          nextPin ? t('toast_pinned') : t('toast_unpinned'),
+          nextPin ? t('toast_pinned_msg', { name: chat.name }) : t('toast_unpinned_msg', { name: chat.name }),
           'success'
         );
         return { ...chat, pinned: nextPin };
@@ -158,8 +160,8 @@ export default function WorkerMessages() {
       if (chat.id === activeChat) {
         const nextMute = !chat.muted;
         addToast(
-          nextMute ? 'Alerts Muted 🔕' : 'Alerts Restored 🔔',
-          nextMute ? `Sound and banners disabled for "${chat.name}".` : `Notifications enabled for "${chat.name}".`,
+          nextMute ? t('toast_alerts_muted') : t('toast_alerts_restored'),
+          nextMute ? t('toast_muted_msg', { name: chat.name }) : t('toast_unmuted_msg', { name: chat.name }),
           'info'
         );
         return { ...chat, muted: nextMute };
@@ -180,8 +182,8 @@ export default function WorkerMessages() {
     }));
 
     addToast(
-      'Clean Workspace ✨',
-      `Chat transcripts for ${targetChat?.name} have been purged locally.`,
+      t('toast_clean_workspace'),
+      t('toast_purged_msg', { name: targetChat?.name ?? '' }),
       'info'
     );
     setIsHeaderDropdownOpen(false);
@@ -198,8 +200,8 @@ export default function WorkerMessages() {
       setSubmittingReport(false);
       setShowReportModal(false);
       addToast(
-        'Inquest Lodged 🛡️',
-        `Reporting against ${targetChat?.name} filed successfully. Moderation agents are investigating.`,
+        t('toast_inquest_lodged'),
+        t('toast_report_filed_msg', { name: targetChat?.name ?? '' }),
         'success'
       );
     }, 1200);
@@ -214,12 +216,12 @@ export default function WorkerMessages() {
         {/* Sidebar */}
         <div className="w-80 border-r border-gray-50 flex flex-col shrink-0">
           <div className="p-6 border-b border-gray-50">
-            <h2 className="text-xl font-black text-gray-900 font-sans tracking-tight mb-6">Messages</h2>
+            <h2 className="text-xl font-black text-gray-900 font-sans tracking-tight mb-6">{t('messages')}</h2>
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
               <input 
                 type="text" 
-                placeholder="Search chats..." 
+                placeholder={t('search_chats')} 
                 className="w-full pl-12 pr-4 py-3 rounded-2xl bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all"
               />
             </div>
@@ -263,9 +265,9 @@ export default function WorkerMessages() {
             <div className="flex items-start gap-3">
               <AlertCircle size={16} className="text-yellow-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-[10px] font-black text-yellow-905 uppercase tracking-widest mb-1">Free Tier Limit</p>
+                <p className="text-[10px] font-black text-yellow-905 uppercase tracking-widest mb-1">{t('free_tier_limit')}</p>
                 <p className="text-[10px] text-yellow-700 leading-tight font-sans font-bold italic">
-                  Messaging is limited to active jobs. Upgrade to chat with all employers.
+                  {t('free_tier_msg')}
                 </p>
               </div>
             </div>
@@ -291,7 +293,7 @@ export default function WorkerMessages() {
                     <div className="flex items-center gap-1.5">
                       <div className={`h-1.5 w-1.5 rounded-full ${currentChatObj.online ? 'bg-green-500' : 'bg-gray-300'}`} />
                       <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                        {currentChatObj.online ? 'Active Now' : 'Offline'}
+                        {currentChatObj.online ? t('active_now') : t('offline')}
                       </span>
                     </div>
                   </div>
@@ -299,13 +301,13 @@ export default function WorkerMessages() {
                 
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => addToast('Calling client...', "Connecting via LINEKORA encrypted VoIP node...", 'info')}
+                    onClick={() => addToast(t('toast_calling'), t('toast_calling_msg'), 'info')}
                     className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                   >
                     <Phone size={18} />
                   </button>
                   <button 
-                    onClick={() => addToast('Joining lobby...', "Initializing WebRTC digital video room...", 'info')}
+                    onClick={() => addToast(t('toast_joining_lobby'), t('toast_lobby_msg'), 'info')}
                     className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                   >
                     <Video size={18} />
@@ -337,7 +339,7 @@ export default function WorkerMessages() {
                               className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <Pin size={14} className="text-blue-500" />
-                              <span>{currentChatObj.pinned ? 'Unpin Chat' : 'Pin Convers.'}</span>
+                              <span>{currentChatObj.pinned ? t('unpin_chat') : t('pin_chat')}</span>
                             </button>
 
                             <button 
@@ -345,7 +347,7 @@ export default function WorkerMessages() {
                               className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-indigo-650 hover:bg-indigo-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <VolumeX size={14} className="text-indigo-500" />
-                              <span>{currentChatObj.muted ? 'Unmute Alerts' : 'Mute Alerts'}</span>
+                              <span>{currentChatObj.muted ? t('unmute_alerts') : t('mute_alerts')}</span>
                             </button>
 
                             <button 
@@ -353,7 +355,7 @@ export default function WorkerMessages() {
                               className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-red-650 hover:bg-red-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <Trash size={14} className="text-red-400" />
-                              <span>Clear History</span>
+                              <span>{t('clear_history')}</span>
                             </button>
 
                             <div className="border-t border-gray-100 my-1.5" />
@@ -366,7 +368,7 @@ export default function WorkerMessages() {
                               className="w-full text-left px-4 py-3 text-xs font-black text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <Flag size={14} className="text-red-500" />
-                              <span>Report User</span>
+                              <span>{t('report_user')}</span>
                             </button>
                           </motion.div>
                         </>
@@ -380,7 +382,7 @@ export default function WorkerMessages() {
               <div className="flex-1 overflow-y-auto p-8 space-y-6">
                 <div className="flex justify-center">
                   <div className="px-4 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-black text-gray-400 uppercase tracking-widest shadow-sm">
-                    Today
+                    {t('today')}
                   </div>
                 </div>
 
@@ -406,8 +408,8 @@ export default function WorkerMessages() {
                 ) : (
                   <div className="py-24 text-center">
                     <MessageSquare size={36} className="mx-auto text-gray-300 mb-3" />
-                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none">No message exchanges</p>
-                    <p className="text-[10px] text-gray-400 italic mt-1 font-sans">Draft a greeting below to initiate secure matches.</p>
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none">{t('no_message_exchanges')}</p>
+                    <p className="text-[10px] text-gray-400 italic mt-1 font-sans">{t('draft_greeting')}</p>
                   </div>
                 )}
               </div>
@@ -415,7 +417,7 @@ export default function WorkerMessages() {
               {/* Input */}
               <div className="p-6 bg-white border-t border-gray-50 flex items-center gap-4">
                 <button 
-                  onClick={() => addToast('Feature incoming', "Uploading images, locations or job contracts in chat is coming soon.", 'info')}
+                  onClick={() => addToast(t('toast_feature_incoming'), t('toast_feature_msg'), 'info')}
                   className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
                 >
                   <Plus size={24} />
@@ -426,7 +428,7 @@ export default function WorkerMessages() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Type your message here..." 
+                    placeholder={t('type_message_placeholder')} 
                     className="w-full pl-6 pr-14 py-4 rounded-[2.5rem] bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all border"
                   />
                   <button 
@@ -443,9 +445,9 @@ export default function WorkerMessages() {
               <div className="h-20 w-20 bg-gray-100 rounded-[2rem] flex items-center justify-center text-gray-300 mb-6">
                 <MessageSquare size={32} />
               </div>
-              <h3 className="text-xl font-black text-gray-900 font-sans">No Conversation Selected</h3>
+              <h3 className="text-xl font-black text-gray-900 font-sans">{t('no_conversation_selected')}</h3>
               <p className="text-gray-500 font-sans text-sm mt-1 max-w-xs">
-                Select a chat from the sidebar to view messages or start a new conversation.
+                {t('select_chat_hint')}
               </p>
             </div>
           )}
@@ -458,15 +460,15 @@ export default function WorkerMessages() {
             <Shield size={24} />
           </div>
           <div>
-            <h4 className="font-sans font-black text-blue-900 text-sm">Escrow Secure Chat</h4>
-            <p className="font-sans text-xs text-blue-700/70 font-bold uppercase tracking-widest mt-0.5">Payments should always happen in-app for safety.</p>
+            <h4 className="font-sans font-black text-blue-900 text-sm">{t('escrow_secure_chat')}</h4>
+            <p className="font-sans text-xs text-blue-700/70 font-bold uppercase tracking-widest mt-0.5">{t('pay_in_app_safety')}</p>
           </div>
         </div>
         <button 
-          onClick={() => addToast('Info Hub', "The Escrow protocol locks hiring funds into virtual locklots until jobs are verified as completed count.", 'info')}
+          onClick={() => addToast(t('toast_info_hub'), t('toast_info_msg'), 'info')}
           className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
         >
-          Learn More
+          {t('learn_more')}
         </button>
       </div>
 
@@ -498,30 +500,30 @@ export default function WorkerMessages() {
                 <AlertTriangle size={24} />
               </div>
 
-              <h3 className="text-xl font-black text-gray-950 font-sans uppercase">Report "{currentChatObj.name}"</h3>
-              <p className="text-xs text-gray-400 font-sans italic mt-1 mb-8">Reports are audited by LINEKORA Trust & Safety panels within 15 minutes.</p>
+              <h3 className="text-xl font-black text-gray-950 font-sans uppercase">{t('report_user_title', { name: currentChatObj.name })}</h3>
+              <p className="text-xs text-gray-400 font-sans italic mt-1 mb-8">{t('report_audit_note')}</p>
 
               <form onSubmit={handleSubmitReport} className="space-y-6">
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Primary Reason</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('primary_reason')}</label>
                   <select 
                     value={reportReason}
                     onChange={(e) => setReportReason(e.target.value)}
                     className="w-full px-5 py-3.5 rounded-xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-red-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all focus:ring-4 focus:ring-red-10% cursor-pointer"
                   >
-                    <option value="spam">Commercial spam or advertising</option>
-                    <option value="scam">Scam, fake posting or identity theft</option>
-                    <option value="harassment">Offensive or harassing messages</option>
-                    <option value="off_platform">Soliciting off-app payment details</option>
+                    <option value="spam">{t('reason_spam')}</option>
+                    <option value="scam">{t('reason_scam')}</option>
+                    <option value="harassment">{t('reason_harassment')}</option>
+                    <option value="off_platform">{t('reason_off_platform')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Comments (Optional)</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('comments_optional')}</label>
                   <textarea 
                     value={reportComments}
                     onChange={(e) => setReportComments(e.target.value)}
-                    placeholder="Provide details of any off-app request or scams..."
+                    placeholder={t('report_comments_placeholder')}
                     className="w-full h-24 px-5 py-3.5 rounded-xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-red-600 outline-none font-sans font-bold text-sm text-gray-950 transition-all focus:ring-4 focus:ring-red-10% resize-none"
                   />
                 </div>
@@ -532,7 +534,7 @@ export default function WorkerMessages() {
                     onClick={() => setShowReportModal(false)}
                     className="py-3.5 bg-gray-50 hover:bg-gray-100 border border-gray-150 text-gray-650 rounded-xl font-sans font-black uppercase text-[10px] tracking-widest transition-all"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button 
                     type="submit"
@@ -540,11 +542,11 @@ export default function WorkerMessages() {
                     className="py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-sans font-black uppercase text-[10px] tracking-widest shadow-lg shadow-red-100 transition-all flex items-center justify-center gap-2"
                   >
                     {submittingReport ? (
-                      <span>Lodging Inquest...</span>
+                      <span>{t('lodging_inquest')}</span>
                     ) : (
                       <>
                         <Flag size={14} />
-                        <span>Submit Report</span>
+                        <span>{t('submit_report')}</span>
                       </>
                     )}
                   </button>

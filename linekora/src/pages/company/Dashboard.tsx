@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import ActiveContractsResolver from '../../components/ActiveContractsResolver';
 
 interface NotificationMsg {
@@ -19,6 +20,7 @@ interface NotificationMsg {
 
 export default function CompanyDashboard() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   // Tab controller
@@ -87,14 +89,14 @@ export default function CompanyDashboard() {
 
   const handlePayCorporateFee = () => {
     if (!payPhone.trim()) {
-      addNotification('error', 'Missing Phone', 'Please enter your MoMo phone number.');
+      addNotification('error', t('toast_missing_phone'), t('toast_momo_phone_required'));
       return;
     }
     setIsProcessingPay(true);
     setTimeout(() => {
       setIsProcessingPay(false);
       setShowPayModal(false);
-      addNotification('success', 'Payment Processed 💳', `RWF ${unpaidCommission} corporate fee settled from ${payPhone}.`);
+      addNotification('success', t('toast_payment_processed'), t('toast_corporate_fee_settled', { amount: unpaidCommission, phone: payPhone }));
     }, 2000);
   };
 
@@ -131,7 +133,7 @@ export default function CompanyDashboard() {
       setActiveJobsCount(prev => prev + 1);
       setExpiredJobsCount(prev => Math.max(0, prev - 1));
       setRenewingJobId(null);
-      addNotification('success', 'Job Posting Renewed 🔄', `"${title}" is reinstated on the active index feed for another 30 days.`);
+      addNotification('success', t('toast_job_renewed'), t('toast_job_renewed_msg', { title }));
     }, 1200);
   };
 
@@ -139,30 +141,30 @@ export default function CompanyDashboard() {
   const handleShortlistRecommended = (name: string, skill: string) => {
     const isAlready = shortlisted.some(s => s.name === name);
     if (isAlready) {
-      addNotification('info', 'Already Shortlisted 📂', `${name} is already saved in your shortlist pool.`);
+      addNotification('info', t('toast_already_shortlisted'), t('toast_already_shortlisted_msg', { name }));
       return;
     }
     const newId = Date.now();
     setShortlisted(prev => [...prev, { id: newId, name, role: skill, avatar: name[0], verified: true }]);
     setShortlistCount(prev => prev + 1);
-    addNotification('success', 'Candidate Bookmarked ⭐', `${name} added to your active shortlist.`);
+    addNotification('success', t('toast_candidate_bookmarked'), t('toast_candidate_bookmarked_msg', { name }));
   };
 
   // Invite Candidate
   const handleInviteCandidate = (name: string) => {
-    addNotification('invite', 'Direct Interview Pushed ✉️', `Verified notification blast successfully sent to ${name}. Waiting for confirm.`);
+    addNotification('invite', t('toast_interview_pushed'), t('toast_interview_pushed_msg', { name }));
   };
 
   // Remove Candidate from Shortlist
   const handleRemoveFromShortlist = (id: number, name: string) => {
     setShortlisted(prev => prev.filter(s => s.id !== id));
     setShortlistCount(prev => Math.max(0, prev - 1));
-    addNotification('info', 'Shortlist Updated', `Cleared ${name} from your dashboard shortlist indices.`);
+    addNotification('info', t('toast_shortlist_updated'), t('toast_shortlist_updated_msg', { name }));
   };
 
   // Send Job Offer (Hire)
   const handleSendContractOffer = (name: string) => {
-    addNotification('success', 'Escrow Contract Pending 📝', `Proposed hiring smart-agreement dispatched to ${name}'s verified mobile app.`);
+    addNotification('success', t('toast_escrow_contract_pending'), t('toast_escrow_contract_pending_msg', { name }));
   };
 
   // Subcontract Bidding Actions
@@ -175,7 +177,7 @@ export default function CompanyDashboard() {
       setProposedPrice(rawPrice);
       setProposedTimeline(lead.duration);
       setProposedStaff(parseInt(lead.teamSizeNeeded, 10) || 6);
-      setProposedCoverLetter(`Greetings, our company has analyzed your requirements for "${lead.title}". We have a robust, fully vetted mobile workforce ready to execute this immediately.`);
+      setProposedCoverLetter(t('bid_cover_letter_default', { title: lead.title }));
       setShowBidModal(true);
     }
   };
@@ -192,27 +194,31 @@ export default function CompanyDashboard() {
       teamSize: proposedStaff,
       timeline: proposedTimeline,
       status: 'pending',
-      date: 'Submitted just now',
+      date: t('submitted_just_now'),
       details: proposedCoverLetter
     };
 
     setCompanyBids(prev => [newBidObj, ...prev]);
     setShowBidModal(false);
-    addNotification('success', 'Proposal Placed 📨', `Your subcontracting bid for "${lead.title}" has been successfully broadcast to the poster!`);
+    addNotification('success', t('toast_proposal_placed'), t('toast_proposal_placed_msg', { title: lead.title }));
   };
 
   const handleRetractBid = (id: number, title: string) => {
     setCompanyBids(prev => prev.filter(b => b.id !== id));
-    addNotification('info', 'Bid Retracted 🔄', `Your commercial bid for "${title}" has been successfully retracted.`);
+    addNotification('info', t('toast_bid_retracted'), t('toast_bid_retracted_msg', { title }));
   };
 
   const stats = [
-    { label: 'Active Jobs', value: activeJobsCount.toString(), icon: Briefcase, color: 'bg-blue-600' },
-    { label: 'Expired Jobs', value: expiredJobsCount.toString(), icon: Clock, color: 'bg-red-500' },
-    { label: 'Applications Count', value: '0', icon: Users, color: 'bg-indigo-600' },
-    { label: 'Shortlisted Workers', value: shortlistCount.toString(), icon: Star, color: 'bg-green-600' },
-    { label: 'Company Trust Score', value: profile?.trustScore ? `${profile.trustScore}%` : '0%', icon: ShieldCheck, color: 'bg-yellow-500' },
+    { key: 'active_jobs', label: t('active_jobs'), value: activeJobsCount.toString(), icon: Briefcase, color: 'bg-blue-600' },
+    { key: 'expired_jobs', label: t('expired_jobs'), value: expiredJobsCount.toString(), icon: Clock, color: 'bg-red-500' },
+    { key: 'applications_count', label: t('applications_count'), value: '0', icon: Users, color: 'bg-indigo-600' },
+    { key: 'shortlisted_workers', label: t('shortlisted_workers'), value: shortlistCount.toString(), icon: Star, color: 'bg-green-600' },
+    { key: 'company_trust_score', label: t('company_trust_score'), value: profile?.trustScore ? `${profile.trustScore}%` : '0%', icon: ShieldCheck, color: 'bg-yellow-500' },
   ];
+
+  const statusText = (s: string) => ({ active: t('status_active'), closed: t('status_closed'), pending: t('status_pending'), accepted: t('status_accepted'), rejected: t('status_rejected'), shortlisted: t('status_shortlisted') }[s] || s);
+
+  const subCatLabel = (v: string) => ({ all: t('filter_all'), Construction: t('category_construction'), Cleaning: t('category_cleaning'), Plumbing: t('category_plumbing'), Logistics: t('category_logistics') }[v] || v);
 
   return (
     <DashboardLayout>
@@ -220,26 +226,26 @@ export default function CompanyDashboard() {
         <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight flex items-center gap-2 uppercase">
-              {profile?.displayName || 'Company Dashboard'}
+              {profile?.displayName || t('company_dashboard')}
               <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border ${
                 profile?.tier === 'Verified Company' ? 'bg-blue-50 text-blue-600 border-blue-105' : 'bg-gray-100 text-gray-500 border-gray-200'
               }`}>
-                {profile?.tier || 'Free Company'}
+                {profile?.tier || t('free_company')}
               </span>
               {profile?.verificationStatus === 'verified' && (
                 <span className="inline-flex items-center gap-1 bg-green-50 text-green-600 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border border-green-100">
                   <ShieldCheck size={12} />
-                  Verified Business
+                  {t('verified_business')}
                 </span>
               )}
             </h1>
             <p className="text-gray-500 font-sans font-medium mt-1 italic leading-tight">
-              Trust Score: <span className="text-blue-600 font-black">{profile?.trustScore || 0}%</span> • Status: <span className="text-gray-900 font-black">{profile?.verificationStatus === 'unverified' ? 'UNVERIFIED' : 'VERIFIED'}</span>
+              {t('trust_score')}: <span className="text-blue-600 font-black">{profile?.trustScore || 0}%</span> • {t('status')}: <span className="text-gray-900 font-black">{profile?.verificationStatus === 'unverified' ? t('status_unverified') : t('status_verified')}</span>
             </p>
           </div>
           <Link to="/dashboard/company/post" id="dashboard-to-post-btn" className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-sans font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">
             <PlusSquare size={20} />
-            Post Job
+            {t('post_job')}
           </Link>
         </header>
 
@@ -255,7 +261,7 @@ export default function CompanyDashboard() {
             }`}
           >
             <Briefcase size={16} />
-            Hiring Hub (Post & Find Workers)
+            {t('hiring_hub')}
           </button>
           <button
             type="button"
@@ -267,7 +273,7 @@ export default function CompanyDashboard() {
             }`}
           >
             <Sparkles size={16} />
-            Subcontracting Leadboard (Commercial Bids)
+            {t('subcontracting_leadboard')}
           </button>
         </div>
 
@@ -282,16 +288,16 @@ export default function CompanyDashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                   onClick={() => {
-                    if (stat.label === 'Expired Jobs') {
+                    if (stat.key === 'expired_jobs') {
                       setShowExpiredJobsModal(true);
-                    } else if (stat.label === 'Shortlisted Workers') {
+                    } else if (stat.key === 'shortlisted_workers') {
                       setShowShortlistModal(true);
-                    } else if (stat.label === 'Recommended Candidates') {
-                      addNotification('info', 'Recommending match-makers', 'Scroll down to the Recommended section to manage matches.');
+                    } else if (stat.key === 'recommended_candidates') {
+                      addNotification('info', t('toast_recommending_match_makers'), t('toast_recommending_match_makers_msg'));
                     }
                   }}
                   className={`p-5 rounded-[2rem] border border-gray-100 shadow-sm flex items-center gap-4 bg-white transition-all ${
-                    stat.label === 'Expired Jobs' || stat.label === 'Shortlisted Workers' ? 'hover:border-blue-300 hover:shadow-md cursor-pointer' : ''
+                    stat.key === 'expired_jobs' || stat.key === 'shortlisted_workers' ? 'hover:border-blue-300 hover:shadow-md cursor-pointer' : ''
                   }`}
                 >
                   <div className={`h-12 w-12 ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0`}>
@@ -301,8 +307,8 @@ export default function CompanyDashboard() {
                     <p className="font-sans text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{stat.label}</p>
                     <h3 className="text-xl font-black text-gray-900 leading-none font-sans tracking-tight mt-1">{stat.value}</h3>
                   </div>
-                  {(stat.label === 'Expired Jobs' || stat.label === 'Shortlisted Workers') && (
-                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md uppercase tracking-wider">Configure</span>
+                  {(stat.key === 'expired_jobs' || stat.key === 'shortlisted_workers') && (
+                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md uppercase tracking-wider">{t('configure')}</span>
                   )}
                 </motion.div>
               ))}
@@ -317,14 +323,14 @@ export default function CompanyDashboard() {
                 <section className="bg-gray-50 rounded-[3rem] p-8 border border-dashed border-gray-250">
                   <div className="flex flex-col items-center text-center">
                       <Clock className="text-gray-300 mb-4 animate-pulse" size={40} />
-                      <h3 className="font-sans font-black text-gray-900 uppercase tracking-tight">Need to repost a job?</h3>
-                      <p className="text-gray-550 font-sans text-xs mt-1.5 max-w-xs font-semibold italic">You currently have {expiredJobsCount} expired jobs that can be renewed onto live index lines.</p>
+                      <h3 className="font-sans font-black text-gray-900 uppercase tracking-tight">{t('need_to_repost_job')}</h3>
+                      <p className="text-gray-550 font-sans text-xs mt-1.5 max-w-xs font-semibold italic">{t('expired_jobs_renew_hint', { count: expiredJobsCount })}</p>
                       <button 
                         type="button"
                         onClick={() => setShowExpiredJobsModal(true)}
                         className="mt-6 px-6 py-3 bg-white border border-gray-200 rounded-xl font-sans font-black text-[10px] uppercase tracking-widest hover:border-blue-600 hover:text-blue-600 transition-all shadow-sm shadow-blue-500/5"
                       >
-                        View Expired Jobs
+                        {t('view_expired_jobs')}
                       </button>
                   </div>
                 </section>
@@ -334,7 +340,7 @@ export default function CompanyDashboard() {
                 {/* Compact Shortlist Card */}
                 <section className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col justify-between">
                   <div>
-                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Shortlisted Workers ({shortlisted.length})</h3>
+                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">{t('shortlisted_workers_count', { count: shortlisted.length })}</h3>
                     {shortlisted.length > 0 ? (
                       <div className="space-y-6">
                         {shortlisted.map((app, i) => (
@@ -353,14 +359,14 @@ export default function CompanyDashboard() {
                               onClick={() => handleSendContractOffer(app.name)}
                               className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all"
                             >
-                              Hire
+                              {t('hire')}
                             </button>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="py-6 text-center text-gray-400 text-xs italic font-semibold">
-                        No shortlisted bookmarked.
+                        {t('no_shortlisted_bookmarked')}
                       </div>
                     )}
                   </div>
@@ -369,25 +375,25 @@ export default function CompanyDashboard() {
                     onClick={() => setShowShortlistModal(true)}
                     className="w-full mt-8 py-3 rounded-xl border-2 border-gray-100 bg-gray-50 text-gray-900 font-sans font-black text-xs uppercase tracking-wider hover:border-blue-600 hover:bg-white transition-all cursor-pointer"
                   >
-                    Manage shortlist
+                    {t('manage_shortlist')}
                   </button>
                 </section>
 
                 <section className="bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-blue-200">
                   <ShieldCheck size={32} className="mb-4 text-blue-200 animate-bounce" />
                   <h3 className="text-lg font-black font-sans leading-tight mb-2 uppercase tracking-tight">
-                      {profile?.tier === 'Verified Company' ? 'Business Verified' : 'Verify Business'}
+                      {profile?.tier === 'Verified Company' ? t('business_verified') : t('verify_business')}
                   </h3>
                   <p className="text-blue-100 font-sans text-[10px] font-bold uppercase tracking-widest leading-relaxed mb-6 italic opacity-80">
                       {profile?.tier === 'Verified Company' 
-                        ? 'You have full access to all employer features.' 
-                        : 'Verified employers get 3.5x more applicants and a trust badge.'}
+                        ? t('verified_company_full_access') 
+                        : t('verified_employers_more_applicants')}
                   </p>
                   <Link 
                     to="/dashboard/company/verify" 
                     className="block w-full py-3 bg-white text-blue-600 rounded-xl text-center font-sans font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all hover:scale-105"
                   >
-                    {profile?.tier === 'Verified Company' ? 'Check Status' : 'Start Verification'}
+                    {profile?.tier === 'Verified Company' ? t('check_status') : t('start_verification')}
                   </Link>
                 </section>
               </div>
@@ -410,7 +416,7 @@ export default function CompanyDashboard() {
                     type="text"
                     value={searchLead}
                     onChange={(e) => setSearchLead(e.target.value)}
-                    placeholder="Search heavy construction, janitor contracts..."
+                    placeholder={t('search_subcontract_placeholder')}
                     className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-transparent rounded-2xl outline-none focus:bg-white focus:border-blue-600 font-sans text-xs font-bold font-semibold"
                   />
                 </div>
@@ -427,7 +433,7 @@ export default function CompanyDashboard() {
                           : 'bg-gray-50 text-gray-505 hover:bg-gray-100'
                       }`}
                     >
-                      {cat}
+                      {subCatLabel(cat)}
                     </button>
                   ))}
                 </div>
@@ -458,7 +464,7 @@ export default function CompanyDashboard() {
                                 {lead.category}
                               </span>
                               <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                                By {lead.poster}
+                                {t('posted_by', { name: lead.poster })}
                               </span>
                             </div>
                             
@@ -466,13 +472,13 @@ export default function CompanyDashboard() {
                               {lead.title}
                             </h3>
                             <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
-                              📍 {lead.location} • 📅 Project Term: <span className="font-bold text-gray-800">{lead.duration}</span>
+                              {t('lead_project_term', { location: lead.location })}<span className="font-bold text-gray-800">{lead.duration}</span>
                             </p>
                           </div>
 
                           <div className="text-left sm:text-right">
                             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-1">
-                              Max Allocation Budget
+                              {t('max_allocation_budget')}
                             </span>
                             <span className="text-lg font-black text-blue-600">
                               {lead.budget}
@@ -481,18 +487,18 @@ export default function CompanyDashboard() {
                         </div>
 
                         <div className="p-5 bg-gray-50 rounded-2xl text-xs font-medium text-gray-550 leading-relaxed font-sans border border-gray-100">
-                          <span className="font-black text-gray-900 block mb-1 uppercase tracking-wider text-[9px]">Project Scope / Specs:</span>
+                          <span className="font-black text-gray-900 block mb-1 uppercase tracking-wider text-[9px]">{t('project_scope')}</span>
                           {lead.scope}
                         </div>
 
                         <div className="flex justify-between items-center gap-4 pt-2 border-t border-gray-50">
                           <div className="text-xs text-gray-400">
-                            Required capacity: <span className="font-black text-gray-800">{lead.teamSizeNeeded}</span>
+                            {t('required_capacity')}<span className="font-black text-gray-800">{lead.teamSizeNeeded}</span>
                           </div>
                           
                           {hasActiveBid ? (
                             <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-black uppercase">
-                              🛡️ Sealed Bid Dispatched
+                              {t('sealed_bid_dispatched')}
                             </span>
                           ) : (
                             <button
@@ -500,7 +506,7 @@ export default function CompanyDashboard() {
                               onClick={() => handleOpenBidModal(lead.id)}
                               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-blue-100 active:scale-95 transition-all cursor-pointer"
                             >
-                              Dispatch Bid Proposal
+                              {t('dispatch_bid_proposal')}
                             </button>
                           )}
                         </div>
@@ -516,10 +522,10 @@ export default function CompanyDashboard() {
               <div className="bg-white p-8 rounded-[2.5rem] border border-gray-150 shadow-sm space-y-6">
                 <div>
                   <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">
-                    Bids & Proposals Tracking
+                    {t('bids_proposals_tracking')}
                   </h3>
                   <p className="text-[10px] text-gray-400 font-medium italic">
-                    Live bidding indicators with real-time feedback.
+                    {t('bids_tracking_desc')}
                   </p>
                 </div>
 
@@ -534,7 +540,7 @@ export default function CompanyDashboard() {
                           <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
                             bid.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                           }`}>
-                            {bid.status}
+                            {statusText(bid.status)}
                           </span>
                         </div>
                         <p className="text-[9px] text-gray-400 leading-none">{bid.date}</p>
@@ -542,22 +548,22 @@ export default function CompanyDashboard() {
 
                       <div className="grid grid-cols-3 gap-2 py-2.5 border-y border-gray-100 text-center text-xs">
                         <div>
-                          <span className="text-[8px] text-gray-400 uppercase font-black tracking-widest block">Bid Price</span>
+                          <span className="text-[8px] text-gray-400 uppercase font-black tracking-widest block">{t('bid_price')}</span>
                           <span className="font-bold text-blue-600">RWF {(bid.bidPrice / 1000).toLocaleString()}k</span>
                         </div>
                         <div>
-                          <span className="text-[8px] text-gray-400 uppercase font-black tracking-widest block">Team</span>
+                          <span className="text-[8px] text-gray-400 uppercase font-black tracking-widest block">{t('team')}</span>
                           <span className="font-bold text-gray-700">{bid.teamSize} pax</span>
                         </div>
                         <div>
-                          <span className="text-[8px] text-gray-400 uppercase font-black tracking-widest block">Timeline</span>
+                          <span className="text-[8px] text-gray-400 uppercase font-black tracking-widest block">{t('timeline')}</span>
                           <span className="font-bold text-gray-700">{bid.timeline}</span>
                         </div>
                       </div>
 
                       <div className="flex justify-between items-center gap-2 pt-1">
                         <span className="text-[10px] italic text-gray-400">
-                          {bid.status === 'accepted' ? '💵 Escrow Funded!' : 'Waiting review'}
+                          {bid.status === 'accepted' ? t('escrow_funded') : t('waiting_review')}
                         </span>
                         
                         {bid.status === 'pending' && (
@@ -566,7 +572,7 @@ export default function CompanyDashboard() {
                             onClick={() => handleRetractBid(bid.id, bid.leadTitle)}
                             className="text-[9px] font-black uppercase text-red-500 hover:underline"
                           >
-                            Retract Bid
+                            {t('retract_bid')}
                           </button>
                         )}
                       </div>
@@ -578,16 +584,16 @@ export default function CompanyDashboard() {
               {/* Company Info Box */}
               <div className="p-8 bg-gradient-to-br from-indigo-900 to-slate-900 rounded-[2.5rem] text-white shadow-xl">
                 <Sparkles size={32} className="text-yellow-400 mb-4 animate-spin" />
-                <h4 className="text-sm font-black uppercase tracking-tight mb-2">Corporate Placement Power</h4>
+                <h4 className="text-sm font-black uppercase tracking-tight mb-2">{t('corporate_placement_power')}</h4>
                 <p className="text-xs text-indigo-150 leading-relaxed font-sans mb-4">
-                  Did you know? Companies bidding with a <span className="font-bold text-green-400">Verified Business trust score above 95%</span> are 3 times more likely to win competitive corporate plumbing or mason contracts!
+                  {t('corporate_placement_power_prefix')}<span className="font-bold text-green-400">{t('verified_business_trust_score')}</span>{t('corporate_placement_power_suffix')}
                 </p>
                 <div className="h-2 bg-indigo-950 rounded-full overflow-hidden">
                   <div className="h-full bg-blue-500 rounded-full" style={{ width: profile?.trustScore ? `${profile.trustScore}%` : '0%' }} />
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-indigo-200 mt-2">
-                  <span>Trust Level</span>
-                  <span>{profile?.trustScore ? `${profile.trustScore}% Rating` : 'No Score Yet'}</span>
+                  <span>{t('trust_level')}</span>
+                  <span>{profile?.trustScore ? t('trust_rating_percent', { score: profile.trustScore }) : t('no_score_yet')}</span>
                 </div>
               </div>
 
@@ -621,8 +627,8 @@ export default function CompanyDashboard() {
                 <X size={20} />
               </button>
 
-              <h3 className="text-xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">Expired Opportunities</h3>
-              <p className="text-xs text-gray-400 font-sans italic mb-6">Renew historical postings instantly to publish matching requests back onto feeds.</p>
+              <h3 className="text-xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">{t('expired_opportunities')}</h3>
+              <p className="text-xs text-gray-400 font-sans italic mb-6">{t('expired_opportunities_desc')}</p>
 
               {expiredJobs.length > 0 ? (
                 <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
@@ -631,9 +637,9 @@ export default function CompanyDashboard() {
                       <div>
                         <div className="flex items-center justify-between">
                           <h4 className="font-sans font-black text-sm text-gray-900">{job.title}</h4>
-                          <span className="text-[8px] font-black text-red-655 bg-red-50 border border-red-100 px-2 py-0.5 rounded tracking-wide uppercase">Expired {job.expiredAt}</span>
+                          <span className="text-[8px] font-black text-red-655 bg-red-50 border border-red-100 px-2 py-0.5 rounded tracking-wide uppercase">{t('expired_at', { date: job.expiredAt })}</span>
                         </div>
-                        <p className="text-[10px] text-gray-550 mt-1 font-sans">{job.location} • Budget: {job.salary}</p>
+                        <p className="text-[10px] text-gray-550 mt-1 font-sans">{t('job_location_budget', { location: job.location, salary: job.salary })}</p>
                       </div>
 
                       <button 
@@ -644,11 +650,11 @@ export default function CompanyDashboard() {
                         {renewingJobId === job.id ? (
                           <>
                             <Loader2 size={12} className="animate-spin" />
-                            <span>Re-aligning parameters...</span>
+                            <span>{t('re_aligning_parameters')}</span>
                           </>
                         ) : (
                           <>
-                            <span>Renew Posting (30 Days Active)</span>
+                            <span>{t('renew_posting')}</span>
                             <Plus size={12} />
                           </>
                         )}
@@ -659,8 +665,8 @@ export default function CompanyDashboard() {
               ) : (
                 <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-150">
                   <Clock className="mx-auto text-gray-300 mb-2" size={32} />
-                  <p className="text-xs font-bold text-gray-450 uppercase tracking-wide">No Expired Opportunity Logs</p>
-                  <p className="text-[10px] text-gray-405 italic mt-1 font-sans">All outstanding opportunities are currently active.</p>
+                  <p className="text-xs font-bold text-gray-450 uppercase tracking-wide">{t('no_expired_opportunity_logs')}</p>
+                  <p className="text-[10px] text-gray-405 italic mt-1 font-sans">{t('all_opportunities_active')}</p>
                 </div>
               )}
 
@@ -668,7 +674,7 @@ export default function CompanyDashboard() {
                 onClick={() => setShowExpiredJobsModal(false)}
                 className="w-full mt-6 py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all"
               >
-                Close History
+                {t('close_history')}
               </button>
             </motion.div>
           </div>
@@ -699,8 +705,8 @@ export default function CompanyDashboard() {
                 <X size={20} />
               </button>
 
-              <h3 className="text-xl font-black text-gray-905 font-sans uppercase tracking-tight mb-2">Manage Shortlist</h3>
-              <p className="text-xs text-gray-400 font-sans italic mb-6">Dispatch contracts or delete matching profiles currently saved under reference indexes.</p>
+              <h3 className="text-xl font-black text-gray-905 font-sans uppercase tracking-tight mb-2">{t('manage_shortlist_title')}</h3>
+              <p className="text-xs text-gray-400 font-sans italic mb-6">{t('manage_shortlist_desc')}</p>
 
               {shortlisted.length > 0 ? (
                 <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
@@ -721,7 +727,7 @@ export default function CompanyDashboard() {
                           onClick={() => handleSendContractOffer(candidate.name)}
                           className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors"
                         >
-                          Hire
+                          {t('hire')}
                         </button>
                         <button 
                           onClick={() => handleRemoveFromShortlist(candidate.id, candidate.name)}
@@ -736,8 +742,8 @@ export default function CompanyDashboard() {
               ) : (
                 <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-150">
                   <Star className="mx-auto text-gray-300 mb-2" size={32} />
-                  <p className="text-xs font-bold text-gray-450 uppercase tracking-wide">Shortlist is empty</p>
-                  <p className="text-[10px] text-gray-400 mt-1 font-sans italic">Save recommended candidates or browse more workers.</p>
+                  <p className="text-xs font-bold text-gray-450 uppercase tracking-wide">{t('shortlist_empty')}</p>
+                  <p className="text-[10px] text-gray-400 mt-1 font-sans italic">{t('shortlist_empty_desc')}</p>
                 </div>
               )}
 
@@ -745,7 +751,7 @@ export default function CompanyDashboard() {
                 onClick={() => setShowShortlistModal(false)}
                 className="w-full mt-6 py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all"
               >
-                Close List
+                {t('close_list')}
               </button>
             </motion.div>
           </div>
@@ -805,13 +811,13 @@ export default function CompanyDashboard() {
                 <div className="h-16 w-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto text-xl font-mono font-black">
                   MTN
                 </div>
-                <h3 className="text-xl font-black font-sans uppercase tracking-tight text-gray-950">Corporate Placement MoMo</h3>
+                <h3 className="text-xl font-black font-sans uppercase tracking-tight text-gray-950">{t('corporate_placement_momo')}</h3>
                 <p className="text-xs text-gray-400 leading-relaxed">
-                  Clear outstanding corporate placement dues of <span className="font-bold">RWF {unpaidCommission}</span> instantly via registered MTN Mobile Money handles.
+                  {t('corporate_placement_momo_desc_prefix')}<span className="font-bold">RWF {unpaidCommission}</span>{t('corporate_placement_momo_desc_suffix')}
                 </p>
 
                 <div className="text-left space-y-1">
-                  <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">MoMo Account Phone</label>
+                  <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">{t('momo_account_phone')}</label>
                   <input
                     type="text"
                     value={payPhone}
@@ -821,8 +827,8 @@ export default function CompanyDashboard() {
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-xl flex justify-between text-xs font-mono font-bold text-gray-500">
-                  <span>Merchant Title:</span>
-                  <span>LINEKORA Placement</span>
+                  <span>{t('merchant_title')}</span>
+                  <span>{t('merchant_linekora_placement')}</span>
                 </div>
 
                 <button
@@ -830,7 +836,7 @@ export default function CompanyDashboard() {
                   disabled={isProcessingPay}
                   className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg transition-all"
                 >
-                  {isProcessingPay ? 'Processing Payout...' : `Settle RWF ${unpaidCommission} Invoice`}
+                  {isProcessingPay ? t('processing_payout') : t('settle_invoice', { amount: unpaidCommission })}
                 </button>
               </div>
             </motion.div>
@@ -866,13 +872,13 @@ export default function CompanyDashboard() {
               <form onSubmit={handleSubmitBid} className="space-y-6">
                 <div>
                   <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2.5 py-1 rounded">
-                    Corporate Proposal Bid
+                    {t('corporate_proposal_bid')}
                   </span>
                   <h3 className="text-xl font-black text-gray-900 tracking-tight mt-2 leading-tight">
                     {subcontractLeads.find(l => l.id === chosenLeadId)?.title}
                   </h3>
                   <p className="text-xs text-gray-400 mt-1">
-                    Bidding on behalf of <span className="font-bold text-gray-750">{profile?.displayName || 'Your Enterprise'}</span>
+                    {t('bidding_on_behalf_of')}<span className="font-bold text-gray-750">{profile?.displayName || t('your_enterprise')}</span>
                   </p>
                 </div>
 
@@ -880,7 +886,7 @@ export default function CompanyDashboard() {
                   {/* Proposed Pricing */}
                   <div>
                     <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-2">
-                      Proposed Price Offer (RWF)
+                      {t('proposed_price_offer')}
                     </label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">RWF</span>
@@ -898,7 +904,7 @@ export default function CompanyDashboard() {
                   <div className="grid grid-cols-2 gap-4 font-sans">
                     <div>
                       <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-2">
-                        Deployed workforce
+                        {t('deployed_workforce')}
                       </label>
                       <input
                         type="number"
@@ -909,12 +915,12 @@ export default function CompanyDashboard() {
                         onChange={(e) => setProposedStaff(Number(e.target.value))}
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold font-sans text-xs focus:bg-white focus:border-blue-600 outline-none"
                       />
-                      <span className="text-[9px] text-gray-400 font-medium mt-1 block">pax (members)</span>
+                      <span className="text-[9px] text-gray-400 font-medium mt-1 block">{t('pax_members')}</span>
                     </div>
 
                     <div>
                       <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-2">
-                        Execution Timeline
+                        {t('execution_timeline')}
                       </label>
                       <input
                         type="text"
@@ -923,14 +929,14 @@ export default function CompanyDashboard() {
                         onChange={(e) => setProposedTimeline(e.target.value)}
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl font-bold font-sans text-xs focus:bg-white focus:border-blue-600 outline-none"
                       />
-                      <span className="text-[9px] text-gray-400 font-medium mt-1 block">e.g. 5 Weeks</span>
+                      <span className="text-[9px] text-gray-400 font-medium mt-1 block">{t('placeholder_timeline')}</span>
                     </div>
                   </div>
 
                   {/* Cover Letter */}
                   <div>
                     <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-1">
-                      Corporate pitch / Capabilities statement
+                      {t('corporate_pitch')}
                     </label>
                     <textarea
                       required
@@ -948,13 +954,13 @@ export default function CompanyDashboard() {
                     onClick={() => setShowBidModal(false)}
                     className="flex-1 py-4 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-wider text-[10px] transition-all cursor-pointer text-center"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button
                     type="submit"
                     className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-wider text-[10px] transition-all cursor-pointer shadow-lg shadow-blue-100"
                   >
-                    Transmit Sealed Proposal
+                    {t('transmit_sealed_proposal')}
                   </button>
                 </div>
               </form>

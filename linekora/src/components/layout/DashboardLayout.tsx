@@ -79,7 +79,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           category: (a.category === 'urgent' ? 'urgent' : a.category === 'success' ? 'success' : 'general') as WebAlert['category'],
           title: a.title,
           details: a.details,
-          time: a.time || 'Just now',
+          time: a.time || t('just_now'),
           read: a.read || false,
         }));
       } catch {
@@ -320,7 +320,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 {getAvatarUrl() ? (
                   <img 
                     src={getAvatarUrl()!}
-                    alt={user?.displayName || 'Avatar'} 
+                    alt={user?.displayName || t('avatar')} 
                     className="h-full w-full object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -330,19 +330,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
               <div className="overflow-hidden flex-1">
                 <p className="text-sm font-bold text-gray-900 truncate font-sans">
-                {roleKey === 'worker' ? (localStorage.getItem('worker_profile_name') || user?.displayName || 'User') :
-                 roleKey === 'company' ? (localStorage.getItem('company_display_name_override') || user?.displayName || 'User') :
-                 roleKey === 'individual' ? (localStorage.getItem('current_username') || user?.displayName || 'User') :
-                 (user?.displayName || 'User')}
+                {roleKey === 'worker' ? (localStorage.getItem('worker_profile_name') || user?.displayName || t('unknown_user')) :
+                 roleKey === 'company' ? (localStorage.getItem('company_display_name_override') || user?.displayName || t('unknown_user')) :
+                 roleKey === 'individual' ? (localStorage.getItem('current_username') || user?.displayName || t('unknown_user')) :
+                 (user?.displayName || t('unknown_user'))}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-1.5 py-0.5 rounded ${
                     roleKey === 'company' ? 'bg-blue-600 text-white' : 
                     roleKey === 'worker' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'
                   }`}>
-                    {user?.role || 'Member'}
+                    {user?.role || t('member')}
                   </span>
-                  <span className="text-[8px] text-gray-400 font-bold group-hover:text-blue-500 transition-colors">→ Settings</span>
+                  <span className="text-[8px] text-gray-400 font-bold group-hover:text-blue-500 transition-colors">→ {t('settings')}</span>
                 </div>
               </div>
             </Link>
@@ -351,7 +351,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-sans font-bold text-sm text-red-500 hover:bg-red-50 transition-all"
             >
               <LogOut size={20} />
-              Log Out
+              {t('logout')}
             </button>
           </div>
         </div>
@@ -370,12 +370,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/10 text-red-600 hover:bg-red-600 hover:text-white rounded-lg text-xs font-black border border-red-900/30 transition-all uppercase tracking-wider shadow-sm"
               >
                 <Lock size={13} />
-                Admin Portal 🛡️
+                {t('admin_portal')}
               </Link>
             )}
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-bold border border-yellow-100">
               <ShieldAlert size={14} />
-              Trust Score: {user?.trustScore || 0}%
+              {t('trust_score_label', { score: user?.trustScore || 0 })}
             </div>
             <div className="hidden md:block h-8 w-px bg-gray-100" />
             
@@ -436,19 +436,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                       <div>
                         <h4 className="font-sans font-black text-xs text-gray-950 uppercase tracking-widest flex items-center gap-1.5">
-                          Alerts & Inbox
+                          {t('alerts_inbox')}
                           <span className="bg-blue-100 text-blue-700 text-[8px] font-black px-2 py-0.5 rounded-full">
-                            {totalAlertBadge} New
+                            {t('new_count', { count: totalAlertBadge })}
                           </span>
                         </h4>
-                        <p className="text-[10px] text-gray-400 font-sans font-medium italic mt-0.5">Real-time matching system updates</p>
+                        <p className="text-[10px] text-gray-400 font-sans font-medium italic mt-0.5">{t('real_time_updates')}</p>
                       </div>
                       {totalAlertBadge > 0 && (
                         <button 
                           onClick={handleMarkAllRead}
                           className="text-[9px] font-black text-blue-600 uppercase tracking-wider hover:underline"
                         >
-                          Mark all read
+                          {t('mark_all_read')}
                         </button>
                       )}
                     </div>
@@ -459,13 +459,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         onClick={() => setActiveTab('alerts')}
                         className={`flex-1 py-3 text-center text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'alerts' ? 'text-blue-650 border-blue-600 bg-blue-50/15' : 'text-gray-405 border-transparent hover:text-gray-900 bg-white'}`}
                       >
-                        System Alerts ({unreadAlertsCount})
+                        {t('system_alerts_count', { count: unreadAlertsCount })}
                       </button>
                       <button 
                         onClick={() => setActiveTab('messages')}
                         className={`flex-1 py-3 text-center text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'messages' ? 'text-blue-650 border-blue-600 bg-blue-50/15' : 'text-gray-405 border-transparent hover:text-gray-900 bg-white'}`}
                       >
-                        Unread Chats ({unreadChatsCount})
+                        {t('unread_chats_count', { count: unreadChatsCount })}
                       </button>
                     </div>
 
@@ -507,8 +507,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         ) : (
                           <div className="py-12 px-6 text-center">
                             <Inbox className="mx-auto text-gray-300 mb-2" size={32} />
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none">All clear</p>
-                            <p className="text-[10px] text-gray-400 font-sans italic mt-1">No system warnings outstanding.</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none">{t('all_clear')}</p>
+                            <p className="text-[10px] text-gray-400 font-sans italic mt-1">{t('no_system_warnings')}</p>
                           </div>
                         )
                       ) : (
@@ -539,8 +539,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         ) : (
                           <div className="py-12 px-6 text-center">
                             <MessageSquare className="mx-auto text-gray-300 mb-2" size={32} />
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none">Your inbox is empty</p>
-                            <p className="text-[10px] text-gray-400 font-sans italic mt-1">No live conversations.</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none">{t('inbox_empty')}</p>
+                            <p className="text-[10px] text-gray-400 font-sans italic mt-1">{t('no_live_conversations')}</p>
                           </div>
                         )
                       )}
@@ -560,7 +560,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         }}
                         className="text-[10px] font-black text-blue-600 hover:text-blue-750 uppercase tracking-widest flex items-center gap-1 transition-all font-sans"
                       >
-                        Open Active Chat Center
+                        {t('open_active_chat_center')}
                         <ChevronRight size={12} />
                       </button>
                     </div>
@@ -573,12 +573,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <Link 
               to={getSettingsPath()}
               className="h-9 w-9 rounded-full overflow-hidden border border-gray-200 hover:border-blue-500 transition-colors shrink-0 flex items-center justify-center bg-white"
-              title="Go to Settings"
+              title={t('go_to_settings')}
             >
               {getAvatarUrl() ? (
                 <img 
                   src={getAvatarUrl()!} 
-                  alt="Avatar" 
+                  alt={t('avatar')} 
                   className="h-full w-full object-cover"
                   referrerPolicy="no-referrer"
                 />

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,6 +18,7 @@ interface NotificationMsg {
 }
 
 export default function WorkerProfile() {
+  const { t } = useLanguage();
   const { profile } = useAuth();
   const navigate = useNavigate();
   const uid = profile?.firebaseUid || profile?.id || 'guest';
@@ -106,18 +108,18 @@ export default function WorkerProfile() {
   // Static Details for display values
   const profileDetails = {
     experience: [
-      { role: "Senior Maintenance Lead", company: "Prime Facilities", period: "2021 - Present", desc: "Leading a team of 10 for statewide facility management." },
-      { role: "Cleaning Specialist", company: "GreenClean Solutions", period: "2018 - 2021", desc: "Specialized in eco-friendly residential cleaning." },
+      { role: t('exp_lead_role'), company: t('exp_lead_company'), period: t('exp_lead_period'), desc: t('exp_lead_desc') },
+      { role: t('exp_cleaner_role'), company: t('exp_cleaner_company'), period: t('exp_cleaner_period'), desc: t('exp_cleaner_desc') },
     ],
     education: [
-      { degree: "Specialized Maintenance Certificate", school: "Technical Institute of Kigali", year: "2018" }
+      { degree: t('edu_degree'), school: t('edu_school'), year: t('edu_year') }
     ],
-    certificates: ["OSHA Safety Certified", "Eco-Friendly Cleaning Specialist"],
+    certificates: [t('cert_osha'), t('cert_eco')],
     portfolio: portfolioList,
     rating: 0,
     reviewsCount: 0,
     jobsCompleted: 0,
-    tier: profile?.tier || "Free Account"
+    tier: profile?.tier || t('free_account')
   };
 
   // Heart toggle
@@ -125,9 +127,9 @@ export default function WorkerProfile() {
     const nextVal = !isFavorited;
     setIsFavorited(nextVal);
     if (nextVal) {
-      addNotification('heart', 'Profile Bookmarked ❤️', 'You added this worker profile to favorites. Highlight markers updated.');
+      addNotification('heart', t('notif_bookmarked'), t('notif_bookmarked_msg'));
     } else {
-      addNotification('info', 'Removed Bookmark', 'Worker profile removed from your favorites collection.');
+      addNotification('info', t('notif_removed_bookmark'), t('notif_removed_bookmark_msg'));
     }
   };
 
@@ -135,17 +137,17 @@ export default function WorkerProfile() {
   const handleShare = () => {
     try {
       navigator.clipboard.writeText(window.location.href);
-      addNotification('success', 'Public URL Copied 🔗', 'Shareable profile link securely loaded to your clipboard.');
+      addNotification('success', t('notif_url_copied'), t('notif_url_copied_msg'));
     } catch (e) {
-      addNotification('success', 'Public Profile Link', 'Public link is ready. Use share tools to send badges.');
+      addNotification('success', t('notif_public_link'), t('notif_public_link_msg'));
     }
   };
 
   // Save changes
   const handleSaveProfile = () => {
-    setNameOverride(editName.trim() || 'User Name');
+    setNameOverride(editName.trim() || t('user_name'));
     setBio(editBio.trim());
-    setLocationOverride(editLocation.trim() || 'Location not set');
+    setLocationOverride(editLocation.trim() || t('location_not_set'));
     
     const parsedSkills = editSkills
       .split(',')
@@ -160,7 +162,7 @@ export default function WorkerProfile() {
     setPortfolioList(parsedPortfolio);
 
     setShowEditModal(false);
-    addNotification('success', 'Profile Updated 🚀', 'Your verified specifications saved successfully. Secure trust score unaffected.');
+    addNotification('success', t('notif_profile_updated'), t('notif_profile_updated_msg'));
   };
 
   // Real device file selection for CV
@@ -176,7 +178,7 @@ export default function WorkerProfile() {
         if (event.target?.result) {
           localStorage.setItem(sk('worker_profile_cv_data'), event.target.result as string);
         }
-        addNotification('success', 'CV Synchronized 📄', `Uploaded "${file.name}" successfully. Employer views synchronized.`);
+        addNotification('success', t('notif_cv_synced'), t('notif_cv_synced_msg', { name: file.name }));
       };
       reader.readAsDataURL(file);
     }
@@ -193,7 +195,7 @@ export default function WorkerProfile() {
     setCvName('');
     localStorage.removeItem(sk('worker_profile_cv_data'));
     setShowConfirmCVRemove(false);
-    addNotification('info', 'CV File Removed', 'Your curriculum vitae file has been cleared from employer indices.');
+    addNotification('info', t('notif_cv_removed'), t('notif_cv_removed_msg'));
   };
 
   // Direct contact message click
@@ -203,17 +205,17 @@ export default function WorkerProfile() {
 
   // Portfolio click notifications
   const handlePortfolioClick = (project: string) => {
-    addNotification('info', 'Milestone Showcase 📂', `Opening technical layout specifications & matching tags for project: "${project}".`);
+    addNotification('info', t('notif_showcase'), t('notif_showcase_msg', { name: project }));
   };
 
   // Certification badge click
   const handleCertClick = (cert: string) => {
-    addNotification('success', 'Validation Shield 🛡️', `Verified via LINEKORA Ledger system protocol matching: "${cert}".`);
+    addNotification('success', t('notif_validation'), t('notif_validation_msg', { name: cert }));
   };
 
   // Education click
   const handleEduClick = (edu: string) => {
-    addNotification('info', 'University Credential 🎓', `Academic record verified with registrar and matching authorities: "${edu}".`);
+    addNotification('info', t('notif_credential'), t('notif_credential_msg', { name: edu }));
   };
 
   return (
@@ -259,7 +261,7 @@ export default function WorkerProfile() {
                     </span>
                     <span className="flex items-center gap-1 text-sm font-bold text-gray-500 font-sans uppercase tracking-widest">
                       <Star size={16} className="text-yellow-400" />
-                      {profileDetails.rating} ({profileDetails.reviewsCount} reviews)
+                      {profileDetails.rating} ({profileDetails.reviewsCount} {t('reviews')})
                     </span>
                   </div>
                 </div>
@@ -295,31 +297,31 @@ export default function WorkerProfile() {
                     }}
                     className="px-8 py-3.5 bg-blue-600 text-white border border-transparent rounded-2xl font-sans font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 cursor-pointer"
                   >
-                    Edit Profile
+                    {t('edit_profile')}
                   </button>
                 </div>
               </div>
               
               <div className="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-gray-50">
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Trust Score</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('trust_score')}</p>
                   <div className="flex items-center gap-2">
                     <Zap size={16} className="text-yellow-500" />
                     <span className="text-lg font-black text-gray-900 font-sans">{profile?.trustScore || 98}</span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Jobs Completed</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('jobs_completed')}</p>
                   <div className="flex items-center gap-2">
                     <Briefcase size={16} className="text-blue-600" />
                     <span className="text-lg font-black text-gray-900 font-sans">{profileDetails.jobsCompleted}</span>
                   </div>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Verified Member</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('verified_member')}</p>
                   <div className="flex items-center gap-2">
                     <Shield size={16} className="text-green-500" />
-                    <span className="text-lg font-black text-gray-900 font-sans">Yes</span>
+                    <span className="text-lg font-black text-gray-900 font-sans">{t('yes')}</span>
                   </div>
                 </div>
               </div>
@@ -332,7 +334,7 @@ export default function WorkerProfile() {
           <div className="lg:col-span-2 space-y-8">
             {/* About / Bio */}
             <section className="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm">
-              <h2 className="text-xl font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">Professional Bio</h2>
+              <h2 className="text-xl font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">{t('professional_bio')}</h2>
               <p className="text-gray-600 font-sans leading-relaxed text-lg italic pr-2">
                 "{bio}"
               </p>
@@ -340,7 +342,7 @@ export default function WorkerProfile() {
 
             {/* Experience */}
             <section className="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm">
-              <h2 className="text-xl font-black text-gray-900 font-sans mb-8 uppercase tracking-tight">Work Experience</h2>
+              <h2 className="text-xl font-black text-gray-900 font-sans mb-8 uppercase tracking-tight">{t('work_experience')}</h2>
               <div className="space-y-8">
                 {profileDetails.experience.map((exp, i) => (
                   <div key={i} className="relative pl-8 border-l-2 border-blue-50 last:border-0 pb-8 last:pb-0">
@@ -361,7 +363,7 @@ export default function WorkerProfile() {
              {/* Portfolio */}
              <section className="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-black text-gray-900 font-sans uppercase tracking-tight">Project Portfolio</h2>
+                <h2 className="text-xl font-black text-gray-900 font-sans uppercase tracking-tight">{t('project_portfolio')}</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {profileDetails.portfolio.map((item, i) => (
@@ -388,7 +390,7 @@ export default function WorkerProfile() {
           <div className="space-y-8">
             {/* Skills */}
             <section className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-              <h2 className="text-lg font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">Main Skills</h2>
+              <h2 className="text-lg font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">{t('main_skills')}</h2>
               <div className="flex flex-wrap gap-2">
                 {skillsList.map((skill, i) => (
                   <span key={i} className="px-4 py-2 bg-gray-50 text-gray-700 rounded-xl font-sans font-bold text-xs border border-gray-100 hover:border-blue-200 hover:bg-white transition-all cursor-default">
@@ -400,61 +402,61 @@ export default function WorkerProfile() {
 
             {/* CV / Resume Section */}
             <section className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-              <h2 className="text-lg font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">CV / Resume</h2>
+              <h2 className="text-lg font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">{t('cv_resume')}</h2>
               <div className="p-6 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center text-center">
                 <FileText className="text-blue-600 mb-3" size={32} />
                 
                 {isUploadingCV ? (
                   <div className="py-6 flex flex-col items-center justify-center animate-pulse">
                     <Loader2 size={24} className="text-blue-600 animate-spin mb-2" />
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none font-sans">Uploading Credentials...</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none font-sans">{t('uploading_credentials')}</p>
                   </div>
                 ) : showConfirmCVRemove ? (
                   <div className="py-2 animate-fade-in w-full text-center">
-                    <p className="text-xs font-black text-red-600 uppercase tracking-tight mb-2">Delete CV File?</p>
-                    <p className="text-[10px] text-gray-400 font-sans leading-relaxed mb-4">Employers won't be able to retrieve your credentials.</p>
+                    <p className="text-xs font-black text-red-600 uppercase tracking-tight mb-2">{t('delete_cv_file')}</p>
+                    <p className="text-[10px] text-gray-400 font-sans leading-relaxed mb-4">{t('cv_delete_warning')}</p>
                     <div className="flex gap-2 w-full">
                       <button 
                         onClick={() => setShowConfirmCVRemove(false)}
                         className="flex-1 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
                       >
-                        Keep CV
+                        {t('keep_cv')}
                       </button>
                       <button 
                         onClick={handleRemoveCV}
                         className="flex-1 py-2 bg-red-650 hover:bg-red-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-sm"
                       >
-                        Delete
+                        {t('delete')}
                       </button>
                     </div>
                   </div>
                 ) : cvName ? (
                   <>
                     <p className="text-sm font-black text-gray-900 font-sans truncate w-full px-2">{cvName}</p>
-                    <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest leading-none">Added Recently</p>
+                    <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest leading-none">{t('added_recently')}</p>
                     <div className="flex gap-2 mt-4 w-full">
                       <button 
                         onClick={handleUploadCVClick}
                         className="flex-1 py-2 bg-white border border-gray-200 hover:border-blue-600 text-gray-800 hover:text-blue-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
                       >
-                        Update
+                        {t('update')}
                       </button>
                       <button 
                         onClick={() => setShowConfirmCVRemove(true)}
                         className="flex-1 py-2 bg-white border border-gray-200 hover:border-red-600 hover:text-red-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
                       >
-                        Remove
+                        {t('remove')}
                       </button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <p className="text-xs font-bold text-gray-400 font-sans mb-1 uppercase tracking-wider">No CV uploaded yet</p>
+                    <p className="text-xs font-bold text-gray-400 font-sans mb-1 uppercase tracking-wider">{t('no_cv_uploaded')}</p>
                     <button 
                       onClick={handleUploadCVClick}
                       className="mt-3 px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 cursor-pointer"
                     >
-                      Upload CV
+                      {t('upload_cv')}
                     </button>
                   </>
                 )}
@@ -463,7 +465,7 @@ export default function WorkerProfile() {
 
              {/* Education & Certs */}
              <section className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
-              <h2 className="text-lg font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">Qualifications</h2>
+              <h2 className="text-lg font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">{t('qualifications')}</h2>
               <div className="space-y-6 animate-fade-in">
                 <div 
                   onClick={() => handleEduClick(profileDetails.education[0].degree)}
@@ -473,7 +475,7 @@ export default function WorkerProfile() {
                     <GraduationCap size={20} />
                   </div>
                   <div>
-                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Education</p>
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t('education')}</p>
                     <p className="text-sm font-black text-gray-900 font-sans group-hover:text-blue-600 transition-colors leading-snug">{profileDetails.education[0].degree}</p>
                     <p className="text-xs text-gray-500 font-sans font-medium">{profileDetails.education[0].school}</p>
                   </div>
@@ -482,7 +484,7 @@ export default function WorkerProfile() {
                 <div className="h-px bg-gray-50" />
 
                 <div className="space-y-3">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-1">Certifications</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-1">{t('certifications')}</p>
                   {profileDetails.certificates.map((cert, i) => (
                     <div 
                       key={i} 
@@ -504,15 +506,15 @@ export default function WorkerProfile() {
                   <MessageSquare size={24} />
                 </div>
                 <div>
-                  <h4 className="font-sans font-black text-sm">Direct Contact</h4>
-                  <p className="text-white/70 text-xs font-sans font-medium italic">Available for hire</p>
+                  <h4 className="font-sans font-black text-sm">{t('direct_contact')}</h4>
+                  <p className="text-white/70 text-xs font-sans font-medium italic">{t('available_for_hire')}</p>
                 </div>
               </div>
               <button 
                 onClick={handleSendMessageClick}
                 className="w-full py-4 bg-white text-blue-600 rounded-2xl font-sans font-black text-xs uppercase tracking-widest shadow-lg hover:scale-105 transition-all active:scale-95 cursor-pointer"
               >
-                Send Message
+                {t('send_message')}
               </button>
             </section>
           </div>
@@ -552,12 +554,12 @@ export default function WorkerProfile() {
                 <X size={20} />
               </button>
 
-              <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">Edit Profile</h2>
-              <p className="text-xs text-gray-400 font-sans italic mb-6 font-medium">Update your public verified information matching credentials</p>
+              <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">{t('edit_profile')}</h2>
+              <p className="text-xs text-gray-400 font-sans italic mb-6 font-medium">{t('edit_profile_hint')}</p>
 
               <div className="space-y-6 font-sans">
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Display Name</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('display_name')}</label>
                   <input 
                     type="text" 
                     value={editName}
@@ -567,7 +569,7 @@ export default function WorkerProfile() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Location</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('location')}</label>
                   <input 
                     type="text" 
                     value={editLocation}
@@ -577,7 +579,7 @@ export default function WorkerProfile() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Professional Bio</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('professional_bio')}</label>
                   <textarea 
                     rows={4}
                     value={editBio}
@@ -587,27 +589,27 @@ export default function WorkerProfile() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Main Skills (Comma Separated)</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('main_skills_comma_separated')}</label>
                   <input 
                     type="text" 
                     value={editSkills}
                     onChange={(e) => setEditSkills(e.target.value)}
-                    placeholder="e.g. Industrial Cleaning, HVAC Maintenance"
+                    placeholder={t('skills_placeholder')}
                     className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900" 
                   />
-                  <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">Combine skills with commas (e.g. Team Leadership, Clean-up, Security)</p>
+                  <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">{t('skills_combine_hint')}</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Portfolio Projects (Comma Separated)</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('portfolio_comma_separated')}</label>
                   <input 
                     type="text" 
                     value={editPortfolio}
                     onChange={(e) => setEditPortfolio(e.target.value)}
-                    placeholder="e.g. Hospital Sterilization, Residential Complex"
+                    placeholder={t('portfolio_placeholder')}
                     className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900" 
                   />
-                  <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">Combine projects with commas (e.g. Office Design, Garden Landscaping)</p>
+                  <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">{t('portfolio_combine_hint')}</p>
                 </div>
 
                 <input 
@@ -623,13 +625,13 @@ export default function WorkerProfile() {
                     onClick={() => setShowEditModal(false)}
                     className="flex-1 py-4 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all border border-gray-150 cursor-pointer"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button 
                     onClick={handleSaveProfile}
                     className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2"
                   >
-                    Save Changes
+                    {t('save_changes')}
                   </button>
                 </div>
               </div>

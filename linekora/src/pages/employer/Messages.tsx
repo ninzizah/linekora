@@ -4,6 +4,7 @@ import {
   MoreVertical, Shield, Users, CheckCheck
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface ChatItem {
   id: number;
@@ -24,6 +25,7 @@ interface MessageItem {
 }
 
 export default function EmployerMessages() {
+  const { t } = useLanguage();
   const [activeChat, setActiveChat] = useState<number | null>(null);
   const [message, setMessage] = useState('');
 
@@ -74,7 +76,7 @@ export default function EmployerMessages() {
 
     // Update last message in sidebar listing
     setChatsList(prev => prev.map(chat => 
-      chat.id === activeChat ? { ...chat, lastMsg: message.trim(), time: 'Just now' } : chat
+      chat.id === activeChat ? { ...chat, lastMsg: message.trim(), time: t('just_now') } : chat
     ));
 
     setMessage('');
@@ -89,12 +91,12 @@ export default function EmployerMessages() {
         {/* Sidebar */}
         <div className="w-80 border-r border-gray-50 flex flex-col shrink-0">
           <div className="p-6 border-b border-gray-50">
-            <h2 className="text-xl font-black text-gray-900 font-sans tracking-tight mb-6 uppercase">My Chats</h2>
+            <h2 className="text-xl font-black text-gray-900 font-sans tracking-tight mb-6 uppercase">{t('my_chats')}</h2>
             <div className="relative group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={18} />
               <input 
                 type="text" 
-                placeholder="Search workers..." 
+                placeholder={t('search_workers')} 
                 className="w-full pl-12 pr-4 py-3 rounded-2xl bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all"
               />
             </div>
@@ -151,7 +153,7 @@ export default function EmployerMessages() {
                     <div className="flex items-center gap-1.5">
                       <div className={`h-1.5 w-1.5 rounded-full ${currentChatObj.online ? 'bg-green-500' : 'bg-gray-300'}`} />
                       <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                        {currentChatObj.online ? 'Online' : 'Offline'}
+                        {currentChatObj.online ? t('online') : t('offline')}
                       </span>
                     </div>
                   </div>
@@ -194,7 +196,7 @@ export default function EmployerMessages() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Type a message to the worker..." 
+                    placeholder={t('type_a_message')} 
                     className="w-full pl-6 pr-12 py-4 rounded-[2rem] bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all border"
                   />
                   <button 
@@ -211,9 +213,9 @@ export default function EmployerMessages() {
               <div className="h-20 w-20 bg-gray-100 rounded-[2rem] flex items-center justify-center text-gray-300 mb-6">
                 <MessageSquare size={32} />
               </div>
-              <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">Your Private Conversations</h3>
+              <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{t('private_conversations')}</h3>
               <p className="text-gray-500 font-sans text-sm mt-1 max-w-xs italic">
-                Chat with workers and manage your bookings securely.
+                {t('chat_with_workers')}
               </p>
             </div>
           )}

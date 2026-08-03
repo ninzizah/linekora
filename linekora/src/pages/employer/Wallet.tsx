@@ -7,6 +7,7 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 
 interface EmployerTransaction {
   id: number;
@@ -21,6 +22,7 @@ interface EmployerTransaction {
 
 export default function EmployerWallet() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const walletUid = profile?.firebaseUid || profile?.id || 'guest';
   const wk = (key: string) => `${key}_${walletUid}`;
   
@@ -79,15 +81,15 @@ export default function EmployerWallet() {
   }, [transactions]);
 
   const stats = [
-    { label: 'Available Balance', value: `RWF ${balance.toLocaleString()}`, icon: Wallet, color: 'text-blue-600' },
-    { label: 'Locked in Escrow', value: `RWF ${escrowBalance.toLocaleString()}`, icon: Clock, color: 'text-yellow-600' },
-    { label: 'Recent Spending', value: `RWF ${totalSpent.toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600' },
+    { label: t('available_balance'), value: `RWF ${balance.toLocaleString()}`, icon: Wallet, color: 'text-blue-600' },
+    { label: t('locked_in_escrow'), value: `RWF ${escrowBalance.toLocaleString()}`, icon: Clock, color: 'text-yellow-600' },
+    { label: t('recent_spending'), value: `RWF ${totalSpent.toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600' },
   ];
 
   const handleDepositConfirm = () => {
     const amt = parseInt(depositAmount, 10);
     if (isNaN(amt) || amt <= 0) {
-      setDepositErrorMsg('Please set a valid positive deposit amount.');
+      setDepositErrorMsg(t('deposit_amount_invalid'));
       return;
     }
     setDepositErrorMsg('');
@@ -99,8 +101,8 @@ export default function EmployerWallet() {
       setBalance(prev => prev + amt);
 
       const paymentMethodName = 
-        depositMethod === 'momo' ? 'MTN MoMo Deposit' : 
-        depositMethod === 'airtel' ? 'Airtel Money Deposit' : 'Personal Card top-up';
+        depositMethod === 'momo' ? t('payment_method_mtn_momo_deposit') : 
+        depositMethod === 'airtel' ? t('payment_method_airtel_deposit') : t('payment_method_card_topup');
 
       const randRef = `DEP-EMP-${Math.floor(10000 + Math.random() * 90000)}`;
 
@@ -110,8 +112,8 @@ export default function EmployerWallet() {
         amount: `RWF ${amt.toLocaleString()}`,
         recipient: paymentMethodName,
         status: 'completed',
-        date: 'Today',
-        task: 'Wallet Top Up',
+        date: t('today'),
+        task: t('wallet_top_up'),
         refCode: randRef
       };
 
@@ -132,8 +134,8 @@ export default function EmployerWallet() {
         <header className="mb-10">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">My Wallet</h1>
-              <p className="text-gray-500 font-sans font-bold mt-1 text-sm italic opacity-85 leading-tight tracking-tight">SECURELY FUND YOUR TASKS AND PAY YOUR WORKERS.</p>
+              <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('my_wallet')}</h1>
+              <p className="text-gray-500 font-sans font-bold mt-1 text-sm italic opacity-85 leading-tight tracking-tight">{t('wallet_subtitle')}</p>
             </div>
             <button 
               onClick={() => {
@@ -145,13 +147,13 @@ export default function EmployerWallet() {
               className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-sans font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all cursor-pointer text-xs uppercase tracking-widest"
             >
               <Plus size={18} />
-              Top Up Balance
+              {t('top_up_balance')}
             </button>
           </div>
           <div className="mt-6 bg-blue-50/60 border border-blue-100 p-4 rounded-2xl flex items-center gap-3">
              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
              <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest italic leading-relaxed">
-               MTN MoMo & Mobile Money Gateway: <span className="text-green-600 font-extrabold bg-green-50 px-2 py-0.5 rounded border border-green-150">Online Sandbox Mode</span> • Instantly top up and fund private tasks.
+               {t('mtn_momo_gateway_prefix')} <span className="text-green-600 font-extrabold bg-green-50 px-2 py-0.5 rounded border border-green-150">{t('online_sandbox_mode')}</span> {t('mtn_momo_gateway_suffix')}
              </p>
           </div>
         </header>
@@ -174,25 +176,25 @@ export default function EmployerWallet() {
           <div className="lg:col-span-2 space-y-6">
              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
                <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight flex items-center gap-2">
-                  <Clock size={20} className="text-blue-600" />
-                  Recent Transactions
-               </h3>
-               
-               <div className="flex bg-gray-55 p-1 rounded-xl border border-gray-150 shadow-inner bg-gray-100/70">
-                 {(['all', 'escrow', 'completed'] as const).map(f => (
-                   <button
-                     key={f}
-                     onClick={() => setFilter(f)}
-                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest font-sans transition-all cursor-pointer ${
-                       filter === f 
-                         ? 'bg-white text-gray-900 shadow-sm border border-gray-100' 
-                         : 'text-gray-400 hover:text-gray-650'
-                     }`}
-                   >
-                     {f}
-                   </button>
-                 ))}
-               </div>
+                   <Clock size={20} className="text-blue-600" />
+                   {t('recent_transactions')}
+                </h3>
+                
+                <div className="flex bg-gray-55 p-1 rounded-xl border border-gray-150 shadow-inner bg-gray-100/70">
+                  {(['all', 'escrow', 'completed'] as const).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setFilter(f)}
+                      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest font-sans transition-all cursor-pointer ${
+                        filter === f 
+                          ? 'bg-white text-gray-900 shadow-sm border border-gray-100' 
+                          : 'text-gray-400 hover:text-gray-650'
+                      }`}
+                    >
+                      {f === 'all' ? t('filter_all') : f === 'escrow' ? t('filter_escrow') : t('filter_completed')}
+                    </button>
+                  ))}
+                </div>
              </div>
 
              <div className="space-y-4">
@@ -215,45 +217,45 @@ export default function EmployerWallet() {
                      <p className={`font-sans font-black text-sm ${tx.type === 'deposit' ? 'text-green-600' : 'text-gray-900'}`}>
                        {tx.type === 'deposit' ? '+' : '-'}{tx.amount}
                      </p>
-                     <span className={`text-[10px] font-black uppercase tracking-widest ${
-                       tx.status === 'completed' ? 'text-green-500' : 'text-yellow-500'
-                     }`}>
-                       {tx.status}
-                     </span>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${
+                        tx.status === 'completed' ? 'text-green-500' : 'text-yellow-500'
+                      }`}>
+                        {tx.status === 'completed' ? t('status_completed') : t('status_pending')}
+                      </span>
                    </div>
                  </div>
                ))}
 
-               {filteredTransactions.length === 0 && (
-                 <div className="bg-white rounded-[2rem] border border-dashed border-gray-200 py-12 text-center text-gray-400 font-sans italic text-sm">
-                   No transactions recorded in this filter.
-                 </div>
-               )}
+                {filteredTransactions.length === 0 && (
+                  <div className="bg-white rounded-[2rem] border border-dashed border-gray-200 py-12 text-center text-gray-400 font-sans italic text-sm">
+                    {t('no_transactions_in_filter')}
+                  </div>
+                )}
              </div>
           </div>
 
           <div className="space-y-6">
             <div className="bg-gray-900 p-8 rounded-[2.5rem] text-white shadow-xl shadow-gray-200">
                <div className="flex items-center gap-3 mb-6">
-                  <CreditCard className="text-blue-400" size={24} />
-                  <h4 className="text-lg font-black font-sans uppercase tracking-tight">Billing Profiles</h4>
-               </div>
-               <div className="p-4 bg-white/5 rounded-2xl border border-white/10 mb-6">
-                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Standard Option</p>
-                  <p className="text-sm font-bold font-sans">MTN Mobile Money Wallet</p>
-               </div>
-               <p className="text-[10px] text-gray-400 font-medium font-sans leading-relaxed">
-                  Fast billing. Secure, instant peer-to-peer mobile phone validation limits fraud and protects your workers.
-               </p>
-            </div>
+                   <CreditCard className="text-blue-400" size={24} />
+                   <h4 className="text-lg font-black font-sans uppercase tracking-tight">{t('billing_profiles')}</h4>
+                </div>
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/10 mb-6">
+                   <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">{t('standard_option')}</p>
+                   <p className="text-sm font-bold font-sans">{t('mtn_mobile_money_wallet')}</p>
+                </div>
+                <p className="text-[10px] text-gray-400 font-medium font-sans leading-relaxed">
+                   {t('billing_profiles_desc')}
+                </p>
+             </div>
             
-            <div className="p-8 bg-blue-50 rounded-[2.5rem] border border-blue-100">
-               <Shield className="text-blue-600 mb-4" size={32} />
-               <h4 className="text-lg font-black text-blue-900 font-sans tracking-tight mb-2">Escrow Protected</h4>
-               <p className="text-xs text-blue-700 font-medium font-sans leading-relaxed italic">
-                  LINEKORA protects your money. Only release payment when the work is done to your satisfaction.
-               </p>
-            </div>
+             <div className="p-8 bg-blue-50 rounded-[2.5rem] border border-blue-100">
+                <Shield className="text-blue-600 mb-4" size={32} />
+                <h4 className="text-lg font-black text-blue-900 font-sans tracking-tight mb-2">{t('escrow_protected')}</h4>
+                <p className="text-xs text-blue-700 font-medium font-sans leading-relaxed italic">
+                   {t('escrow_protected_desc')}
+                </p>
+             </div>
           </div>
         </div>
       </div>
@@ -287,8 +289,8 @@ export default function EmployerWallet() {
 
               {!depositSuccess ? (
                 <div>
-                  <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">Top Up Balance</h2>
-                  <p className="text-xs text-gray-400 font-sans italic mb-6 font-medium">Add funds safely to your individual hiring budget</p>
+                  <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">{t('top_up_balance')}</h2>
+                  <p className="text-xs text-gray-400 font-sans italic mb-6 font-medium">{t('deposit_modal_subtitle')}</p>
                   
                   {depositErrorMsg && (
                     <div className="mb-6 p-4 bg-red-50 text-red-655 border border-red-100 text-xs font-bold rounded-2xl flex items-start gap-2 animate-pulse">
@@ -300,8 +302,8 @@ export default function EmployerWallet() {
                   <div className="space-y-6">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans">Amount (RWF)</label>
-                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Current Balance: RWF {balance.toLocaleString()}</span>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans">{t('deposit_amount_label')}</label>
+                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{t('current_balance', { balance: balance.toLocaleString() })}</span>
                       </div>
                       <input 
                         type="number" 
@@ -311,13 +313,13 @@ export default function EmployerWallet() {
                           setDepositAmount(e.target.value);
                           setDepositErrorMsg('');
                         }}
-                        placeholder="e.g. 15000" 
+                        placeholder={t('placeholder_deposit_amount')} 
                         className="w-full p-4 rounded-2xl border-2 border-gray-100 font-sans font-black text-xl outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-50 text-gray-900" 
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">Operator Choice</label>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('operator_choice')}</label>
                       <div className="grid grid-cols-3 gap-2">
                         <button 
                           type="button"
@@ -328,7 +330,7 @@ export default function EmployerWallet() {
                           }`}
                         >
                           <Smartphone size={18} />
-                          <span className="font-sans text-[9px] font-black uppercase tracking-tight">MTN MoMo</span>
+                          <span className="font-sans text-[9px] font-black uppercase tracking-tight">{t('mtn_mobile_money')}</span>
                         </button>
                         <button 
                           type="button"
@@ -339,7 +341,7 @@ export default function EmployerWallet() {
                           }`}
                         >
                           <Smartphone size={18} />
-                          <span className="font-sans text-[9px] font-black uppercase tracking-tight">Airtel</span>
+                          <span className="font-sans text-[9px] font-black uppercase tracking-tight">{t('airtel_money')}</span>
                         </button>
                         <button 
                           type="button"
@@ -350,14 +352,14 @@ export default function EmployerWallet() {
                           }`}
                         >
                           <CreditCard size={18} />
-                          <span className="font-sans text-[9px] font-black uppercase tracking-tight">Debit Card</span>
+                          <span className="font-sans text-[9px] font-black uppercase tracking-tight">{t('debit_card')}</span>
                         </button>
                       </div>
                     </div>
 
                     {depositMethod !== 'card' && (
                       <div>
-                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">Registered Mobile Phone Number</label>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('registered_mobile_phone')}</label>
                         <input 
                           type="text" 
                           disabled={depositIsLoading}
@@ -378,10 +380,10 @@ export default function EmployerWallet() {
                       {depositIsLoading ? (
                         <>
                           <Loader2 size={16} className="animate-spin" />
-                          <span>Sending PIN Verification Prompt...</span>
+                          <span>{t('sending_pin_prompt')}</span>
                         </>
                       ) : (
-                        <span>Top Up Securely</span>
+                        <span>{t('top_up_securely')}</span>
                       )}
                     </button>
                   </div>
@@ -391,20 +393,20 @@ export default function EmployerWallet() {
                   <div className="h-16 w-16 bg-green-50 text-green-600 border border-green-200 rounded-full flex items-center justify-center mb-6 mx-auto animate-bounce">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">Top Up Complete</h3>
+                  <h3 className="text-2xl font-black text-gray-900 font-sans uppercase tracking-tight mb-2">{t('top_up_complete')}</h3>
                   <p className="text-sm font-sans text-gray-500 leading-relaxed max-w-xs mx-auto mb-6">
-                    RWF {parseInt(depositAmount, 10).toLocaleString()} has been successfully loaded into your available Individual Balance.
+                    {t('top_up_complete_desc', { amount: parseInt(depositAmount, 10).toLocaleString() })}
                   </p>
                   
                   <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-left space-y-2 mb-8 uppercase font-sans text-[10px] font-black tracking-widest text-gray-500">
                     <div className="flex justify-between">
-                      <span>Ref Code:</span>
+                      <span>{t('ref_code')}</span>
                       <span className="text-gray-900 text-right">DEP-EMP-{Math.floor(10000 + Math.random() * 90000)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Operator:</span>
+                      <span>{t('operator')}</span>
                       <span className="text-gray-900 text-right">
-                        {depositMethod === 'momo' ? 'MTN Mobile Money' : depositMethod === 'airtel' ? 'Airtel Money' : 'Direct Credit Card'}
+                        {depositMethod === 'momo' ? t('mtn_mobile_money') : depositMethod === 'airtel' ? t('airtel_money') : t('direct_credit_card')}
                       </span>
                     </div>
                   </div>
@@ -413,7 +415,7 @@ export default function EmployerWallet() {
                     onClick={() => setShowDeposit(false)}
                     className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg cursor-pointer"
                   >
-                    Close Dialog
+                    {t('close_dialog')}
                   </button>
                 </div>
               )}

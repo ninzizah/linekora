@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
+import { useLanguage } from '../../lib/LanguageContext';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,7 @@ interface Toast {
 
 export default function EmployerSettings() {
   const { profile } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,7 +72,7 @@ export default function EmployerSettings() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      setUploadError('Photo must be smaller than 2MB.');
+      setUploadError(t('photo_too_large_error'));
       return;
     }
     setUploadError('');
@@ -94,7 +96,7 @@ export default function EmployerSettings() {
 
   const handleSaveChanges = async () => {
     if (!displayName.trim()) {
-      addToast('Validation Failure ❌', 'Display Name cannot be blank.', 'error');
+      addToast(t('validation_failure'), t('display_name_blank'), 'error');
       return;
     }
 
@@ -127,7 +129,7 @@ export default function EmployerSettings() {
 
     setTimeout(() => {
       setSaving(false);
-      addToast('Settings Saved 💾', 'Your profile updates have been saved.', 'success');
+      addToast(t('settings_saved'), t('settings_saved_desc'), 'success');
     }, 800);
   };
 
@@ -136,8 +138,8 @@ export default function EmployerSettings() {
       <div className="max-w-4xl mx-auto px-4 relative">
         <header className="mb-10 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-6">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">Employer Settings</h1>
-            <p className="text-gray-500 font-sans font-medium mt-1 italic">Configure account specifications, security credentials, and alerts.</p>
+            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('employer_settings')}</h1>
+            <p className="text-gray-500 font-sans font-medium mt-1 italic">{t('employer_settings_subtitle')}</p>
           </div>
           
           {/* Top Info Banner featuring active verification score */}
@@ -148,9 +150,9 @@ export default function EmployerSettings() {
               <Shield size={20} className={isVerified ? '' : 'animate-pulse'} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Security Level</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{t('security_level')}</p>
               <p className="text-xs font-black text-gray-900 font-sans mt-0.5 uppercase tracking-wide">
-                {isVerified ? '🛡️ Level 3 Verified' : '⚠️ Unverified Profile'}
+                {isVerified ? t('security_level_verified') : t('security_unverified')}
               </p>
             </div>
           </div>
@@ -162,7 +164,7 @@ export default function EmployerSettings() {
           <section className="space-y-4">
             <h3 className="text-lg font-black text-gray-900 font-sans tracking-tight flex items-center gap-2.5 uppercase border-b border-gray-50 pb-3">
               <Camera size={20} className="text-blue-600" />
-              Profile Photo / Logo
+              {t('profile_photo_logo')}
             </h3>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
               <div className="relative">
@@ -195,8 +197,8 @@ export default function EmployerSettings() {
               </div>
               <div>
                 <p className="text-sm font-black text-gray-900">{displayName}</p>
-                <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mt-0.5">Individual Employer</p>
-                <p className="text-xs text-gray-400 mt-2">Tap the <span className="text-blue-600 font-bold">camera icon</span> to upload your photo or company logo.<br/>Max: 2MB. JPG, PNG, or WEBP.</p>
+                <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mt-0.5">{t('individual_tasks_employer')}</p>
+                <p className="text-xs text-gray-400 mt-2">{t('photo_upload_hint_prefix')} <span className="text-blue-600 font-bold">{t('camera_icon')}</span> {t('photo_upload_hint_suffix')}<br/>Max: 2MB. JPG, PNG, or WEBP.</p>
                 {uploadError && <p className="text-xs text-red-500 font-bold mt-1">{uploadError}</p>}
               </div>
             </div>
@@ -206,12 +208,12 @@ export default function EmployerSettings() {
           <section className="space-y-6">
             <h3 className="text-lg font-black text-gray-905 font-sans tracking-tight flex items-center gap-2.5 uppercase border-b border-gray-50 pb-3">
               <User size={20} className="text-blue-600" />
-              Information Profile
+              {t('information_profile')}
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Display Name / Identity</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">{t('display_name_identity')}</label>
                 <input 
                   type="text" 
                   value={displayName}
@@ -220,7 +222,7 @@ export default function EmployerSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Kigali Workspace Location</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">{t('kigali_workspace_location')}</label>
                 <input 
                   type="text" 
                   value={location}
@@ -229,7 +231,7 @@ export default function EmployerSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Mobile Telephone Contact</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">{t('mobile_telephone_contact')}</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold" size={14} />
                   <input 
@@ -242,20 +244,20 @@ export default function EmployerSettings() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Account Role status</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">{t('account_role_status')}</label>
                 <div className="px-5 py-4 rounded-xl bg-blue-50/50 border border-blue-100 text-blue-700 font-sans text-xs font-black uppercase tracking-wider leading-none">
-                  💼 Individual Tasks Employer
+                  {t('individual_tasks_employer')}
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Brief Description / Bio details</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">{t('bio_details')}</label>
               <textarea 
                 rows={3}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                placeholder="Write description about yourself, site specifications, or standard gigs schedules..."
+                placeholder={t('bio_placeholder')}
                 className="w-full px-5 py-3.5 rounded-xl bg-gray-50 border border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all text-sm resize-none"
               />
             </div>
@@ -265,7 +267,7 @@ export default function EmployerSettings() {
           <section className="pt-8 border-t border-gray-50 space-y-6">
             <h3 className="text-lg font-black text-gray-905 font-sans tracking-tight flex items-center gap-2.5 uppercase border-b border-gray-50 pb-3">
               <Shield size={20} className="text-blue-600" />
-              Identity verification
+              {t('identity_verification')}
             </h3>
 
             {isVerified ? (
@@ -275,11 +277,11 @@ export default function EmployerSettings() {
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="text-xs font-black text-green-905 uppercase tracking-wider font-sans">Verification Shield Badge Active</p>
-                    <span className="bg-green-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded leading-none uppercase">Verified Employer</span>
+                    <p className="text-xs font-black text-green-905 uppercase tracking-wider font-sans">{t('verification_shield_badge_active')}</p>
+                    <span className="bg-green-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded leading-none uppercase">{t('verified_employer')}</span>
                   </div>
                   <p className="text-xs text-green-700 font-bold font-sans mt-0.5 italic leading-normal">
-                    "Your identity file has been audited against standard Kigali administrative registries. Workers prioritize verified employers."
+                    {t('verified_employer_desc')}
                   </p>
                 </div>
               </div>
@@ -290,9 +292,9 @@ export default function EmployerSettings() {
                     <AlertTriangle size={20} />
                   </div>
                   <div>
-                    <p className="text-xs font-black text-yellow-905 uppercase tracking-wider font-sans">Shield Verification Pending</p>
+                    <p className="text-xs font-black text-yellow-905 uppercase tracking-wider font-sans">{t('shield_verification_pending')}</p>
                     <p className="text-[11px] text-yellow-700 font-bold mt-0.5 leading-normal">
-                      Submit 16-digit Rwandan Registration Identification Document to display a Verified badge and trigger 3.5x higher application volumes.
+                      {t('verification_pending_desc')}
                     </p>
                   </div>
                 </div>
@@ -301,7 +303,7 @@ export default function EmployerSettings() {
                   onClick={() => navigate('/dashboard/employer/verify')}
                   className="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-yellow-100 self-start md:self-auto shrink-0"
                 >
-                  Verify Now
+                  {t('verify_now')}
                 </button>
               </div>
             )}
@@ -315,7 +317,7 @@ export default function EmployerSettings() {
               className="flex items-center gap-1.5 text-red-500 font-sans font-black text-[10px] uppercase tracking-widest hover:bg-red-50 px-4 py-2.5 rounded-xl transition-all self-stretch sm:self-auto text-center justify-center cursor-pointer"
             >
               <LogOut size={14} />
-              Sign Out Account
+              {t('sign_out_account')}
             </button>
             <button 
               type="button"
@@ -324,11 +326,11 @@ export default function EmployerSettings() {
               className="px-6 py-4.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-sans font-black text-[10px] tracking-widest shadow-xl shadow-blue-105 transition-all flex items-center justify-center gap-2 self-stretch sm:self-auto uppercase cursor-pointer"
             >
               {saving ? (
-                <span>Preserving changes...</span>
+                <span>{t('preserving_changes')}</span>
               ) : (
                 <>
                   <Save size={14} />
-                  <span>Save Changes</span>
+                  <span>{t('save_changes')}</span>
                 </>
               )}
             </button>
