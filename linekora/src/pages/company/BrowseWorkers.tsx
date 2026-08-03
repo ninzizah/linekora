@@ -58,17 +58,17 @@ export default function BrowseWorkers() {
         const users = await getUsers();
         const realWorkers: WorkerItem[] = users
           .filter(u => u.role === 'WORKER')
-          .map((u, idx) => ({
+          .map((u) => ({
             id: u.id,
             name: u.displayName,
             role: t('professional_worker'),
             location: u.location || 'Kigali',
-            rating: 5.0,
+            rating: 0,
             jobs: 0,
             verified: u.verificationStatus === 'verified',
-            skills: [t('skill_domestic_help'), t('skill_quick_tasks'), t('skill_punctual')],
+            skills: [],
             trustScore: u.trustScore,
-            experience: (['1-2yrs', '3-5yrs', '5yrs+'])[idx % 3],
+            experience: '',
             avatarUrl: u.avatarUrl,
           }));
         // Set real workers

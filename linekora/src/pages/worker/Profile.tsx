@@ -105,16 +105,12 @@ export default function WorkerProfile() {
   const [showConfirmCVRemove, setShowConfirmCVRemove] = useState(false);
   const cvFileInputRef = useState<any>(null)[0] || { current: null };
 
-  // Static Details for display values
+  // Real profile details (experience, education, certificates are not
+  // stored yet, so they start empty until real data exists)
   const profileDetails = {
-    experience: [
-      { role: t('exp_lead_role'), company: t('exp_lead_company'), period: t('exp_lead_period'), desc: t('exp_lead_desc') },
-      { role: t('exp_cleaner_role'), company: t('exp_cleaner_company'), period: t('exp_cleaner_period'), desc: t('exp_cleaner_desc') },
-    ],
-    education: [
-      { degree: t('edu_degree'), school: t('edu_school'), year: t('edu_year') }
-    ],
-    certificates: [t('cert_osha'), t('cert_eco')],
+    experience: [],
+    education: [],
+    certificates: [],
     portfolio: portfolioList,
     rating: 0,
     reviewsCount: 0,
@@ -307,7 +303,7 @@ export default function WorkerProfile() {
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('trust_score')}</p>
                   <div className="flex items-center gap-2">
                     <Zap size={16} className="text-yellow-500" />
-                    <span className="text-lg font-black text-gray-900 font-sans">{profile?.trustScore || 98}</span>
+                    <span className="text-lg font-black text-gray-900 font-sans">{profile?.trustScore ?? 0}</span>
                   </div>
                 </div>
                 <div>
@@ -321,7 +317,7 @@ export default function WorkerProfile() {
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('verified_member')}</p>
                   <div className="flex items-center gap-2">
                     <Shield size={16} className="text-green-500" />
-                    <span className="text-lg font-black text-gray-900 font-sans">{t('yes')}</span>
+                    <span className="text-lg font-black text-gray-900 font-sans">{profile?.verificationStatus === 'verified' ? t('verified') : t('unverified')}</span>
                   </div>
                 </div>
               </div>
@@ -344,6 +340,12 @@ export default function WorkerProfile() {
             <section className="bg-white rounded-[2.5rem] p-10 border border-gray-100 shadow-sm">
               <h2 className="text-xl font-black text-gray-900 font-sans mb-8 uppercase tracking-tight">{t('work_experience')}</h2>
               <div className="space-y-8">
+                {profileDetails.experience.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-10 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                    <Briefcase size={28} className="text-gray-300 mb-3" />
+                    <p className="text-sm font-bold text-gray-400 font-sans">{t('no_experience_added')}</p>
+                  </div>
+                )}
                 {profileDetails.experience.map((exp, i) => (
                   <div key={i} className="relative pl-8 border-l-2 border-blue-50 last:border-0 pb-8 last:pb-0">
                     <div className="absolute left-[-9px] top-0 h-4 w-4 rounded-full bg-blue-600 border-4 border-white shadow-sm" />
@@ -467,24 +469,41 @@ export default function WorkerProfile() {
              <section className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
               <h2 className="text-lg font-black text-gray-900 font-sans mb-6 uppercase tracking-tight">{t('qualifications')}</h2>
               <div className="space-y-6 animate-fade-in">
-                <div 
-                  onClick={() => handleEduClick(profileDetails.education[0].degree)}
-                  className="flex gap-4 cursor-pointer group"
-                >
-                  <div className="h-10 w-10 bg-blue-50 group-hover:bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 transition-colors shrink-0">
-                    <GraduationCap size={20} />
+                {profileDetails.education.length === 0 && (
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-300 shrink-0">
+                      <GraduationCap size={20} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t('education')}</p>
+                      <p className="text-sm font-bold text-gray-400 font-sans">{t('no_education_added')}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t('education')}</p>
-                    <p className="text-sm font-black text-gray-900 font-sans group-hover:text-blue-600 transition-colors leading-snug">{profileDetails.education[0].degree}</p>
-                    <p className="text-xs text-gray-500 font-sans font-medium">{profileDetails.education[0].school}</p>
+                )}
+                {profileDetails.education.map((edu, i) => (
+                  <div 
+                    key={i}
+                    onClick={() => handleEduClick(edu.degree)}
+                    className="flex gap-4 cursor-pointer group"
+                  >
+                    <div className="h-10 w-10 bg-blue-50 group-hover:bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 transition-colors shrink-0">
+                      <GraduationCap size={20} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{t('education')}</p>
+                      <p className="text-sm font-black text-gray-900 font-sans group-hover:text-blue-600 transition-colors leading-snug">{edu.degree}</p>
+                      <p className="text-xs text-gray-500 font-sans font-medium">{edu.school}</p>
+                    </div>
                   </div>
-                </div>
+                ))}
                 
                 <div className="h-px bg-gray-50" />
 
                 <div className="space-y-3">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 px-1">{t('certifications')}</p>
+                  {profileDetails.certificates.length === 0 && (
+                    <p className="text-sm font-bold text-gray-400 font-sans px-1">{t('no_certificates_added')}</p>
+                  )}
                   {profileDetails.certificates.map((cert, i) => (
                     <div 
                       key={i} 

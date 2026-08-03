@@ -122,6 +122,9 @@ export const createApplication = (data: { jobId: number; workerId: string }) =>
 export const updateApplication = (id: number, data: { status: string }) =>
   request<Application>(`/applications/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 
+export const deleteApplication = (id: number) =>
+  request<{ success: boolean }>(`/applications/${id}`, { method: 'DELETE' });
+
 // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────────
 
 export interface Notification {

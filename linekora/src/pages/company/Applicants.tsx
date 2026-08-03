@@ -19,7 +19,7 @@ interface Applicant {
   verified: boolean;
   lastActive: string;
   avatar: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'shortlisted';
   phone: string;
   experience: string;
   bio: string;
@@ -30,7 +30,7 @@ export default function CompanyApplicants() {
   const { profile } = useAuth();
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected' | 'shortlisted'>('all');
   const [selectedApplicant, setSelectedApplicant] = useState<any | null>(null);
   const [applicants, setApplicants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +56,7 @@ export default function CompanyApplicants() {
 
   useEffect(() => { loadApplications(); }, [profile?.id]);
 
-  const handleStatusChange = async (appId: number, newStatus: 'accepted' | 'rejected') => {
+  const handleStatusChange = async (appId: number, newStatus: 'accepted' | 'rejected' | 'shortlisted') => {
     const app = applicants.find(a => a.id === appId);
     if (!app) return;
     setProcessingId(appId);
@@ -98,14 +98,15 @@ export default function CompanyApplicants() {
 
       // Notify the worker
       if (app.workerId) {
-        await createNotification({
-          userId: app.workerId,
-          title: newStatus === 'accepted' ? t('notif_app_accepted') : t('notif_app_rejected'),
-          body: newStatus === 'accepted'
-            ? t('notif_app_accepted_msg', { title: app.job?.title || t('the_job') })
-            : t('notif_app_rejected_msg', { title: app.job?.title || t('the_job') }),
-          type: newStatus === 'accepted' ? 'success' : 'info',
-        });
+        const notifyMap: Record<string, { title: string; body: string; type: string }> = {
+          accepted: { title: t('notif_app_accepted'), body: t('notif_app_accepted_msg', { title: app.job?.title || t('the_job') }), type: 'success' },
+          rejected: { title: t('notif_app_rejected'), body: t('notif_app_rejected_msg', { title: app.job?.title || t('the_job') }), type: 'info' },
+          shortlisted: { title: t('notif_app_shortlisted'), body: t('notif_app_shortlisted_msg', { title: app.job?.title || t('the_job') }), type: 'success' },
+        };
+        const n = notifyMap[newStatus];
+        if (n) {
+          await createNotification({ userId: app.workerId, title: n.title, body: n.body, type: n.type });
+        }
       }
       setApplicants(prev => prev.map(a => a.id === appId ? { ...a, status: newStatus } : a));
       if (selectedApplicant?.id === appId) setSelectedApplicant((prev: any) => ({ ...prev, status: newStatus }));
@@ -148,7 +149,7 @@ export default function CompanyApplicants() {
         {/* Filter Toolbar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200 shadow-sm overflow-x-auto scrollbar-none">
-            {(['all', 'pending', 'accepted', 'rejected'] as const).map((f) => (
+            {(['all', 'pending', 'shortlisted', 'accepted', 'rejected'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setStatusFilter(f)}
@@ -258,6 +259,14 @@ export default function CompanyApplicants() {
                     {applicant.status === 'pending' && (
                       <>
                         <button 
+                          onClick={() => handleStatusChange(applicant.id, 'shortlisted')}
+                          disabled={processingId === applicant.id}
+                          className="p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl transition-all disabled:opacity-50"
+                          title={t('shortlist')}
+                        >
+                          {processingId === applicant.id ? <Loader2 size={18} className="animate-spin" /> : <Award size={18} />}
+                        </button>
+                        <button 
                           onClick={() => handleStatusChange(applicant.id, 'rejected')}
                           disabled={processingId === applicant.id}
                           className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-all disabled:opacity-50"
@@ -282,6 +291,11 @@ export default function CompanyApplicants() {
                     {applicant.status === 'rejected' && (
                       <span className="text-red-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 bg-red-50 px-4 py-2 rounded-xl">
                         <XCircle size={12} /> {t('rejected')}
+                      </span>
+                    )}
+                    {applicant.status === 'shortlisted' && (
+                      <span className="text-indigo-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 bg-indigo-50 px-4 py-2 rounded-xl">
+                        <Award size={12} /> {t('status_shortlisted')}
                       </span>
                     )}
                   </div>
@@ -340,6 +354,7 @@ export default function CompanyApplicants() {
                   <span className={`mt-1 inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
                     selectedApplicant.status === 'accepted' ? 'bg-green-50 text-green-600 border-green-100' :
                     selectedApplicant.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-100' :
+                    selectedApplicant.status === 'shortlisted' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
                     'bg-yellow-50 text-yellow-600 border-yellow-100'
                   }`}>{statusText(selectedApplicant.status)}</span>
                 </div>
@@ -408,6 +423,15 @@ export default function CompanyApplicants() {
               <div className="border-t border-gray-100 pt-6 flex gap-3">
                 {selectedApplicant.status === 'pending' ? (
                   <>
+                    <button 
+                      onClick={() => {
+                        handleStatusChange(selectedApplicant.id, 'shortlisted');
+                        setSelectedApplicant(null);
+                      }}
+                      className="flex-1 py-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-sans font-black uppercase text-xs tracking-widest rounded-2xl transition-all"
+                    >
+                      {t('shortlist')}
+                    </button>
                     <button 
                       onClick={() => {
                         handleStatusChange(selectedApplicant.id, 'rejected');

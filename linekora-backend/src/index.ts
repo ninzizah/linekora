@@ -258,10 +258,11 @@ app.post('/api/jobs/:id/apply', async (req, res) => {
 
 app.get('/api/applications', async (req, res) => {
   try {
-    const { workerId, jobId } = req.query;
+    const { workerId, jobId, employerId } = req.query;
     const where: any = {};
     if (workerId) where.workerId = workerId;
     if (jobId) where.jobId = parseInt(jobId as string);
+    if (employerId) where.job = { employerId: employerId as string };
 
     const applications = await prisma.application.findMany({
       where,
@@ -299,6 +300,15 @@ app.patch('/api/applications/:id', async (req, res) => {
     res.json(application);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update application' });
+  }
+});
+
+app.delete('/api/applications/:id', async (req, res) => {
+  try {
+    await prisma.application.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete application' });
   }
 });
 

@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { 
   Search, Filter, MapPin, DollarSign, Clock, 
   CheckCircle2, ChevronRight, Bookmark, AlertCircle, Briefcase, 
-  Lock, ArrowRight, X, Loader2, RefreshCw
+  Loader2, RefreshCw
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import DashboardLayout from '../../components/layout/DashboardLayout';
@@ -27,7 +26,6 @@ export default function BrowseJobs() {
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [showLimitModal, setShowLimitModal] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [applyingId, setApplyingId] = useState<number | null>(null);
@@ -78,13 +76,6 @@ export default function BrowseJobs() {
       return;
     }
 
-    // Tier check
-    const tier = profile.tier || 'Free Account';
-    if (tier === 'Free Account' && appliedIds.size >= 2) {
-      setShowLimitModal(true);
-      return;
-    }
-
     setApplyingId(job.id);
     try {
       await createApplication({ jobId: job.id, workerId: profile.id });
@@ -124,11 +115,6 @@ export default function BrowseJobs() {
     else { updated.add(jobId); }
     setSavedIds(updated);
     writeScopedStorage(profile?.id, 'saved_job_ids', [...updated]);
-  };
-
-  const getLimitMessage = () => {
-    if (profile?.tier === 'Verified Bronze') return t('bronze_limit');
-    return t('free_limit');
   };
 
   const filteredJobs = jobs.filter(job => {
@@ -381,57 +367,6 @@ export default function BrowseJobs() {
           </div>
         )}
 
-        {/* Limit Modal */}
-        <AnimatePresence>
-          {showLimitModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowLimitModal(false)}
-                className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
-              />
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-md bg-white rounded-[3rem] p-10 shadow-2xl border border-gray-100"
-              >
-                <div className="h-20 w-20 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mb-8 mx-auto">
-                  <Lock size={40} />
-                </div>
-                <h2 className="text-2xl font-black text-gray-900 text-center font-sans tracking-tight mb-4 uppercase">
-                  {t('application_limit_reached')}
-                </h2>
-                <p className="text-gray-500 text-center font-sans font-medium mb-8 leading-relaxed italic">
-                  "{getLimitMessage()}"
-                </p>
-                <div className="space-y-4">
-                  <Link 
-                    to="/dashboard/worker/verify"
-                    className="w-full flex items-center justify-between px-6 py-4 bg-blue-600 text-white rounded-2xl font-sans font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-200"
-                  >
-                    {t('upgrade_now')}
-                    <ArrowRight size={18} />
-                  </Link>
-                  <button 
-                    onClick={() => setShowLimitModal(false)}
-                    className="w-full py-4 text-gray-400 font-sans font-bold text-sm uppercase tracking-widest hover:text-gray-900"
-                  >
-                    {t('maybe_later')}
-                  </button>
-                </div>
-                <button 
-                  onClick={() => setShowLimitModal(false)}
-                  className="absolute top-6 right-6 text-gray-300 hover:text-gray-900 transition-colors"
-                >
-                  <X size={24} />
-                </button>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Toast */}

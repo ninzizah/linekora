@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, Clock, CheckCircle2, XCircle, 
   ChevronRight, MapPin, DollarSign, Filter, Search,
@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import { useLanguage } from '../../lib/LanguageContext';
+import { getApplications, updateApplication, deleteApplication, Application as ApiApplication } from '../../lib/api';
 
 interface Application {
   id: number;
@@ -16,12 +17,26 @@ interface Application {
   company: string;
   location: string;
   salary: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'completion_requested' | 'still_in_progress' | 'disputed' | 'not_trusted';
+  status: 'pending' | 'under_review' | 'shortlisted' | 'accepted' | 'rejected' | 'completed' | 'completion_requested' | 'still_in_progress' | 'disputed' | 'not_trusted';
   date: string;
   logo: string;
   phone: string;
   description: string;
 }
+
+const statusTextMap = {
+  pending: 'status_pending',
+  under_review: 'under_review',
+  shortlisted: 'status_shortlisted',
+  accepted: 'status_accepted',
+  rejected: 'status_rejected',
+  active: 'status_active',
+  completed: 'status_completed',
+  completion_requested: 'completion_requested',
+  still_in_progress: 'revision_in_progress',
+  disputed: 'disputed_milestone',
+  not_trusted: 'flagged_untrusted',
+};
 
 export default function WorkerApplications() {
   const { profile } = useAuth();
@@ -31,106 +46,148 @@ export default function WorkerApplications() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{ type: 'withdraw' | 'decline' | 'accept'; title: string; message: string } | null>(null);
   const [confirmingAction, setConfirmingAction] = useState<'withdraw' | 'decline' | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [apps, setApps] = useState<any[]>([]);
 
-
-
-  const [apps, setApps] = useState<any[]>(() => {
-    // 1. Get raw applications
-    const workerApps = readScopedStorage<any[]>(profile?.id, 'worker_applications', []);
-
-    // 2. Merge with contracts from linekora_contracts database
-    const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
-
-    const myContracts = contractList.filter(c => c.workerId === profile?.id);
-    const formattedContracts = myContracts.map(c => ({
-      id: c.id,
-      jobTitle: c.jobTitle,
-      company: c.company,
-      location: c.location,
-      salary: c.salary,
-      status: c.status,
-      date: c.status === 'accepted' ? t('active_shift_contract') : 
-            c.status === 'completion_requested' ? t('completion_requested') : 
-            c.status === 'completed' ? t('contract_completed') : 
-            c.status === 'still_in_progress' ? t('revision_in_progress') : 
-            c.status === 'disputed' ? t('disputed_milestone') : t('flagged_untrusted'),
-      logo: c.logo || 'PJ',
-      phone: c.phone || '+250 780 000 000',
-      description: c.description || t('milestone_opportunity_desc'),
-      isContract: true
-    }));
-
-    return [...formattedContracts, ...workerApps];
+  const formatApiApp = (a: ApiApplication): any => ({
+    id: a.id,
+    jobTitle: a.job?.title || t('job'),
+    company: a.job?.employer?.displayName || t('employer'),
+    location: a.job?.location || t('location_not_set'),
+    salary: a.job?.salary || t('salary_budget'),
+    status: a.status || 'pending',
+    date: a.createdAt ? new Date(a.createdAt).toLocaleDateString() : t('just_now'),
+    logo: (a.job?.title || 'PJ').slice(0, 2).toUpperCase(),
+    phone: a.job?.phone || '+250 780 000 000',
+    description: a.job?.description || t('milestone_opportunity_desc'),
+    isContract: false,
+    apiApp: true,
   });
 
+  const loadApps = async () => {
+    if (!profile?.id) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const apiApps = await getApplications({ workerId: profile.id });
+      const formattedApi = apiApps.map(formatApiApp);
+
+      const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
+      const myContracts = contractList.filter(c => c.workerId === profile?.id);
+      const formattedContracts = myContracts.map(c => ({
+        id: c.id,
+        jobTitle: c.jobTitle,
+        company: c.company,
+        location: c.location,
+        salary: c.salary,
+        status: c.status,
+        date: c.status === 'accepted' ? t('active_shift_contract') : 
+              c.status === 'completion_requested' ? t('completion_requested') : 
+              c.status === 'completed' ? t('contract_completed') : 
+              c.status === 'still_in_progress' ? t('revision_in_progress') : 
+              c.status === 'disputed' ? t('disputed_milestone') : t('flagged_untrusted'),
+        logo: c.logo || 'PJ',
+        phone: c.phone || '+250 780 000 000',
+        description: c.description || t('milestone_opportunity_desc'),
+        isContract: true
+      }));
+
+      setApps([...formattedApi, ...formattedContracts]);
+    } catch (err) {
+      console.error('Failed to load applications', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadApps(); }, [profile?.id]);
+
   const saveAppsOnly = (newApps: any[]) => {
-    // Save applications list only, split out contracts
     const appsOnly = newApps.filter(ap => !ap.isContract);
     writeScopedStorage(profile?.id, 'worker_applications', appsOnly);
   };
 
-  const handleDeclineOrReject = (id: number) => {
+  const handleDeclineOrReject = async (id: number) => {
     setIsProcessing(true);
     setConfirmingAction(null);
-    setTimeout(() => {
-      // Mark matching contract in linekora_contracts as rejected
+    const declinedApp = apps.find(ap => ap.id === id);
+    if (declinedApp?.apiApp) {
+      try {
+        await updateApplication(id, { status: 'rejected' });
+      } catch (err) {
+        console.error('Failed to reject application', err);
+      }
+    } else {
       const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
       const updatedContracts = contractList.map(c => 
         c.id === id ? { ...c, status: 'rejected' } : c
       );
       writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
+    }
 
-      // Push alert
-      const declinedApp = apps.find(ap => ap.id === id);
-      if (declinedApp) {
-        const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
-        alertsArr.push({
-          id: Date.now().toString(),
-          category: 'urgent',
-          title: t('job_offer_declined'),
-          details: t('offer_declined_details', { name: profile?.displayName || t('worker'), title: declinedApp.jobTitle }),
-          time: t('just_now'),
-          read: false
-        });
-        writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
-      }
-
-      const updated = apps.map(ap => 
-        ap.id === id ? { ...ap, status: 'rejected' as const } : ap
-      );
-      setApps(updated);
-      saveAppsOnly(updated);
-      setSelectedApp(prev => prev && prev.id === id ? { ...prev, status: 'rejected' } : prev);
-      setIsProcessing(false);
-      setModalFeedback({
-        type: 'decline',
-        title: t('offer_declined'),
-        message: t('offer_declined_message')
+    // Push alert
+    if (declinedApp) {
+      const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
+      alertsArr.push({
+        id: Date.now().toString(),
+        category: 'urgent',
+        title: t('job_offer_declined'),
+        details: t('offer_declined_details', { name: profile?.displayName || t('worker'), title: declinedApp.jobTitle }),
+        time: t('just_now'),
+        read: false
       });
-    }, 1000);
+      writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
+    }
+
+    const updated = apps.map(ap => 
+      ap.id === id ? { ...ap, status: 'rejected' as const } : ap
+    );
+    setApps(updated);
+    saveAppsOnly(updated);
+    setSelectedApp(prev => prev && prev.id === id ? { ...prev, status: 'rejected' } : prev);
+    setIsProcessing(false);
+    setModalFeedback({
+      type: 'decline',
+      title: t('offer_declined'),
+      message: t('offer_declined_message')
+    });
   };
 
-  const handleWithdraw = (id: number) => {
+  const handleWithdraw = async (id: number) => {
     setIsProcessing(true);
     setConfirmingAction(null);
-    setTimeout(() => {
-      const updated = apps.filter(ap => ap.id !== id);
-      setApps(updated);
-      saveAppsOnly(updated);
-      setIsProcessing(false);
-      setModalFeedback({
-        type: 'withdraw',
-        title: t('withdrawn_successfully'),
-        message: t('withdrawn_message')
-      });
-    }, 1000);
+    const target = apps.find(ap => ap.id === id);
+    if (target?.apiApp) {
+      try {
+        await deleteApplication(id);
+      } catch (err) {
+        console.error('Failed to withdraw application', err);
+      }
+    }
+    const updated = apps.filter(ap => ap.id !== id);
+    setApps(updated);
+    saveAppsOnly(updated);
+    setIsProcessing(false);
+    setModalFeedback({
+      type: 'withdraw',
+      title: t('withdrawn_successfully'),
+      message: t('withdrawn_message')
+    });
   };
 
-  const handleAcceptOffer = (id: number) => {
+  const handleAcceptOffer = async (id: number) => {
     setIsProcessing(true);
-    setTimeout(() => {
-      const acceptedApp = apps.find(ap => ap.id === id);
-      if (acceptedApp) {
+    const acceptedApp = apps.find(ap => ap.id === id);
+    if (acceptedApp?.apiApp) {
+      try {
+        await updateApplication(id, { status: 'accepted' });
+      } catch (err) {
+        console.error('Failed to accept application', err);
+      }
+    }
+    if (acceptedApp) {
         let contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
 
         const exists = contractList.some(c => c.id === id);
@@ -187,7 +244,6 @@ export default function WorkerApplications() {
         title: t('congratulations'),
         message: t('contract_accepted_message')
       });
-    }, 1200);
   };
 
   const handleRequestCompletion = (id: number) => {
@@ -247,6 +303,8 @@ export default function WorkerApplications() {
       case 'disputed': return 'bg-rose-50 text-rose-600 border-rose-150 font-black';
       case 'not_trusted': return 'bg-red-50 text-red-600 border-red-200 font-bold';
       case 'rejected': return 'bg-gray-100 text-gray-500 border-gray-200 font-black';
+      case 'under_review': return 'bg-blue-50 text-blue-600 border-blue-150 font-black';
+      case 'shortlisted': return 'bg-indigo-50 text-indigo-600 border-indigo-150 font-black';
       default: return 'bg-yellow-50 text-yellow-600 border-yellow-150 font-black';
     }
   };
@@ -260,6 +318,8 @@ export default function WorkerApplications() {
       case 'disputed': return <Info size={12} className="text-rose-500" />;
       case 'not_trusted': return <Shield size={12} className="text-red-500" />;
       case 'rejected': return <XCircle size={12} />;
+      case 'shortlisted': return <CheckCircle2 size={12} className="text-indigo-500" />;
+      case 'under_review': return <Clock size={12} className="text-blue-500" />;
       default: return <Clock size={12} />;
     }
   };
@@ -272,17 +332,8 @@ export default function WorkerApplications() {
     completed: t('status_completed'),
   };
 
-  const statusText = (s: string) => ({
-    pending: t('status_pending'),
-    accepted: t('status_accepted'),
-    rejected: t('status_rejected'),
-    active: t('status_active'),
-    completed: t('status_completed'),
-    completion_requested: t('completion_requested'),
-    still_in_progress: t('revision_in_progress'),
-    disputed: t('disputed_milestone'),
-    not_trusted: t('flagged_untrusted'),
-  }[s] || s);
+  const statusText = (s: string) =>
+    (statusTextMap as Record<string, string>)[s] ? t((statusTextMap as Record<string, string>)[s]) : s;
 
   return (
     <DashboardLayout>
@@ -384,7 +435,12 @@ export default function WorkerApplications() {
             ))}
           </AnimatePresence>
 
-          {filteredApps.length === 0 && (
+          {loading && apps.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-[3rem] border border-dashed border-gray-200">
+              <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+              <h3 className="text-xl font-black text-gray-900 font-sans">{t('loading')}</h3>
+            </div>
+          ) : filteredApps.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-[3rem] border border-dashed border-gray-200">
               <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 mb-4">
                 <FileText size={32} />
