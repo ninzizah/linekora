@@ -176,17 +176,20 @@ app.get('/api/verification', async (_req, res) => {
 
 app.get('/api/jobs', async (req, res) => {
   try {
-    const { urgent, category, status } = req.query;
+    const { urgent, category, status, employerId, includeExpired } = req.query;
     const where: any = {};
     if (urgent !== undefined) where.urgent = urgent === 'true';
     if (category) where.category = category;
     if (status) where.status = status;
+    if (employerId) where.employerId = String(employerId);
 
-    // Filter out expired jobs (deadline has passed)
-    where.OR = [
-      { deadline: null },
-      { deadline: { gte: new Date() } },
-    ];
+    // Filter out expired jobs (deadline has passed) unless the manager view asks for them
+    if (includeExpired !== 'true') {
+      where.OR = [
+        { deadline: null },
+        { deadline: { gte: new Date() } },
+      ];
+    }
 
     const jobs = await prisma.job.findMany({
       where,
@@ -217,6 +220,20 @@ app.patch('/api/jobs/:id', async (req, res) => {
     res.json(job);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update job' });
+  }
+});
+
+app.delete('/api/jobs/:id', async (req, res) => {
+  try {
+    const jobId = parseInt(req.params.id);
+
+    // Remove related applications first to satisfy the foreign key constraint
+    await prisma.application.deleteMany({ where: { jobId } });
+    await prisma.job.delete({ where: { id: jobId } });
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete job' });
   }
 });
 

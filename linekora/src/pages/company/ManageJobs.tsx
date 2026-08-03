@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, MoreVertical, MapPin, DollarSign, 
   Users, Clock, CheckCircle2, XCircle, Search, Plus, Edit, Trash2, ToggleLeft, ToggleRight, X, Loader2
@@ -7,6 +7,9 @@ import { Link } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useLanguage } from '../../lib/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../lib/AuthContext';
+import { getJobs, getApplications, updateJob, deleteJob } from '../../lib/api';
+import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 
 interface JobItem {
   id: number;
@@ -28,7 +31,9 @@ interface ToastAlert {
 
 export default function CompanyManageJobs() {
   const { t } = useLanguage();
+  const { profile } = useAuth();
   const [jobsList, setJobsList] = useState<JobItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Dropdown & Modal States
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
@@ -53,6 +58,85 @@ export default function CompanyManageJobs() {
 
   const statusText = (s: string) => ({ active: t('status_active'), closed: t('status_closed'), pending: t('status_pending'), accepted: t('status_accepted'), rejected: t('status_rejected'), shortlisted: t('status_shortlisted') }[s] || s);
 
+  // ── Local cache helpers (posts are mirrored into localStorage for offline views) ──
+  const updateJobInCaches = (id: number, patch: Partial<any>) => {
+    const apply = (list: any) => list.map((j: any) => Number(j.id) === id ? { ...j, ...patch } : j);
+    ['all_jobs', 'urgent_jobs'].forEach(k => {
+      const scoped = readScopedStorage<any[]>(profile?.id, k, []);
+      if (scoped.length) writeScopedStorage(profile?.id, k, apply(scoped));
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw) localStorage.setItem(k, JSON.stringify(apply(JSON.parse(raw))));
+      } catch {}
+    });
+  };
+
+  const purgeJobFromCaches = (id: number) => {
+    const filter = (list: any) => list.filter((j: any) => Number(j.id) !== id);
+    ['all_jobs', 'urgent_jobs'].forEach(k => {
+      const scoped = readScopedStorage<any[]>(profile?.id, k, []);
+      if (scoped.length) writeScopedStorage(profile?.id, k, filter(scoped));
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw) localStorage.setItem(k, JSON.stringify(filter(JSON.parse(raw))));
+      } catch {}
+    });
+  };
+
+  const loadJobs = async () => {
+    setLoading(true);
+    try {
+      const [dbJobs, apps] = await Promise.all([
+        profile?.id ? getJobs({ employerId: profile.id, includeExpired: true }) : Promise.resolve([]),
+        profile?.id ? getApplications({ employerId: profile.id }) : Promise.resolve([]),
+      ]);
+      const appCount = (jobId: number) => apps.filter(a => a.jobId === jobId).length;
+
+      // Collect locally cached posts (scoped + unscoped) to merge with the DB
+      const localMap = new Map<number, any>();
+      ['all_jobs', 'urgent_jobs'].forEach(k => {
+        readScopedStorage<any[]>(profile?.id, k, []).forEach(j => { if (j?.id != null) localMap.set(Number(j.id), j); });
+        try {
+          JSON.parse(localStorage.getItem(k) || '[]').forEach((j: any) => { if (j?.id != null) localMap.set(Number(j.id), j); });
+        } catch {}
+      });
+
+      const byId = new Map<number, JobItem>();
+      dbJobs.forEach(j => byId.set(j.id, {
+        id: j.id,
+        title: j.title,
+        location: j.location,
+        salary: j.salary,
+        status: j.status === 'open' ? 'active' : (j.status === 'closed' ? 'closed' : j.status),
+        applicants: appCount(j.id),
+        posted: new Date(j.createdAt).toLocaleDateString(),
+        views: 0,
+      }));
+      localMap.forEach((j, id) => {
+        if (!byId.has(id)) {
+          byId.set(id, {
+            id,
+            title: j.title || 'Untitled Job',
+            location: j.location || '',
+            salary: j.salary || '',
+            status: (j.status === 'open' ? 'active' : j.status) || 'active',
+            applicants: appCount(id),
+            posted: j.postedAt ? new Date(j.postedAt).toLocaleDateString() : '—',
+            views: 0,
+          });
+        }
+      });
+
+      setJobsList(Array.from(byId.values()));
+    } catch (err) {
+      console.error('Failed to load jobs', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadJobs(); }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Toggle dropdown
   const toggleMenu = (id: number) => {
     if (activeMenuId === id) {
@@ -62,21 +146,24 @@ export default function CompanyManageJobs() {
     }
   };
 
-  // Action: Toggle job status
-  const handleToggleStatus = (id: number) => {
-    setJobsList(prev => prev.map(job => {
-      if (job.id === id) {
-        const nextStatus = job.status === 'active' ? 'closed' : 'active';
-        addToast(
-          t('status_updated'), 
-          t('status_updated_msg', { title: job.title, status: nextStatus.toUpperCase() }),
-          'success'
-        );
-        return { ...job, status: nextStatus };
-      }
-      return job;
-    }));
+  // Action: Toggle job status (persisted to DB + caches)
+  const handleToggleStatus = async (id: number) => {
+    const target = jobsList.find(j => j.id === id);
+    const nextStatus = target?.status === 'active' ? 'closed' : 'active';
+    setJobsList(prev => prev.map(job => job.id === id ? { ...job, status: nextStatus } : job));
     setActiveMenuId(null);
+    try {
+      await updateJob(id, { status: nextStatus === 'active' ? 'open' : 'closed' });
+      updateJobInCaches(id, { status: nextStatus === 'active' ? 'open' : 'closed' });
+      addToast(
+        t('status_updated'), 
+        t('status_updated_msg', { title: target?.title || '', status: nextStatus.toUpperCase() }),
+        'success'
+      );
+    } catch (err) {
+      addToast(t('toast_publish_failed'), t('server_error_retry'), 'error');
+      loadJobs();
+    }
   };
 
   // Action: Block Quick Edit
@@ -88,7 +175,7 @@ export default function CompanyManageJobs() {
     setActiveMenuId(null);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingJob) return;
 
@@ -104,12 +191,19 @@ export default function CompanyManageJobs() {
       return job;
     }));
 
-    addToast(t('post_updated'), t('post_updated_msg', { title: editTitle }), 'success');
+    try {
+      await updateJob(editingJob.id, { title: editTitle, location: editLocation, salary: editSalary });
+      updateJobInCaches(editingJob.id, { title: editTitle, location: editLocation, salary: editSalary });
+      addToast(t('post_updated'), t('post_updated_msg', { title: editTitle }), 'success');
+    } catch (err) {
+      addToast(t('toast_publish_failed'), t('server_error_retry'), 'error');
+      loadJobs();
+    }
     setEditingJob(null);
   };
 
-  // Action: Delete Job Posting
-  const handleDeleteJob = (id: number) => {
+  // Action: Delete Job Posting (persisted to DB + caches)
+  const handleDeleteJob = async (id: number) => {
     const target = jobsList.find(j => j.id === id);
     if (!target) return;
 
@@ -120,11 +214,18 @@ export default function CompanyManageJobs() {
     setShowDeleteConfirmId(null);
     setActiveMenuId(null);
 
-    addToast(
-      t('posting_deleted'), 
-      t('posting_deleted_msg', { title: backupJob.title }), 
-      'info'
-    );
+    try {
+      await deleteJob(id);
+      purgeJobFromCaches(id);
+      addToast(
+        t('posting_deleted'), 
+        t('posting_deleted_msg', { title: backupJob.title }), 
+        'info'
+      );
+    } catch (err) {
+      addToast(t('toast_publish_failed'), t('server_error_retry'), 'error');
+      loadJobs();
+    }
   };
 
   return (
@@ -141,7 +242,12 @@ export default function CompanyManageJobs() {
           </Link>
         </header>
 
-        {jobsList.length > 0 ? (
+        {loading ? (
+          <div className="py-24 flex flex-col items-center justify-center text-center bg-white border border-gray-100 rounded-[3rem]">
+            <Loader2 className="animate-spin text-blue-600 mb-4" size={40} />
+            <p className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans">{t('loading_jobs')}</p>
+          </div>
+        ) : jobsList.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 pb-20">
             {jobsList.map((job) => (
               <div key={job.id} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all group relative">

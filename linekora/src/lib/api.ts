@@ -81,7 +81,7 @@ export interface Job {
   createdAt: string;
 }
 
-export const getJobs = (params?: { urgent?: boolean; category?: string; status?: string }) => {
+export const getJobs = (params?: { urgent?: boolean; category?: string; status?: string; employerId?: string; includeExpired?: boolean }) => {
   const qs = new URLSearchParams(
     Object.entries(params || {}).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
   ).toString();
@@ -93,6 +93,9 @@ export const createJob = (data: Omit<Job, 'id' | 'createdAt' | 'employer'>) =>
 
 export const updateJob = (id: number, data: Partial<Job>) =>
   request<Job>(`/jobs/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const deleteJob = (id: number) =>
+  request<{ success: boolean }>(`/jobs/${id}`, { method: 'DELETE' });
 
 export const applyToJob = (jobId: number, workerId: string) =>
   request<any>(`/jobs/${jobId}/apply`, { method: 'POST', body: JSON.stringify({ workerId }) });
