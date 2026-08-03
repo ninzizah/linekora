@@ -983,6 +983,8 @@ const en: Record<string, string> = {
     notif_app_rejected_msg: 'Your application for "{title}" was not accepted this time. Keep applying!',
     notif_app_shortlisted: '⭐ Application Shortlisted!',
     notif_app_shortlisted_msg: 'Great news! Your application for "{title}" has been shortlisted. The employer will review your profile.',
+    notif_worker_accepted: '✅ Worker Accepted Your Offer!',
+    notif_worker_accepted_msg: '"{name}" has accepted your job offer for "{title}". The contract is now active.',
     not_provided: 'Not provided',
     pax_members: 'pax (members)',
     placeholder_description: 'Describe the roles, responsibilities and ideal candidate...',

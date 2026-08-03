@@ -983,6 +983,8 @@ const fr: Record<string, string> = {
     notif_app_rejected_msg: 'Votre candidature pour "{title}" n\'a pas été acceptée cette fois. Continuez à postuler !',
     notif_app_shortlisted: '⭐ Candidature présélectionnée !',
     notif_app_shortlisted_msg: 'Bonne nouvelle ! Votre candidature pour "{title}" a été présélectionnée. L\'employeur va examiner votre profil.',
+    notif_worker_accepted: '✅ Le travailleur a accepté votre offre !',
+    notif_worker_accepted_msg: '"{name}" a accepté votre offre d\'emploi pour "{title}". Le contrat est maintenant actif.',
     not_provided: 'Non fourni',
     pax_members: 'pax (membres)',
     placeholder_description: 'Décrivez les rôles, responsabilités et le candidat idéal...',

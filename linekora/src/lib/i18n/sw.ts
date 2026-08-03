@@ -983,6 +983,8 @@ const sw: Record<string, string> = {
     notif_app_rejected_msg: 'Maombi yako ya "{title}" hayakukubaliwa wakati huu. Endelea kuomba!',
     notif_app_shortlisted: '⭐ Maombi Yameorodheshwa!',
     notif_app_shortlisted_msg: 'Habari njema! Maombi yako ya "{title}" yameorodheshwa. Mwajiri atakagua wasifu wako.',
+    notif_worker_accepted: '✅ Mfanyakazi Amekubali Ofa Yako!',
+    notif_worker_accepted_msg: '"{name}" amekubali ofa yako ya "{title}". Mkataba sasa ni kazi.',
     not_provided: 'Haijatolewa',
     pax_members: 'pax (wanachama)',
     placeholder_description: 'Eleza majukumu, wajibu na mtahiniwa bora...',

@@ -983,6 +983,8 @@ const rw: Record<string, string> = {
     notif_app_rejected_msg: 'Ubusabe bwawe ku kazi "{title}" ntibwemewe. Komera usubire gusaba!',
     notif_app_shortlisted: '⭐ Ubusabe Bwatoranyijwe!',
     notif_app_shortlisted_msg: 'Amakuru meza! Ubusabe bwawe ku kazi "{title}" bwatoranyijwe. Umukoresha arasuzuma umwirondoro wawe.',
+    notif_worker_accepted: '✅ Umukozi Yemeye Icyifuzo Cyawe!',
+    notif_worker_accepted_msg: '"{name}" yemeye icyifuzo cyawe cy\'akazi "{title}". Amasezerano ubu arakorera.',
     not_provided: 'Ntabisobanuro byatanzwe',
     pax_members: 'pax (abantu)',
     placeholder_description: 'Sobanura inshingano, inshingano z\'ibikorwa n\'umukozi ukwiye...',

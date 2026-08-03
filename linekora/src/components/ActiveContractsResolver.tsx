@@ -83,6 +83,15 @@ export default function ActiveContractsResolver() {
     writeScopedStorage(profile?.id, 'linekora_contracts', updatedList);
   };
 
+  // Mirror the updated contract into the worker's store so their Applications page stays in sync
+  const mirrorToWorker = (contract: Contract) => {
+    if (!contract.workerId) return;
+    const workerList = readScopedStorage<Contract[]>(contract.workerId, 'linekora_contracts', []);
+    if (workerList.some(c => c.id === contract.id)) {
+      writeScopedStorage(contract.workerId, 'linekora_contracts', workerList.map(c => c.id === contract.id ? { ...contract } : c));
+    }
+  };
+
   const handleActionClick = (id: number, status: Contract['status']) => {
     const contract = contracts.find(c => c.id === id);
     if (!contract) return;
@@ -138,6 +147,7 @@ export default function ActiveContractsResolver() {
       }
 
       updateContractInDatabase(updatedContracts as Contract[]);
+      mirrorToWorker(updatedContracts.find(c => c.id === id) as Contract);
       setIsSubmitingAction(false);
       setActionSuccessMessage(t('contract_state_updated', { status: status.replace('_', ' ').toUpperCase() }));
       setTimeout(() => setActionSuccessMessage(null), 3000);
@@ -184,6 +194,7 @@ export default function ActiveContractsResolver() {
 
       // 5. Save everything and refresh states
       updateContractInDatabase(updatedContracts);
+      mirrorToWorker(updatedContracts.find(c => c.id === selectedContract.id) as Contract);
       logSystemAlert(
         'success',
         t('contract_finalized_released'),
