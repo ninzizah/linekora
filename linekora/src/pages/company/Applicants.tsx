@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { getApplications, updateApplication, createNotification } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
+import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 
 interface Applicant {
   id: number;
@@ -65,11 +66,7 @@ export default function CompanyApplicants() {
       
       // If hired, record active contract in local store for escrow/review workflow
       if (newStatus === 'accepted') {
-        let contractList: any[] = [];
-        const cachedContracts = localStorage.getItem('linekora_contracts');
-        if (cachedContracts) {
-          try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
-        }
+        let contractList: any[] = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
         const exists = contractList.some(c => c.id === app.id);
         if (!exists) {
           contractList.push({
@@ -92,7 +89,7 @@ export default function CompanyApplicants() {
             logo: 'PJ',
             phone: app.worker?.phone || '+250 780 000 000'
           });
-          localStorage.setItem('linekora_contracts', JSON.stringify(contractList));
+          writeScopedStorage(profile?.id, 'linekora_contracts', contractList);
         }
       }
 

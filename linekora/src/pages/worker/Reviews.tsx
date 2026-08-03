@@ -3,15 +3,14 @@ import { Star, MessageSquare, ShieldCheck, User } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion } from 'motion/react';
 import { useLanguage } from '../../lib/LanguageContext';
+import { useAuth } from '../../lib/AuthContext';
+import { readScopedStorage } from '../../lib/userScopedStorage';
 
 export default function WorkerReviews() {
   const { t } = useLanguage();
+  const { profile } = useAuth();
   const [reviews, setReviews] = useState<any[]>(() => {
-    let contractList: any[] = [];
-    const cachedContracts = localStorage.getItem('linekora_contracts');
-    if (cachedContracts) {
-      try { contractList = JSON.parse(cachedContracts); } catch (e) { contractList = []; }
-    }
+    const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
 
     const completedWithReviews = contractList.filter(c => c.status === 'completed' && c.rating > 0);
     const convertedReviews = completedWithReviews.map(c => ({

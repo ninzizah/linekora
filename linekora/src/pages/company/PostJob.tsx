@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { createJob } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
+import { readScopedStorage } from '../../lib/userScopedStorage';
 
 interface NotificationMsg {
   id: string;
@@ -28,11 +29,7 @@ export default function PostJob() {
 
   // Check if there are active uncompleted contracts in database
   const [hasUncompleted, setHasUncompleted] = useState(() => {
-    let contractsList: any[] = [];
-    const cachedContracts = localStorage.getItem('linekora_contracts');
-    if (cachedContracts) {
-      try { contractsList = JSON.parse(cachedContracts); } catch (e) { contractsList = []; }
-    }
+    const contractsList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
     return contractsList.some(c => c.status !== 'completed' && c.status !== 'not_trusted');
   });
   const [formData, setFormData] = useState({

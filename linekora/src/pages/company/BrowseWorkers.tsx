@@ -12,6 +12,7 @@ import { useAuth } from '../../lib/AuthContext';
 import PublicProfileModal from '../../components/PublicProfileModal';
 import type { PublicProfileUser } from '../../components/PublicProfileModal';
 import { useLanguage } from '../../lib/LanguageContext';
+import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 
 interface WorkerItem {
   id: string | number;
@@ -238,9 +239,8 @@ export default function BrowseWorkers() {
               date: t('waiting_for_resolution')
             };
 
-            const existingResolverContracts = localStorage.getItem('linekora_contracts');
-            const parsedResolverContracts = existingResolverContracts ? JSON.parse(existingResolverContracts) : [];
-            localStorage.setItem('linekora_contracts', JSON.stringify([contractForResolver, ...parsedResolverContracts]));
+            const existingResolverContracts = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
+            writeScopedStorage(profile?.id, 'linekora_contracts', [contractForResolver, ...existingResolverContracts]);
 
             addToast(
               t('toast_escrow_locked'),
