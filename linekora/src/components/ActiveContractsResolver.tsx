@@ -89,6 +89,8 @@ export default function ActiveContractsResolver() {
     const workerList = readScopedStorage<Contract[]>(contract.workerId, 'linekora_contracts', []);
     if (workerList.some(c => c.id === contract.id)) {
       writeScopedStorage(contract.workerId, 'linekora_contracts', workerList.map(c => c.id === contract.id ? { ...contract } : c));
+    } else {
+      writeScopedStorage(contract.workerId, 'linekora_contracts', [...workerList, { ...contract }]);
     }
   };
 
@@ -234,8 +236,19 @@ export default function ActiveContractsResolver() {
   // Filter tasks to resolve
   const activeAndPendingContracts = contracts.filter(c => c.status !== 'completed' && c.status !== 'not_trusted');
 
+  // When navigated with #contracts, scroll this section into view (used by
+  // "Go to Corporate Dashboard" milestone buttons)
+  useEffect(() => {
+    if (window.location.hash === '#contracts') {
+      const el = document.getElementById('linekora-contracts');
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+      }
+    }
+  }, []);
+
   return (
-    <section className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm relative overflow-hidden">
+    <section id="linekora-contracts" className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm relative overflow-hidden scroll-mt-24">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h3 className="text-xl font-sans font-black tracking-tight text-gray-900 uppercase">

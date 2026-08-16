@@ -9,6 +9,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
+import { openDataUrlInNewTab } from '../../lib/filePreview';
 
 interface NotificationMsg {
   id: string;
@@ -45,7 +46,25 @@ export default function WorkerProfile() {
     return [];
   });
 
+  const [cvFile, setCvFile] = useState<{ name: string; size: string; dataUrl: string; date: string } | null>(() => {
+    // Prefer unified JSON key; fall back to legacy raw keys
+    const cached = localStorage.getItem(sk('worker_cv_data'));
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) {}
+    }
+    const legacyDataUrl = localStorage.getItem(sk('worker_profile_cv_data'));
+    const legacyName = localStorage.getItem(sk('worker_profile_cv_filename'));
+    if (legacyDataUrl && legacyName) {
+      return { name: legacyName, size: '', dataUrl: legacyDataUrl, date: '' };
+    }
+    return null;
+  });
+
   const [cvName, setCvName] = useState<string>(() => {
+    const cached = localStorage.getItem(sk('worker_cv_data'));
+    if (cached) {
+      try { const parsed = JSON.parse(cached); if (parsed.name) return parsed.name; } catch (e) {}
+    }
     return localStorage.getItem(sk('worker_profile_cv_filename')) || '';
   });
 
@@ -60,6 +79,21 @@ export default function WorkerProfile() {
   const [isFavorited, setIsFavorited] = useState<boolean>(() => {
     return localStorage.getItem(sk('worker_profile_is_favorited')) === 'true';
   });
+
+  interface ExperienceEntry { role: string; company: string; period: string; desc: string; }
+  interface EducationEntry { degree: string; school: string; }
+
+  const loadList = <T,>(key: string): T[] => {
+    const saved = localStorage.getItem(sk(key));
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  };
+
+  const [experienceList, setExperienceList] = useState<ExperienceEntry[]>(() => loadList<ExperienceEntry>('worker_profile_experience'));
+  const [educationList, setEducationList] = useState<EducationEntry[]>(() => loadList<EducationEntry>('worker_profile_education'));
+  const [certificatesList, setCertificatesList] = useState<string[]>(() => loadList<string>('worker_profile_certificates'));
 
   // Sync profile data once loaded if NOT edited before
   useEffect(() => {
@@ -77,8 +111,22 @@ export default function WorkerProfile() {
   useEffect(() => { localStorage.setItem(sk('worker_profile_bio'), bio); }, [bio]);
   useEffect(() => { localStorage.setItem(sk('worker_profile_skills'), JSON.stringify(skillsList)); }, [skillsList]);
   useEffect(() => { localStorage.setItem(sk('worker_profile_cv_filename'), cvName); }, [cvName]);
+  useEffect(() => {
+    // Keep the unified JSON key in sync so Profile & Settings always agree
+    if (cvFile) {
+      localStorage.setItem(sk('worker_cv_data'), JSON.stringify(cvFile));
+      localStorage.setItem(sk('worker_profile_cv_data'), cvFile.dataUrl);
+      localStorage.setItem(sk('worker_profile_cv_filename'), cvFile.name);
+    } else {
+      localStorage.removeItem(sk('worker_cv_data'));
+      localStorage.removeItem(sk('worker_profile_cv_data'));
+    }
+  }, [cvFile]);
   useEffect(() => { localStorage.setItem(sk('worker_profile_portfolio'), JSON.stringify(portfolioList)); }, [portfolioList]);
   useEffect(() => { localStorage.setItem(sk('worker_profile_is_favorited'), isFavorited.toString()); }, [isFavorited]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_experience'), JSON.stringify(experienceList)); }, [experienceList]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_education'), JSON.stringify(educationList)); }, [educationList]);
+  useEffect(() => { localStorage.setItem(sk('worker_profile_certificates'), JSON.stringify(certificatesList)); }, [certificatesList]);
 
   // Notifications system state
   const [notifications, setNotifications] = useState<NotificationMsg[]>([]);
@@ -99,18 +147,20 @@ export default function WorkerProfile() {
   const [editLocation, setEditLocation] = useState('');
   const [editSkills, setEditSkills] = useState('');
   const [editPortfolio, setEditPortfolio] = useState('');
+  const [editExperience, setEditExperience] = useState('');
+  const [editEducation, setEditEducation] = useState('');
+  const [editCertificates, setEditCertificates] = useState('');
 
   // CV action states
   const [isUploadingCV, setIsUploadingCV] = useState(false);
   const [showConfirmCVRemove, setShowConfirmCVRemove] = useState(false);
   const cvFileInputRef = useState<any>(null)[0] || { current: null };
 
-  // Real profile details (experience, education, certificates are not
-  // stored yet, so they start empty until real data exists)
+  // Real profile details (experience, education, certificates persisted to localStorage)
   const profileDetails = {
-    experience: [],
-    education: [],
-    certificates: [],
+    experience: experienceList,
+    education: educationList,
+    certificates: certificatesList,
     portfolio: portfolioList,
     rating: 0,
     reviewsCount: 0,
@@ -157,6 +207,38 @@ export default function WorkerProfile() {
       .filter(Boolean);
     setPortfolioList(parsedPortfolio);
 
+    // Experience: one line per entry → "Role @ Company | Period | Description"
+    const parsedExperience = editExperience
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => {
+        const [head, ...descParts] = line.split('|');
+        const desc = descParts.join('|').trim();
+        const roleMatch = head.match(/^(.+?)\s+@\s+(.+)$/);
+        const role = roleMatch ? roleMatch[1].trim() : head.trim();
+        const company = roleMatch ? roleMatch[2].trim() : '';
+        return { role, company, period: '', desc };
+      });
+    setExperienceList(parsedExperience);
+
+    // Education: one line per entry → "Degree @ School"
+    const parsedEducation = editEducation
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => {
+        const [degree, ...schoolParts] = line.split('@');
+        return { degree: degree.trim(), school: schoolParts.join('@').trim() };
+      });
+    setEducationList(parsedEducation);
+
+    const parsedCertificates = editCertificates
+      .split(',')
+      .map(c => c.trim())
+      .filter(Boolean);
+    setCertificatesList(parsedCertificates);
+
     setShowEditModal(false);
     addNotification('success', t('notif_profile_updated'), t('notif_profile_updated_msg'));
   };
@@ -172,7 +254,16 @@ export default function WorkerProfile() {
         setIsUploadingCV(false);
         setCvName(file.name);
         if (event.target?.result) {
+          const cvObj = {
+            name: file.name,
+            size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+            dataUrl: event.target.result as string,
+            date: new Date().toLocaleDateString()
+          };
+          setCvFile(cvObj);
+          localStorage.setItem(sk('worker_cv_data'), JSON.stringify(cvObj));
           localStorage.setItem(sk('worker_profile_cv_data'), event.target.result as string);
+          localStorage.setItem(sk('worker_profile_cv_filename'), file.name);
         }
         addNotification('success', t('notif_cv_synced'), t('notif_cv_synced_msg', { name: file.name }));
       };
@@ -189,7 +280,10 @@ export default function WorkerProfile() {
   // Remove CV
   const handleRemoveCV = () => {
     setCvName('');
+    setCvFile(null);
+    localStorage.removeItem(sk('worker_cv_data'));
     localStorage.removeItem(sk('worker_profile_cv_data'));
+    localStorage.removeItem(sk('worker_profile_cv_filename'));
     setShowConfirmCVRemove(false);
     addNotification('info', t('notif_cv_removed'), t('notif_cv_removed_msg'));
   };
@@ -289,6 +383,9 @@ export default function WorkerProfile() {
                       setEditLocation(locationOverride);
                       setEditSkills(skillsList.join(', '));
                       setEditPortfolio(portfolioList.join(', '));
+                      setEditExperience(experienceList.map(e => `${e.role}${e.company ? ` @ ${e.company}` : ''}${e.desc ? ` | ${e.desc}` : ''}`).join('\n'));
+                      setEditEducation(educationList.map(e => `${e.degree}${e.school ? ` @ ${e.school}` : ''}`).join('\n'));
+                      setEditCertificates(certificatesList.join(', '));
                       setShowEditModal(true);
                     }}
                     className="px-8 py-3.5 bg-blue-600 text-white border border-transparent rounded-2xl font-sans font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 cursor-pointer"
@@ -437,6 +534,17 @@ export default function WorkerProfile() {
                     <p className="text-sm font-black text-gray-900 font-sans truncate w-full px-2">{cvName}</p>
                     <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest leading-none">{t('added_recently')}</p>
                     <div className="flex gap-2 mt-4 w-full">
+                      <button 
+                        onClick={() => {
+                          const url = cvFile?.dataUrl || localStorage.getItem(sk('worker_profile_cv_data'));
+                          if (url) {
+                            if (!openDataUrlInNewTab(url)) addNotification('info', t('cv_no_preview'), t('cv_no_preview_msg'));
+                          } else addNotification('info', t('cv_no_preview'), t('cv_no_preview_msg'));
+                        }}
+                        className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-sm"
+                      >
+                        {t('view')}
+                      </button>
                       <button 
                         onClick={handleUploadCVClick}
                         className="flex-1 py-2 bg-white border border-gray-200 hover:border-blue-600 text-gray-800 hover:text-blue-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
@@ -629,6 +737,42 @@ export default function WorkerProfile() {
                     className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900" 
                   />
                   <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">{t('portfolio_combine_hint')}</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('work_experience')}</label>
+                  <textarea 
+                    rows={3}
+                    value={editExperience}
+                    onChange={(e) => setEditExperience(e.target.value)}
+                    placeholder={t('experience_placeholder')}
+                    className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-semibold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900 leading-relaxed" 
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">{t('experience_combine_hint')}</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('education')}</label>
+                  <textarea 
+                    rows={2}
+                    value={editEducation}
+                    onChange={(e) => setEditEducation(e.target.value)}
+                    placeholder={t('education_placeholder')}
+                    className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-semibold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900 leading-relaxed" 
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">{t('education_combine_hint')}</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('certifications')}</label>
+                  <input 
+                    type="text" 
+                    value={editCertificates}
+                    onChange={(e) => setEditCertificates(e.target.value)}
+                    placeholder={t('certifications_placeholder')}
+                    className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900" 
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">{t('certifications_combine_hint')}</p>
                 </div>
 
                 <input 

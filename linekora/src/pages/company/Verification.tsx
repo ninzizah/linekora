@@ -9,15 +9,23 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { saveVerificationDocs, updateUser } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
+import { isValidTin, normalizeNationalId } from '../../lib/idValidation';
+import { VERIFICATION_UNAVAILABLE } from '../../lib/verificationAvailability';
+import VerificationUnavailable from '../../components/verification/VerificationUnavailable';
 
 type VerificationStep = 'intro' | 'documents' | 'address' | 'otp' | 'completed';
 
 export default function CompanyVerification() {
+  if (VERIFICATION_UNAVAILABLE) {
+    return <VerificationUnavailable dashboardPath="/dashboard/company" />;
+  }
+
   const { profile } = useAuth();
   const { t } = useLanguage();
   const [step, setStep] = useState<VerificationStep>('intro');
   const [isUploading, setIsUploading] = useState(false);
   const [tinNumber, setTinNumber] = useState('');
+  const [tinError, setTinError] = useState<string | null>(null);
   const [certFile, setCertFile] = useState<string | null>(null);
   const [certFileName, setCertFileName] = useState('');
   const [address, setAddress] = useState('');
@@ -25,6 +33,7 @@ export default function CompanyVerification() {
 
   const handleAutoFillSampleCompanyDocs = () => {
     setTinNumber('109876543');
+    setTinError(null);
     setCertFileName('RDB_Business_Registration_2026.pdf');
   };
 
@@ -49,7 +58,7 @@ export default function CompanyVerification() {
     if (step === 'documents' && profile) {
       try {
         const verificationPayload = {
-          tinNumber,
+          tinNumber: normalizeNationalId(tinNumber),
           certFile: certFile || undefined,
           certFileName,
           address,
@@ -195,9 +204,27 @@ export default function CompanyVerification() {
                       type="text" 
                       placeholder={t('placeholder_tin')}
                       value={tinNumber}
-                      onChange={(e) => setTinNumber(e.target.value)}
-                      className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm"
+                      onChange={(e) => {
+                        setTinNumber(e.target.value);
+                        setTinError(e.target.value.trim() ? (!isValidTin(e.target.value) ? 'tin_must_be_9_digits' : null) : null);
+                      }}
+                      inputMode="numeric"
+                      maxLength={12}
+                      className={`w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm ${
+                        tinError ? 'border-red-300 bg-red-50/40 focus:border-red-500' : ''
+                      }`}
                     />
+                    {tinError ? (
+                      <p className="text-[11px] font-bold text-red-500 px-1 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 inline-block" />
+                        {t(tinError)}
+                      </p>
+                    ) : tinNumber.trim() ? (
+                      <p className="text-[11px] font-bold text-green-600 px-1 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />
+                        {t('id_valid')} · {normalizeNationalId(tinNumber).length} / 9
+                      </p>
+                    ) : null}
                   </div>
 
                   <label 
@@ -229,10 +256,10 @@ export default function CompanyVerification() {
                 </div>
 
                 <button 
-                  disabled={isUploading || !tinNumber.trim() || !certFile}
+                  disabled={isUploading || !isValidTin(tinNumber) || !certFile || !!tinError}
                   onClick={handleNext} 
                   className={`w-full py-5 rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2 ${
-                    (tinNumber.trim() && certFile)
+                    (isValidTin(tinNumber) && certFile)
                       ? 'bg-blue-600 text-white hover:bg-blue-700 hover:translate-y-[-2px] shadow-xl shadow-blue-200 cursor-pointer' 
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}

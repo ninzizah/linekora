@@ -1,12 +1,32 @@
 import { Shield, ChevronRight, CheckCircle, Users, Building, Briefcase, Handshake, MapPin, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { useLanguage } from '../../lib/LanguageContext';
+import { getStats } from '../../lib/api';
 
 export default function Home() {
   const { t } = useLanguage();
+
+  const [statsData, setStatsData] = useState<{ activeJobs: number; verifiedWorkers: number; verifiedCompanies: number; completedHires: number } | null>(null);
+
+  useEffect(() => {
+    getStats()
+      .then((s) => setStatsData({
+        activeJobs: s.activeJobs,
+        verifiedWorkers: s.verifiedWorkers,
+        verifiedCompanies: s.verifiedCompanies,
+        completedHires: s.completedHires,
+      }))
+      .catch((err) => {
+        console.error('Failed to load platform stats', err);
+        setStatsData({ activeJobs: 1200, verifiedWorkers: 8500, verifiedCompanies: 450, completedHires: 12000 });
+      });
+  }, []);
+
+  const fmt = (n: number) => n.toLocaleString('en-US');
 
   const categories = [
     { name: t('category_office_jobs'), icon: Building },
@@ -20,12 +40,19 @@ export default function Home() {
     { name: t('category_hospitality'), icon: Users },
   ];
 
-  const stats = [
-    { label: t('active_jobs'), value: '1,200+' },
-    { label: t('verified_workers'), value: '8,500+' },
-    { label: t('verified_companies'), value: '450+' },
-    { label: t('completed_hires'), value: '12,000+' },
-  ];
+  const stats = statsData
+    ? [
+        { label: t('active_jobs'), value: `${fmt(statsData.activeJobs)}+` },
+        { label: t('verified_workers'), value: `${fmt(statsData.verifiedWorkers)}+` },
+        { label: t('verified_companies'), value: `${fmt(statsData.verifiedCompanies)}+` },
+        { label: t('completed_hires'), value: `${fmt(statsData.completedHires)}+` },
+      ]
+    : [
+        { label: t('active_jobs'), value: '1,200+' },
+        { label: t('verified_workers'), value: '8,500+' },
+        { label: t('verified_companies'), value: '450+' },
+        { label: t('completed_hires'), value: '12,000+' },
+      ];
 
   return (
     <div className="min-h-screen bg-white">

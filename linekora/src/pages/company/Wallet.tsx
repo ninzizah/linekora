@@ -5,6 +5,7 @@ import {
   CreditCard, Smartphone, X, Loader2, AlertCircle
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import PaymentsUnderDevelopment from '../../components/payments/PaymentsUnderDevelopment';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
@@ -36,6 +37,7 @@ export default function CompanyWallet() {
   const [depositIsLoading, setDepositIsLoading] = useState(false);
   const [depositSuccess, setDepositSuccess] = useState(false);
   const [depositErrorMsg, setDepositErrorMsg] = useState('');
+  const [devNotice, setDevNotice] = useState(false);
 
   // Stateful financial values
   const [balance, setBalance] = useState<number>(() => {
@@ -96,30 +98,7 @@ export default function CompanyWallet() {
       return;
     }
     setDepositErrorMsg('');
-    setDepositIsLoading(true);
-
-    // Simulate Payment Provider Push PIN Confirmation API
-    setTimeout(() => {
-      setDepositIsLoading(false);
-      setDepositSuccess(true);
-      setBalance(prev => prev + amt);
-
-      const paymentMethodName = depositMethod === 'momo' ? t('payment_method_mtn_momo_deposit') : t('payment_method_card_gateway');
-      const randRef = `DEP-CORP-${Math.floor(10000 + Math.random() * 90000)}`;
-
-      const newTx: CompanyTransaction = {
-        id: Date.now(),
-        type: 'deposit',
-        amount: `RWF ${amt.toLocaleString()}`,
-        recipient: paymentMethodName,
-        status: 'completed',
-        date: t('today'),
-        role: t('inbound'),
-        refCode: randRef
-      };
-
-      setTransactions(prev => [newTx, ...prev]);
-    }, 1500);
+    setDevNotice(true);
   };
 
   const filteredTransactions = transactions.filter(tx => {
@@ -143,6 +122,7 @@ export default function CompanyWallet() {
                 setDepositSuccess(false);
                 setDepositAmount('');
                 setDepositErrorMsg('');
+                setDevNotice(false);
                 setShowDeposit(true);
               }}
               className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-sans font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all cursor-pointer text-sm uppercase tracking-wider"
@@ -151,11 +131,8 @@ export default function CompanyWallet() {
               {t('deposit_funds')}
             </button>
           </div>
-          <div className="mt-6 bg-blue-50/60 border border-blue-100 p-4 rounded-2xl flex items-center gap-3">
-             <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-             <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest italic">
-               {t('live_integrations_connected')} <span className="text-green-600 font-extrabold uppercase bg-green-50 px-2 py-0.5 rounded border border-green-150">{t('active_payment_sandbox')}</span> {t('mtn_momo_cards_operational')}
-             </p>
+          <div className="mt-6">
+            <PaymentsUnderDevelopment />
           </div>
         </header>
 
@@ -309,6 +286,12 @@ export default function CompanyWallet() {
                     <div className="mb-6 p-4 bg-red-50 text-red-655 border border-red-100 text-xs font-bold rounded-2xl flex items-start gap-2 animate-pulse">
                       <AlertCircle size={16} className="shrink-0" />
                       <span>{depositErrorMsg}</span>
+                    </div>
+                  )}
+
+                  {devNotice && (
+                    <div className="mb-6">
+                      <PaymentsUnderDevelopment compact />
                     </div>
                   )}
 

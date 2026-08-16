@@ -5,6 +5,8 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // Public Pages
 import Home from './pages/public/Home';
@@ -84,6 +86,26 @@ const DashboardRedirect = () => {
 
 import { LanguageProvider } from './lib/LanguageContext';
 
+// Redirect logged-in users away from the public landing page
+const HomeRoute = () => {
+  const { user, profile, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading) {
+      if (user && profile?.role) {
+        navigate('/dashboard', { replace: true });
+      } else if (user && !profile) {
+        navigate('/register', { replace: true });
+      }
+    }
+  }, [user, profile, loading, navigate]);
+
+  if (loading || (user && profile?.role)) return null;
+  if (user && !profile) return null;
+  return <Home />;
+};
+
 export default function App() {
   return (
     <LanguageProvider>
@@ -91,7 +113,7 @@ export default function App() {
         <AuthProvider>
           <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<HomeRoute />} />
           <Route path="/about" element={<About />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/contact" element={<Contact />} />

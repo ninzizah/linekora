@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Shield, Users, AlertTriangle, CheckCircle2, 
-  XCircle, ChevronRight, Eye, Search, Filter, 
-  TrendingUp, Activity, Lock, Ban, User,
-  X, Check, Award, ShieldAlert, ArrowUpRight, 
-  DollarSign, LogOut, RefreshCw, Star, Trash2,
-  Smartphone
+import {
+  LayoutDashboard, Users, Briefcase, ShieldCheck, Bell, Settings, Activity,
+  LogOut, RefreshCw, Search, Eye, Ban, CheckCircle2, XCircle, Check, X,
+  Trash2, Send, User, Lock, Mail, Phone, MapPin, CalendarDays, IdCard,
+  Percent, DollarSign, Shield, AlertTriangle, Clock, BadgeCheck, Smartphone, Star, Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import IdentityCardVisual from '../../components/IdentityCardVisual';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
-import { getUsers, updateUser, getPendingVerifications } from '../../lib/api';
+import {
+  getUsers, updateUser, getPendingVerifications, getJobs, updateJob,
+  deleteJob, getApplications, createNotification, getStats,
+  type UserProfile, type Job, type Application, type VerificationSubmission, type PlatformStats,
+} from '../../lib/api';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../lib/firebase';
+
+type TabId = 'dashboard' | 'users' | 'jobs' | 'verification' | 'notifications' | 'settings' | 'activity';
 
 interface AuditLog {
   id: string;
@@ -23,390 +27,88 @@ interface AuditLog {
   user: string;
 }
 
-interface UserAccount {
-  uid: string;
-  name: string;
-  role: 'worker' | 'company' | 'individual';
-  location: string;
-  trustScore: number;
-  status: 'active' | 'warning' | 'suspended';
-  email: string;
-  phone: string;
-  verificationStatus: 'unverified' | 'pending' | 'verified';
-}
-
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'verification' | 'reports' | 'analytics' | 'users' | 'logs' | 'upgrades'>('verification');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'worker' | 'company' | 'individual'>('all');
+
+  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [notification, setNotification] = useState<{ id: number; message: string; type: 'success' | 'info' | 'error' } | null>(null);
-
-  const statusText = (s: string) => ({
-    active: t('status_active'),
-    warning: t('status_warning'),
-    suspended: t('status_suspended'),
-    unverified: t('status_unverified'),
-    pending: t('status_pending'),
-    verified: t('status_verified'),
-    accepted: t('status_contract_active'),
-    completion_requested: t('status_completion_requested'),
-    completed: t('status_completed'),
-    released: t('status_released'),
-    paid_awaiting_admin: t('status_paid_awaiting'),
-    approved: t('status_approved'),
-    rejected: t('status_rejected'),
-    request_sent: t('status_request_sent'),
-    high: t('status_high'),
-    medium: t('status_medium'),
-    low: t('status_low'),
-  }[s] || s);
-
-  const roleLabel = (r: string) => ({
-    worker: t('role_worker'),
-    company: t('role_company'),
-    individual: t('role_individual'),
-  }[r] || r);
-
-  const [inspectingUser, setInspectingUser] = useState<UserAccount | null>(null);
   const [idleTime, setIdleTime] = useState(0);
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
 
-  // Upgrade requests state for pricing tier purchases (MoMo etc.)
-  const [upgradeRequests, setUpgradeRequests] = useState<any[]>(() => {
-    const cached = localStorage.getItem('linekora_pricing_upgrade_requests');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) {}
-    }
-    return [];
-  });
-
-  // Safe localStorage synchronization loop
-  useEffect(() => {
-    localStorage.setItem('linekora_pricing_upgrade_requests', JSON.stringify(upgradeRequests));
-  }, [upgradeRequests]);
-
-  useEffect(() => {
-    const syncRequests = () => {
-      const cached = localStorage.getItem('linekora_pricing_upgrade_requests');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (JSON.stringify(parsed) !== JSON.stringify(upgradeRequests)) {
-            setUpgradeRequests(parsed);
-          }
-        } catch (e) {}
-      }
-    };
-    window.addEventListener('storage', syncRequests);
-    const interval = setTimeout(syncRequests, 1200);
-    return () => {
-      window.removeEventListener('storage', syncRequests);
-      clearTimeout(interval);
-    };
-  }, [upgradeRequests]);
-
-  // Actions for Approval & Rejection of MTN MoMo payment handshakes
-  const handleApproveUpgrade = (reqId: string) => {
-    const updated = upgradeRequests.map(req => {
-      if (req.id === reqId) {
-        // Complete the steps
-        const completedSteps = req.steps.map((st: any, idx: number) => {
-          if (idx === 2) {
-            return { ...st, title: t('step_payment_verified'), date: t('time_just_now'), done: true };
-          }
-          return { ...st, done: true };
-        });
-
-        const newTier = req.tierName;
-        // Also update actual user_membership_tier so Pricing displays it correctly
-        if (req.role === 'worker') {
-          localStorage.setItem('worker_membership_tier', newTier);
-        } else {
-          localStorage.setItem('company_membership_tier', newTier);
-        }
-
-        // Now find that user in users directory and set verified
-        setUsers(prevUsers => prevUsers.map(u => {
-          if (u.email === req.userEmail || u.phone === req.paymentPhoneOrCard) {
-            const nextTrustScore = Math.min(u.trustScore + 30, 100);
-            updateUser(u.uid, {
-              verificationStatus: 'verified',
-              trustScore: nextTrustScore,
-            }).catch(e => console.error('API update failed', e));
-            return { ...u, verificationStatus: 'verified', trustScore: nextTrustScore };
-          }
-          return u;
-        }));
-
-        return { 
-          ...req, 
-          status: 'approved', 
-          steps: [
-            ...completedSteps,
-            { title: t('step_membership_activated'), date: t('time_just_now'), done: true }
-          ] 
-        };
-      }
-      return req;
-    });
-
-    setUpgradeRequests(updated);
-    localStorage.setItem('linekora_pricing_upgrade_requests', JSON.stringify(updated));
-
-    // Audit Log entry
-    const matched = upgradeRequests.find(r => r.id === reqId);
-    const logMsg = matched 
-      ? t('audit_upgrade_approved', { price: matched.price, userName: matched.userName, tierName: matched.tierName })
-      : t('audit_upgrade_approved_fallback', { reqId });
-
-    const newLog: AuditLog = {
-      id: `log_${Date.now()}`,
-      action: logMsg,
-      category: 'FINANCIAL',
-      date: t('time_just_now'),
-      user: 'Linekora Admin'
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
-
-    triggerNotification(t('toast_upgrade_approved'), "success");
-  };
-
-  const handleRejectUpgrade = (reqId: string) => {
-    const updated = upgradeRequests.map(req => {
-      if (req.id === reqId) {
-        return { 
-          ...req, 
-          status: 'rejected', 
-          steps: [
-            ...req.steps,
-            { title: t('step_payment_declined'), date: t('time_just_now'), done: false }
-          ] 
-        };
-      }
-      return req;
-    });
-
-    setUpgradeRequests(updated);
-    localStorage.setItem('linekora_pricing_upgrade_requests', JSON.stringify(updated));
-
-    const matched = upgradeRequests.find(r => r.id === reqId);
-    const logMsg = matched 
-      ? t('audit_upgrade_declined', { userName: matched.userName })
-      : t('audit_upgrade_rejected_fallback', { reqId });
-
-    const newLog: AuditLog = {
-      id: `log_${Date.now()}`,
-      action: logMsg,
-      category: 'FINANCIAL',
-      date: t('time_just_now'),
-      user: 'Linekora Admin'
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
-
-    triggerNotification(t('toast_payment_rejected'), "error");
-  };
-
-  // Directly initiate a MoMo phone query on behalf of administrative support
-  const [adminSendPhone, setAdminSendPhone] = useState('');
-  const [adminSelectUser, setAdminSelectUser] = useState('');
-  const [adminSelectTier, setAdminSelectTier] = useState('Verified Bronze');
-  const [adminSendRole, setAdminSendRole] = useState<'worker' | 'company'>('worker');
-
-  const handleCreatePaymentRequest = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!adminSendPhone.trim()) {
-      triggerNotification(t('toast_phone_required'), "error");
-      return;
-    }
-
-    const matchedUser = users.find(u => u.phone === adminSendPhone) || {
-      name: adminSelectUser || "Gisagara Guest",
-      email: `${adminSendPhone.replace(/\s+/g, '')}@momo.rw`
-    };
-
-    const targetPrice = adminSelectTier === 'Verified Bronze' ? '15,000' : '35,000';
-
-    const newRequest = {
-      id: `req_${Date.now()}`,
-      date: t('time_just_now'),
-      userName: matchedUser.name,
-      userEmail: matchedUser.email,
-      role: adminSendRole,
-      tierName: adminSelectTier,
-      price: targetPrice,
-      method: "momo",
-      paymentPhoneOrCard: adminSendPhone,
-      status: "request_sent",
-      steps: [
-        { title: t('step_billing_dispatched'), date: t('time_just_now'), done: true },
-        { title: t('step_awaiting_pin'), date: t('time_pending'), done: false },
-        { title: t('step_receipt_verification'), date: t('time_pending'), done: false }
-      ]
-    };
-
-    const updated = [newRequest, ...upgradeRequests];
-    setUpgradeRequests(updated);
-    localStorage.setItem('linekora_pricing_upgrade_requests', JSON.stringify(updated));
-
-    // Audit log
-    const newLog: AuditLog = {
-      id: `log_${Date.now()}`,
-      action: t('audit_billing_dispatched', { targetPrice, adminSendPhone, adminSelectTier }),
-      category: 'SYSTEM',
-      date: t('time_just_now'),
-      user: 'Linekora Admin'
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
-
-    triggerNotification(t('toast_billing_sent'), "success");
-    setAdminSendPhone('');
-    setAdminSelectUser('');
-  };
-
-  // Stateful Queues initialized with mock data that mirrors the system's requirements
-  const [verificationQueue, setVerificationQueue] = useState<any[]>([]);
-
-  const [reports, setReports] = useState<any[]>([]);
-
-  const [users, setUsers] = useState<UserAccount[]>([]);
-
-  // Fetch real users from PostgreSQL API
-  const fetchRealUsers = async () => {
-    try {
-      const apiUsers = await getUsers();
-      const realUsers: UserAccount[] = [];
-      const realPendingVerifications: any[] = [];
-
-      // Fetch verification documents from server-side database
-      let serverDocs: any[] = [];
-      try {
-        serverDocs = await getPendingVerifications();
-      } catch (e) {
-        console.warn('Could not fetch verification docs from API, falling back to localStorage', e);
-      }
-
-      apiUsers.forEach((u) => {
-        if (u.role === 'ADMIN') return;
-        realUsers.push({
-          uid: u.id,
-          name: u.displayName,
-          role: u.role.toLowerCase() as any,
-          location: u.location || 'Kigali, Rwanda',
-          trustScore: u.trustScore,
-          status: 'active',
-          email: u.email,
-          phone: u.phone || '',
-          verificationStatus: u.verificationStatus as any,
-        });
-        if (u.verificationStatus === 'pending') {
-          const isWorker = u.role === 'WORKER';
-          const isCompany = u.role === 'COMPANY';
-          const typeLabel = isWorker ? 'worker' : isCompany ? 'company' : 'individual';
-          const idType = isWorker ? 'National ID / Passport' : isCompany ? 'Business Registration (TIN)' : 'ID Document';
-
-          // Find matching server-side docs by userId
-          const serverDoc = serverDocs.find((d: any) => d.id === u.id);
-          const docs = serverDoc?.verificationData || null;
-
-          realPendingVerifications.push({
-            id: `v_${u.id}`,
-            user: u.displayName,
-            type: typeLabel,
-            date: docs?.date || t('time_recently'),
-            status: 'pending',
-            idType,
-            details: t('verif_pending_details', { email: u.email }),
-            code: `UID-${u.id.slice(0, 4).toUpperCase()}`,
-            userId: u.id,
-            // Attach actual uploaded images from server-side storage
-            frontId: docs?.frontId || null,
-            backId: docs?.backId || null,
-            selfie: docs?.selfie || docs?.capturedPhoto || null,
-            nationalIdNum: docs?.nationalIdNum || docs?.idNumber || docs?.tinNumber || null,
-            selectedTier: docs?.selectedTier || null,
-            // Company-specific fields
-            certFile: docs?.certFile || null,
-            certFileName: docs?.certFileName || null,
-            address: docs?.address || null,
-            website: docs?.website || null,
-          });
-        }
-      });
-
-      setUsers(realUsers);
-      setVerificationQueue(realPendingVerifications);
-    } catch (err) {
-      console.error('Failed to fetch users from API', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchRealUsers();
-    const interval = setInterval(fetchRealUsers, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  // ─── REAL DATA ────────────────────────────────────────────────────────────
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [verificationQueue, setVerificationQueue] = useState<VerificationSubmission[]>([]);
+  const [stats, setStats] = useState<PlatformStats | null>(null);
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
     const cached = localStorage.getItem('admin_audit_logs');
     if (cached) {
-      try { return JSON.parse(cached); } catch(e) {}
+      try { return JSON.parse(cached); } catch (e) {}
     }
     return [];
   });
 
-  const [selectedVerification, setSelectedVerification] = useState<typeof verificationQueue[0] | null>(null);
-
-  const [contracts, setContracts] = useState<any[]>(() => {
-    const cached = localStorage.getItem('linekora_contracts');
+  const [bannedIds, setBannedIds] = useState<string[]>(() => {
+    const cached = localStorage.getItem('admin_banned_users');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) {}
+    }
+    return [];
+  });
+  const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
+    const cached = localStorage.getItem('admin_suspended_users');
     if (cached) {
       try { return JSON.parse(cached); } catch (e) {}
     }
     return [];
   });
 
-  const [workerUnpaid, setWorkerUnpaid] = useState(() => {
-    return Number(localStorage.getItem('worker_unpaid_commission') || '0');
-  });
-
-  const [companyUnpaid, setCompanyUnpaid] = useState(() => {
-    return Number(localStorage.getItem('company_unpaid_commission') || '0');
-  });
-
-  const activeEscrowSum = contracts.reduce((acc, c) => {
-    if (c.status === 'accepted' || c.status === 'completion_requested') {
-      const val = Number(c.salary?.replace(/[^0-9]/g, '') || '0');
-      return acc + (isNaN(val) ? 0 : val);
-    }
-    return acc;
-  }, 0);
-
-  const totalCommissions = workerUnpaid + companyUnpaid;
-
-  // Cash stats for administrative visualization using live system info
-  const statsOverview = {
-    escrowTotal: activeEscrowSum > 0 ? `RWF ${activeEscrowSum.toLocaleString()}` : 'RWF 0',
-    totalUsers: users.length.toString(),
-    unpaidCommission: totalCommissions > 0 ? `RWF ${totalCommissions.toLocaleString()}` : 'RWF 0',
-    activeContractsCount: t('stat_active_count', { count: contracts.filter(c => c.status === 'accepted' || c.status === 'completion_requested').length }),
-    suspiciousFlags: reports.length.toString()
+  const persistAudit = (logs: AuditLog[]) => {
+    setAuditLogs(logs);
+    localStorage.setItem('admin_audit_logs', JSON.stringify(logs));
   };
 
-  // Recharts Volume Data
-  const volumeData: { name: string; Escrowed: number; Commissions: number }[] = [];
+  const addAudit = (action: string, category: AuditLog['category']) => {
+    const entry: AuditLog = {
+      id: `log_${Date.now()}`,
+      action,
+      category,
+      date: new Date().toLocaleString(),
+      user: 'Linekora Admin',
+    };
+    persistAudit([entry, ...auditLogs].slice(0, 200));
+  };
 
-  const distributionData = [
-    { name: t('segment_workers'), count: users.filter(u => u.role === 'worker').length },
-    { name: t('segment_companies'), count: users.filter(u => u.role === 'company').length },
-    { name: t('segment_individuals'), count: users.filter(u => u.role === 'individual').length },
-  ];
+  const fetchAll = async () => {
+    try {
+      const [apiUsers, apiJobs, apiApps, pending, apiStats] = await Promise.all([
+        getUsers(),
+        getJobs({ includeExpired: true }),
+        getApplications({}),
+        getPendingVerifications(),
+        getStats(),
+      ]);
+      setUsers(apiUsers.filter(u => u.role !== 'ADMIN'));
+      setJobs(apiJobs);
+      setApplications(apiApps);
+      setVerificationQueue(pending);
+      setStats(apiStats);
+    } catch (err) {
+      console.error('Failed to fetch admin data', err);
+    }
+  };
 
+  useEffect(() => {
+    fetchAll();
+    const interval = setInterval(fetchAll, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-
-
-  // Display toast function
+  // ─── TOAST ────────────────────────────────────────────────────────────────
   const triggerNotification = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setNotification({ id: Date.now(), message, type });
   };
@@ -418,16 +120,13 @@ export default function AdminDashboard() {
     }
   }, [notification]);
 
-  // Secure compliance: auto-logout after 5 minutes (300 seconds) of inactivity
+  // ─── INACTIVITY AUTO-LOGOUT ──────────────────────────────────────────────
   useEffect(() => {
     let intervalId: any;
-
     const resetIdleTimer = () => {
       setIdleTime(0);
       setShowInactivityWarning(false);
     };
-
-    // Tracking interaction vectors on Kigali ops panels
     window.addEventListener('mousemove', resetIdleTimer);
     window.addEventListener('mousedown', resetIdleTimer);
     window.addEventListener('keydown', resetIdleTimer);
@@ -435,21 +134,15 @@ export default function AdminDashboard() {
     window.addEventListener('touchstart', resetIdleTimer);
 
     intervalId = setInterval(() => {
-      setIdleTime((prevTime) => {
-        const nextTime = prevTime + 1;
-        
-        // 4.5 minutes (270s) idle triggers secure modal caution
+      setIdleTime(prev => {
+        const nextTime = prev + 1;
         if (nextTime === 270) {
           setShowInactivityWarning(true);
-          triggerNotification(t('toast_inactivity_warning'), "error");
         }
-
-        // 5 minutes (300s) idle triggers secure session destruction
         if (nextTime >= 300) {
           clearInterval(intervalId);
           navigate('/login?reason=idle_timeout');
         }
-        
         return nextTime;
       });
     }, 1000);
@@ -462,162 +155,427 @@ export default function AdminDashboard() {
       window.removeEventListener('touchstart', resetIdleTimer);
       clearInterval(intervalId);
     };
-  }, []);
+  }, [navigate]);
 
-  // Actions
-  const handleApproveVerification = (id: string, name: string) => {
-    // 1. Remove from queue
-    setVerificationQueue(prev => prev.filter(v => v.id !== id));
-    
-    // 2. Clear detail lock
-    if (selectedVerification?.id === id) {
-      setSelectedVerification(null);
-    }
-
-    // 3. Update User Directory verification status & boost trust rating!
-    setUsers(prev => prev.map(u => {
-      if (u.name === name) {
-        const nextTrustScore = Math.min(u.trustScore + 15, 100);
-        updateUser(u.uid, {
-          verificationStatus: 'verified',
-          trustScore: nextTrustScore,
-        }).catch(e => console.error('API update failed', e));
-        return { ...u, verificationStatus: 'verified', trustScore: nextTrustScore };
-      }
-      return u;
-    }));
-
-    // 4. Create audit log
-    const newLog: AuditLog = {
-      id: `log_${Date.now()}`,
-      action: t('audit_verification_approved', { name, id }),
-      category: 'SECURITY',
-      date: t('time_just_now'),
-      user: 'Linekora Admin'
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
-
-    triggerNotification(t('toast_verification_approved', { name }));
-  };
-
-  const handleRejectVerification = (id: string, name: string) => {
-    setVerificationQueue(prev => prev.filter(v => v.id !== id));
-    if (selectedVerification?.id === id) {
-      setSelectedVerification(null);
-    }
-
-    setUsers(prev => prev.map(u => {
-      if (u.name === name) {
-        updateUser(u.uid, { verificationStatus: 'unverified' })
-          .catch(e => console.error('API update failed', e));
-        return { ...u, verificationStatus: 'unverified' };
-      }
-      return u;
-    }));
-
-    const newLog: AuditLog = {
-      id: `log_${Date.now()}`,
-      action: t('audit_verification_rejected', { name, id }),
-      category: 'SECURITY',
-      date: t('time_just_now'),
-      user: 'Linekora Admin'
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
-
-    triggerNotification(t('toast_verification_rejected', { name }), 'error');
-  };
-
-  const handleResolveReport = (id: string, reportedName: string) => {
-    setReports(prev => prev.filter(r => r.id !== id));
-    
-    const newLog: AuditLog = {
-      id: `log_${Date.now()}`,
-      action: t('audit_report_resolved', { reportedName }),
-      category: 'SAFETY',
-      date: t('time_just_now'),
-      user: 'Linekora Admin'
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
-
-    triggerNotification(t('toast_report_resolved', { reportedName }));
-  };
-
-  const handleBanAccount = (id: string, reportedName: string, reason: string) => {
-    setReports(prev => prev.filter(r => r.id !== id));
-    
-    setUsers(prev => prev.map(u => {
-      if (u.name === reportedName) {
-        updateUser(u.uid, { trustScore: 0 })
-          .catch(e => console.error('API update failed', e));
-        return { ...u, status: 'suspended', trustScore: 0 };
-      }
-      return u;
-    }));
-
-    const newLog: AuditLog = {
-      id: `log_${Date.now()}`,
-      action: t('audit_account_banned', { reportedName, reason }),
-      category: 'SAFETY',
-      date: t('time_just_now'),
-      user: 'Linekora Admin'
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
-
-    triggerNotification(t('toast_account_banned', { reportedName }), 'error');
-  };
-
-  const handleSetTrustScore = (uid: string, newScore: number) => {
-    setUsers(prev => prev.map(u => {
-      if (u.uid === uid) {
-        updateUser(uid, { trustScore: newScore })
-          .catch(e => console.error('API update failed', e));
-        return { ...u, trustScore: newScore };
-      }
-      return u;
-    }));
-    triggerNotification(t('toast_trust_reevaluated'));
-  };
-
-  const handleToggleUserStatus = (uid: string, currentStatus: string) => {
-    const targetStatus: 'active' | 'warning' | 'suspended' = 
-      currentStatus === 'active' ? 'warning' : currentStatus === 'warning' ? 'suspended' : 'active';
-    
-    setUsers(prev => prev.map(u => {
-      if (u.uid === uid) {
-        const nextTrustScore = targetStatus === 'suspended' ? 0 : u.trustScore;
-        updateUser(uid, { trustScore: nextTrustScore })
-          .catch(e => console.error('API update failed', e));
-        return { ...u, status: targetStatus, trustScore: nextTrustScore };
-      }
-      return u;
-    }));
-
-    const targetUser = users.find(u => u.uid === uid);
-    if (targetUser) {
-      const newLog: AuditLog = {
-        id: `log_${Date.now()}`,
-        action: t('audit_status_modified', { name: targetUser.name, status: targetStatus.toUpperCase() }),
-        category: 'SYSTEM',
-        date: t('time_just_now'),
-        user: 'Linekora Admin'
-      };
-      setAuditLogs(prev => [newLog, ...prev]);
-    }
-
-    triggerNotification(t('toast_status_adjusted', { status: targetStatus.toUpperCase() }));
-  };
-
-  const handleLogoutAdmin = () => {
+  const handleLogoutAdmin = async () => {
     triggerNotification(t('toast_logging_out'), "info");
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Error signing out admin:', err);
+    }
     setTimeout(() => {
       window.location.href = '/login';
     }, 800);
   };
 
+  // ─── HELPERS ──────────────────────────────────────────────────────────────
+  const roleLabel = (r: string) => {
+    const map: Record<string, string> = {
+      WORKER: t('role_worker'),
+      EMPLOYER: t('role_employer'),
+      COMPANY: t('role_company'),
+    };
+    return map[r] || r;
+  };
+
+  const statusLabel = (u: UserProfile) => {
+    if (bannedIds.includes(u.id)) return t('status_banned');
+    if (suspendedIds.includes(u.id)) return t('status_suspended');
+    if (u.verificationStatus === 'verified') return t('status_verified');
+    if (u.verificationStatus === 'pending') return t('status_pending');
+    return t('status_unverified');
+  };
+
+  const jobStatusLabel = (s: string) => ({
+    open: t('jobs_active'),
+    accepted: t('status_contract_active'),
+    completion_requested: t('status_completion_requested'),
+    completed: t('jobs_completed'),
+    cancelled: t('jobs_cancelled'),
+    expired: t('jobs_expired'),
+  }[s] || s);
+
+  const fmtDate = (d?: string) => {
+    if (!d) return '—';
+    try {
+      return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return d;
+    }
+  };
+
+  const rejectionReasonOf = (u: UserProfile) => {
+    try {
+      const raw = u.verificationData;
+      if (!raw) return '';
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return parsed?.rejectionReason || '';
+    } catch {
+      return '';
+    }
+  };
+
+  const workerNamesForJob = (jobId: number) => {
+    const names = applications
+      .filter(a => a.jobId === jobId)
+      .map(a => a.worker?.displayName)
+      .filter(Boolean);
+    return names.length ? names.join(', ') : t('not_assigned');
+  };
+
+  // ─── USER ACTIONS ─────────────────────────────────────────────────────────
+  const handleVerifyUser = async (u: UserProfile) => {
+    try {
+      const nextTrust = Math.min(u.trustScore + 20, 100);
+      await updateUser(u.id, { verificationStatus: 'verified', trustScore: nextTrust });
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, verificationStatus: 'verified', trustScore: nextTrust } : x));
+      try {
+        await createNotification({
+          userId: u.id,
+          title: t('verif_notif_approved_title'),
+          body: t('verif_notif_approved_body', { name: u.displayName }),
+          type: 'success',
+        });
+      } catch (e) { console.error('Failed to notify user of approval', e); }
+      addAudit(t('audit_verification_approved', { name: u.displayName, id: u.id }), 'SECURITY');
+      triggerNotification(t('toast_verification_approved', { name: u.displayName }));
+    } catch (err) {
+      console.error(err);
+      triggerNotification(t('toast_action_failed'), 'error');
+    }
+  };
+
+  const handleSuspendUser = async (u: UserProfile) => {
+    const next = new Set(suspendedIds);
+    if (next.has(u.id)) {
+      next.delete(u.id);
+    } else {
+      next.add(u.id);
+    }
+    const arr = Array.from(next);
+    setSuspendedIds(arr);
+    localStorage.setItem('admin_suspended_users', JSON.stringify(arr));
+    addAudit(t('audit_status_modified', { name: u.displayName, status: next.has(u.id) ? t('status_suspended') : t('status_active') }), 'SYSTEM');
+    triggerNotification(t('toast_status_adjusted', { status: next.has(u.id) ? t('status_suspended') : t('status_active') }));
+  };
+
+  const handleBanUser = async (u: UserProfile) => {
+    const next = new Set(bannedIds);
+    next.add(u.id);
+    const arr = Array.from(next);
+    setBannedIds(arr);
+    localStorage.setItem('admin_banned_users', JSON.stringify(arr));
+    try {
+      await updateUser(u.id, { trustScore: 0 });
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, trustScore: 0 } : x));
+    } catch (err) {
+      console.error(err);
+    }
+    addAudit(t('audit_account_banned', { reportedName: u.displayName, reason: 'Manual admin action' }), 'SAFETY');
+    triggerNotification(t('toast_account_banned', { reportedName: u.displayName }), 'error');
+  };
+
+  // ─── JOB ACTIONS ──────────────────────────────────────────────────────────
+  const handleHideJob = async (j: Job) => {
+    try {
+      await updateJob(j.id, { status: 'cancelled' });
+      setJobs(prev => prev.map(x => x.id === j.id ? { ...x, status: 'cancelled' } : x));
+      addAudit(t('audit_job_hidden', { title: j.title }), 'SYSTEM');
+      triggerNotification(t('toast_job_hidden', { title: j.title }));
+    } catch (err) {
+      console.error(err);
+      triggerNotification(t('toast_action_failed'), 'error');
+    }
+  };
+
+  const handleDeleteJob = async (j: Job) => {
+    try {
+      await deleteJob(j.id);
+      setJobs(prev => prev.filter(x => x.id !== j.id));
+      addAudit(t('audit_job_deleted', { title: j.title }), 'SYSTEM');
+      triggerNotification(t('toast_job_deleted', { title: j.title }));
+    } catch (err) {
+      console.error(err);
+      triggerNotification(t('toast_action_failed'), 'error');
+    }
+  };
+
+  // ─── VERIFICATION ACTIONS ─────────────────────────────────────────────────
+  const handleApproveVerification = async (v: VerificationSubmission) => {
+    try {
+      await updateUser(v.id, { verificationStatus: 'verified', trustScore: Math.min(v.trustScore + 15, 100) });
+      try {
+        await createNotification({
+          userId: v.id,
+          title: t('verif_notif_approved_title'),
+          body: t('verif_notif_approved_body', { name: v.displayName }),
+          type: 'success',
+        });
+      } catch (e) { console.error('Failed to notify user of approval', e); }
+      setVerificationQueue(prev => prev.filter(x => x.id !== v.id));
+      setUsers(prev => prev.map(u => u.id === v.id ? { ...u, verificationStatus: 'verified' } : u));
+      addAudit(t('audit_verification_approved', { name: v.displayName, id: v.id }), 'SECURITY');
+      triggerNotification(t('toast_verification_approved', { name: v.displayName }));
+    } catch (err) {
+      console.error(err);
+      triggerNotification(t('toast_action_failed'), 'error');
+    }
+  };
+
+  const [rejectingVerification, setRejectingVerification] = useState<VerificationSubmission | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  const handleRejectVerification = async (v: VerificationSubmission) => {
+    const reason = rejectReason.trim();
+    if (!reason) {
+      triggerNotification(t('verif_reject_reason_required'), 'error');
+      return;
+    }
+    try {
+      const mergedData = { ...((v.verificationData || {}) as any), rejectionReason: reason, rejectedAt: new Date().toISOString() };
+      await updateUser(v.id, { verificationStatus: 'unverified', verificationData: JSON.stringify(mergedData) });
+      try {
+        await createNotification({
+          userId: v.id,
+          title: t('verif_notif_rejected_title'),
+          body: t('verif_notif_rejected_body', { name: v.displayName, reason }),
+          type: 'warning',
+        });
+      } catch (e) { console.error('Failed to notify user of rejection', e); }
+      setVerificationQueue(prev => prev.filter(x => x.id !== v.id));
+      setUsers(prev => prev.map(u => u.id === v.id ? { ...u, verificationStatus: 'unverified' } : u));
+      addAudit(t('audit_verification_rejected', { name: v.displayName, id: v.id }), 'SECURITY');
+      triggerNotification(t('toast_verification_rejected', { name: v.displayName }), 'error');
+      setRejectingVerification(null);
+      setRejectReason('');
+    } catch (err) {
+      console.error(err);
+      triggerNotification(t('toast_action_failed'), 'error');
+    }
+  };
+
+  // ─── NOTIFICATION COMPOSER ────────────────────────────────────────────────
+  const [notifAudience, setNotifAudience] = useState<'all' | 'workers' | 'employers' | 'companies' | 'specific'>('all');
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifBody, setNotifBody] = useState('');
+  const [notifType, setNotifType] = useState<'info' | 'success' | 'urgent' | 'warning'>('info');
+  const [notifTargetUser, setNotifTargetUser] = useState<UserProfile | null>(null);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+
+  const [sentNotifs, setSentNotifs] = useState<{ id: string; title: string; body: string; audience: string; type: string; count: number; date: string }[]>(() => {
+    const cached = localStorage.getItem('admin_sent_notifications');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) {}
+    }
+    return [];
+  });
+
+  const persistSentNotifs = (list: typeof sentNotifs) => {
+    setSentNotifs(list);
+    localStorage.setItem('admin_sent_notifications', JSON.stringify(list));
+  };
+
+  const matchingUsers = userSearchQuery.trim()
+    ? users.filter(u =>
+        u.displayName.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+        u.email.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+        (u.phone || '').toLowerCase().includes(userSearchQuery.toLowerCase())
+      ).slice(0, 6)
+    : users.slice(0, 6);
+
+  const audienceLabel = (id: typeof notifAudience) => {
+    if (id === 'all') return t('notif_all_users');
+    if (id === 'workers') return t('users_workers');
+    if (id === 'employers') return t('users_employers');
+    if (id === 'companies') return t('users_companies');
+    return notifTargetUser?.displayName || t('notif_specific_user');
+  };
+
+  const notifTargetCount = (() => {
+    if (notifAudience === 'specific') return notifTargetUser ? 1 : 0;
+    let targets = users;
+    if (notifAudience === 'workers') targets = users.filter(u => u.role === 'WORKER');
+    if (notifAudience === 'employers') targets = users.filter(u => u.role === 'EMPLOYER');
+    if (notifAudience === 'companies') targets = users.filter(u => u.role === 'COMPANY');
+    return targets.length;
+  })();
+
+  const handleSendNotification = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) {
+      triggerNotification(t('notif_fields_required'), 'error');
+      return;
+    }
+    let targets = users;
+    if (notifAudience === 'workers') targets = users.filter(u => u.role === 'WORKER');
+    if (notifAudience === 'employers') targets = users.filter(u => u.role === 'EMPLOYER');
+    if (notifAudience === 'companies') targets = users.filter(u => u.role === 'COMPANY');
+    if (notifAudience === 'specific') targets = notifTargetUser ? [notifTargetUser] : [];
+
+    if (targets.length === 0) {
+      triggerNotification(t('notif_no_targets'), 'error');
+      return;
+    }
+
+    try {
+      await Promise.all(targets.map(u =>
+        createNotification({ userId: u.id, title: notifTitle, body: notifBody, type: notifType })
+      ));
+      persistSentNotifs([
+        {
+          id: `sent_${Date.now()}`,
+          title: notifTitle,
+          body: notifBody,
+          audience: audienceLabel(notifAudience),
+          type: notifType,
+          count: targets.length,
+          date: new Date().toLocaleString(),
+        },
+        ...sentNotifs,
+      ].slice(0, 200));
+      addAudit(t('audit_notification_sent', { count: targets.length, title: notifTitle }), 'SYSTEM');
+      triggerNotification(t('notif_sent_success', { count: targets.length }));
+      setNotifTitle('');
+      setNotifBody('');
+    } catch (err) {
+      console.error(err);
+      triggerNotification(t('toast_action_failed'), 'error');
+    }
+  };
+
+  // ─── SETTINGS (localStorage-backed) ───────────────────────────────────────
+  const [settings, setSettings] = useState(() => {
+    const cached = localStorage.getItem('admin_settings');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) {}
+    }
+    return {
+      platformName: 'LINEKORA',
+      contactEmail: 'Nfivelabs@gmail.com',
+      commissionRate: 5,
+      smsProvider: 'MTN Rwanda',
+      smsSenderId: 'LINEKORA',
+      smtpHost: 'smtp.gmail.com',
+      smtpFrom: 'Nfivelabs@gmail.com',
+    };
+  });
+
+  const saveSettings = (patch: Partial<typeof settings>) => {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    localStorage.setItem('admin_settings', JSON.stringify(next));
+    triggerNotification(t('settings_saved'));
+  };
+
+  // ─── VIEW MODALS ──────────────────────────────────────────────────────────
+  const [inspectingUser, setInspectingUser] = useState<UserProfile | null>(null);
+  const [inspectingJob, setInspectingJob] = useState<Job | null>(null);
+
+  // ─── DERIVED DASHBOARD DATA ───────────────────────────────────────────────
+  const activeJobsCount = stats?.activeJobs ?? jobs.filter(j => ['open', 'accepted', 'completion_requested'].includes(j.status)).length;
+  const totalUsers = stats?.totalUsers ?? users.length;
+  const pendingVerifications = stats?.pendingVerifications ?? verificationQueue.length;
+  const pendingReports = 0;
+
+  const recentActivities: { icon: string; text: string; time: string; color: string }[] = [];
+  const recentUsers = [...users].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const recentJobs = [...jobs].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  if (recentUsers[0]) {
+    recentActivities.push({ icon: 'user', text: t('act_new_worker', { name: recentUsers[0].displayName }), time: fmtDate(recentUsers[0].createdAt), color: 'blue' });
+  }
+  if (verificationQueue.length > 0) {
+    recentActivities.push({ icon: 'shield', text: t('act_pending_verification', { count: verificationQueue.length }), time: t('time_recently'), color: 'amber' });
+  }
+  if (recentJobs[0]) {
+    recentActivities.push({ icon: 'briefcase', text: t('act_new_job', { title: recentJobs[0].title }), time: fmtDate(recentJobs[0].createdAt), color: 'green' });
+  }
+  const verifiedToday = users.filter(u => u.verificationStatus === 'verified');
+  if (verifiedToday.length > 0) {
+    recentActivities.push({ icon: 'check', text: t('act_verified_accounts', { count: verifiedToday.length }), time: t('time_recently'), color: 'indigo' });
+  }
+  if (auditLogs.length > 0) {
+    recentActivities.push({ icon: 'activity', text: auditLogs[0].action, time: auditLogs[0].date, color: 'gray' });
+  }
+
+  // ─── FILTERS ──────────────────────────────────────────────────────────────
+  const [userSearch, setUserSearch] = useState('');
+  const [userRole, setUserRole] = useState<'all' | 'WORKER' | 'EMPLOYER' | 'COMPANY'>('all');
+  const [userStatus, setUserStatus] = useState<'all' | 'verified' | 'pending' | 'suspended'>('all');
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobStatus, setJobStatus] = useState<'all' | 'active' | 'completed' | 'cancelled'>('all');
+  const [verifTab, setVerifTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+
+  const filteredUsers = users.filter(u => {
+    const matchRole = userRole === 'all' || u.role === userRole;
+    const q = userSearch.toLowerCase();
+    const matchSearch = !q || u.displayName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.phone || '').toLowerCase().includes(q);
+    const matchStatus =
+      userStatus === 'all' ? true :
+      userStatus === 'suspended' ? (bannedIds.includes(u.id) || suspendedIds.includes(u.id)) :
+      userStatus === 'verified' ? u.verificationStatus === 'verified' :
+      u.verificationStatus === 'pending';
+    return matchRole && matchSearch && matchStatus;
+  });
+
+  const filteredJobs = jobs.filter(j => {
+    const matchStatus =
+      jobStatus === 'all' ? true :
+      jobStatus === 'active' ? ['open', 'accepted', 'completion_requested'].includes(j.status) :
+      j.status === jobStatus;
+    const q = jobSearch.toLowerCase();
+    const matchSearch = !q || j.title.toLowerCase().includes(q) || (j.location || '').toLowerCase().includes(q) || (j.employer?.displayName || '').toLowerCase().includes(q);
+    return matchStatus && matchSearch;
+  });
+
+  const approvedUsers = users.filter(u => u.verificationStatus === 'verified');
+  const rejectedUsers = users.filter(u => u.verificationStatus === 'unverified');
+
+  const iconFor = (icon: string) => {
+    if (icon === 'user') return <User size={14} />;
+    if (icon === 'shield') return <ShieldCheck size={14} />;
+    if (icon === 'briefcase') return <Briefcase size={14} />;
+    if (icon === 'check') return <CheckCircle2 size={14} />;
+    return <Activity size={14} />;
+  };
+
+  const colorFor = (color: string) => {
+    return {
+      blue: 'text-blue-400',
+      amber: 'text-amber-400',
+      green: 'text-green-400',
+      indigo: 'text-indigo-400',
+      gray: 'text-gray-400',
+    }[color] || 'text-gray-400';
+  };
+
+  // ─── NAV ITEMS ────────────────────────────────────────────────────────────
+  const navItems: { id: TabId; label: string; icon: any; badge?: number }[] = [
+    { id: 'dashboard', label: t('nav_dashboard'), icon: LayoutDashboard },
+    { id: 'users', label: t('nav_users'), icon: Users, badge: users.length },
+    { id: 'jobs', label: t('nav_jobs'), icon: Briefcase, badge: jobs.length },
+    { id: 'verification', label: t('nav_verification'), icon: ShieldCheck, badge: verificationQueue.length },
+    { id: 'notifications', label: t('nav_notifications'), icon: Bell },
+    { id: 'settings', label: t('nav_settings'), icon: Settings },
+    { id: 'activity', label: t('nav_activity'), icon: Activity },
+  ];
+
+  const headerTitle = (() => {
+    switch (activeTab) {
+      case 'dashboard': return t('header_dashboard');
+      case 'users': return t('header_users');
+      case 'jobs': return t('header_jobs');
+      case 'verification': return t('header_verification');
+      case 'notifications': return t('header_notifications');
+      case 'settings': return t('header_settings');
+      case 'activity': return t('header_activity');
+    }
+  })();
+
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col md:flex-row font-sans selection:bg-red-500/25">
-      
-      {/* Dynamic Toast Notifications */}
+
+      {/* Toast Notifications */}
       <AnimatePresence>
         {notification && (
           <motion.div
@@ -631,44 +589,91 @@ export default function AdminDashboard() {
             }`}
           >
             {notification.type === 'success' && <CheckCircle2 size={18} className="text-green-400 shrink-0" />}
-            {notification.type === 'error' && <ShieldAlert size={18} className="text-red-400 shrink-0" />}
+            {notification.type === 'error' && <AlertTriangle size={18} className="text-red-400 shrink-0" />}
             {notification.type === 'info' && <Activity size={18} className="text-blue-400 shrink-0" />}
             <span>{notification.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Admin Sidebar */}
-      <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-gray-900 flex flex-col p-6 bg-gray-950 md:sticky md:top-0 md:h-screen shrink-0 font-sans">
-        <div className="flex items-center gap-3.5 mb-10">
+      {/* Reject verification modal */}
+      <AnimatePresence>
+        {rejectingVerification && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => { setRejectingVerification(null); setRejectReason(''); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 12 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 12 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-gray-905 border border-gray-800 rounded-[2rem] p-6 space-y-4 shadow-2xl"
+            >
+              <div className="flex items-center gap-3">
+                <span className="h-10 w-10 bg-red-950/40 text-red-400 border border-red-900/40 rounded-xl flex items-center justify-center shrink-0">
+                  <XCircle size={18} />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('verif_reject_reason')}</h3>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider truncate">{rejectingVerification.displayName}</p>
+                </div>
+              </div>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder={t('verif_reject_reason_placeholder')}
+                rows={3}
+                autoFocus
+                className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white resize-none"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setRejectingVerification(null); setRejectReason(''); }}
+                  className="flex-1 py-3 bg-gray-950 border border-gray-900 text-gray-400 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRejectVerification(rejectingVerification)}
+                  disabled={!rejectReason.trim()}
+                  className="flex-1 py-3 bg-red-650 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  <X size={12} />
+                  {t('verif_confirm_reject')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <aside className="w-full md:w-72 border-b md:border-b-0 md:border-r border-gray-900 flex flex-col p-6 bg-gray-950 md:sticky md:top-0 md:h-screen shrink-0 font-sans">
+        <div className="flex items-center gap-3.5 mb-8">
           <div className="h-10 w-10 bg-red-650 rounded-xl flex items-center justify-center text-white shadow-xl shadow-red-900/10 shrink-0">
             <Lock size={20} />
           </div>
           <div>
-            <span className="font-sans text-lg font-black tracking-tight block text-white">LINEKORA Admin</span>
+            <span className="font-sans text-base font-black tracking-tight block text-white">LINEKORA Admin</span>
             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none bg-gray-900 px-1.5 py-0.5 rounded border border-gray-800">{t('badge_super_ops')}</span>
           </div>
         </div>
-        
+
         <nav className="space-y-1 my-2">
-          {[
-            { id: 'verification', label: t('nav_verification_queue'), icon: Shield, badge: verificationQueue.length },
-            { id: 'reports', label: t('nav_safety_incidents'), icon: AlertTriangle, badge: reports.length },
-            { id: 'upgrades', label: t('nav_payment_upgrades'), icon: DollarSign, badge: upgradeRequests.filter(r => r.status === 'paid_awaiting_admin' || r.status === 'request_sent').length },
-            { id: 'analytics', label: t('nav_financial_analytics'), icon: TrendingUp },
-            { id: 'users', label: t('nav_user_directory'), icon: Users, badge: users.length },
-            { id: 'logs', label: t('nav_audit_log_trail'), icon: Activity },
-          ].map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.id}
               type="button"
-              onClick={() => {
-                setActiveTab(item.id as any);
-                setSelectedVerification(null);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-sans text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === item.id 
-                  ? 'bg-red-650 hover:bg-red-600 text-white shadow-xl shadow-red-950/25 border border-red-500/25' 
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-sans text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === item.id
+                  ? 'bg-red-650 hover:bg-red-600 text-white shadow-xl shadow-red-950/25 border border-red-500/25'
                   : 'text-gray-400 hover:text-gray-250 hover:bg-gray-900 border border-transparent'
               }`}
             >
@@ -683,9 +688,21 @@ export default function AdminDashboard() {
               )}
             </button>
           ))}
+
+          {/* Payments — coming soon (escrow architecture is being designed) */}
+          <button
+            type="button"
+            disabled
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-sans text-xs font-black uppercase tracking-wider text-gray-600 border border-gray-900 cursor-not-allowed opacity-70"
+            title={t('payments_soon_tip')}
+          >
+            <DollarSign size={16} />
+            <span className="flex-1 text-left">{t('nav_payments')}</span>
+            <span className="text-[8px] font-black px-2 py-0.5 rounded-full bg-gray-900 text-gray-500 border border-gray-800">{t('badge_soon')}</span>
+          </button>
         </nav>
 
-        {/* Administration User Profile card */}
+        {/* Admin Profile */}
         <div className="mt-auto border-t border-gray-900 pt-6">
           <div className="flex items-center gap-3 px-2 py-1.5 mb-4 justify-between">
             <div className="flex items-center gap-3">
@@ -700,7 +717,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-
             <button
               type="button"
               onClick={handleLogoutAdmin}
@@ -710,7 +726,6 @@ export default function AdminDashboard() {
               <LogOut size={16} />
             </button>
           </div>
-          
           <button
             type="button"
             onClick={handleLogoutAdmin}
@@ -721,955 +736,869 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      {/* Main Administrative Control Desk */}
+      {/* Main Content */}
       <main className="flex-1 p-6 md:p-10 overflow-y-auto bg-gray-950 select-none font-sans">
-        
-        {/* Dynamic header */}
-        <header className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-900 pb-8">
+
+        {/* Header */}
+        <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-900 pb-8">
           <div>
             <h1 className="text-2xl font-black font-sans tracking-tight text-white uppercase flex items-center gap-2.5">
-              {activeTab === 'verification' && <Shield className="text-red-505" size={24} />}
-              {activeTab === 'reports' && <AlertTriangle className="text-yellow-505" size={24} />}
-              {activeTab === 'upgrades' && <DollarSign className="text-emerald-505" size={24} />}
-              {activeTab === 'analytics' && <TrendingUp className="text-blue-505" size={24} />}
-              {activeTab === 'users' && <Users className="text-indigo-505" size={24} />}
-              {activeTab === 'logs' && <Activity className="text-teal-505" size={24} />}
-              {activeTab === 'verification' && t('header_identity_vetting')}
-              {activeTab === 'reports' && t('header_safety_reports')}
-              {activeTab === 'upgrades' && t('header_momo_escrows')}
-              {activeTab === 'analytics' && t('header_financial_ledger')}
-              {activeTab === 'users' && t('header_security_registry')}
-              {activeTab === 'logs' && t('header_intelligence_logs')}
+              {headerTitle}
             </h1>
             <p className="text-gray-400 font-sans font-black mt-1.5 uppercase tracking-[0.25em] text-[10px] flex items-center gap-1.5 leading-none">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
               {t('ops_desk_cluster')}
             </p>
           </div>
-          
-          <div className="flex gap-2">
-            <div className="flex bg-gray-900 p-1 rounded-xl border border-gray-800">
-              <button type="button" className="px-3 py-1.5 bg-gray-800 rounded-lg text-[9px] font-black uppercase tracking-widest text-white border border-gray-700 select-none">{t('live_ops')}</button>
-              <button 
-                type="button" 
-                onClick={() => triggerNotification(t('toast_archive_synced'))}
-                className="px-3 py-1.5 text-gray-500 hover:text-gray-300 text-[9px] font-black uppercase tracking-widest cursor-pointer"
-              >
-                {t('archives')}
-              </button>
-            </div>
-            <button 
-              type="button"
-              onClick={() => {
-                fetchRealUsers();
-                triggerNotification(t('toast_index_up_to_date'));
-              }}
-              className="p-2.5 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-gray-800 transition-all cursor-pointer"
-              title={t('refresh_title')}
-            >
-              <RefreshCw size={14} className="hover:rotate-180 transition-transform duration-500" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              fetchAll();
+              triggerNotification(t('toast_index_up_to_date'));
+            }}
+            className="p-2.5 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-gray-800 transition-all cursor-pointer"
+            title={t('refresh_title')}
+          >
+            <RefreshCw size={14} className="hover:rotate-180 transition-transform duration-500" />
+          </button>
         </header>
 
-        {/* Dynamic Widget Grid for analytics on tab switch */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: t('stat_active_escrow'), value: statsOverview.escrowTotal, color: 'text-blue-400', desc: t('stat_secure_funds') },
-            { label: t('stat_commissions_due'), value: statsOverview.unpaidCommission, color: 'text-green-400', desc: t('stat_service_revenue') },
-            { label: t('stat_registered_directory'), value: statsOverview.totalUsers, color: 'text-indigo-400', desc: t('stat_vetted_files') },
-            { label: t('stat_unresolved_complaints'), value: statsOverview.suspiciousFlags, color: 'text-red-400', desc: t('stat_flag_reports') },
-          ].map((stat, i) => (
-            <div key={i} className="p-5 bg-gray-905 border border-gray-900 rounded-[2rem] flex flex-col justify-between">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
-              <div className="my-2 flex items-baseline gap-1.5">
-                <span className={`text-xl font-extrabold font-sans tracking-tight ${stat.color}`}>{stat.value}</span>
-              </div>
-              <p className="text-[9px] font-bold text-gray-500 italic mt-1 leading-none">{stat.desc}</p>
+        {/* ═══════════ DASHBOARD ═══════════ */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-8">
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: t('dash_total_users'), value: totalUsers.toLocaleString(), color: 'text-indigo-400', icon: <Users size={18} /> },
+                { label: t('dash_active_jobs'), value: activeJobsCount.toLocaleString(), color: 'text-blue-400', icon: <Briefcase size={18} /> },
+                { label: t('dash_pending_verifications'), value: pendingVerifications.toLocaleString(), color: 'text-amber-400', icon: <ShieldCheck size={18} /> },
+                { label: t('dash_pending_reports'), value: pendingReports.toLocaleString(), color: 'text-red-400', icon: <AlertTriangle size={18} /> },
+              ].map((stat, i) => (
+                <div key={i} className="p-5 bg-gray-905 border border-gray-900 rounded-[2rem] flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
+                    <span className={stat.color}>{stat.icon}</span>
+                  </div>
+                  <div className="my-2 flex items-baseline gap-1.5">
+                    <span className={`text-2xl font-extrabold font-sans tracking-tight ${stat.color}`}>{stat.value}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* ==========================================
-            UPGRADES VIEW: MTN MOMO GATEWAY MONITORING
-            ========================================== */}
-        {activeTab === 'upgrades' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left section: Queue list */}
-            <div className="lg:col-span-2 space-y-6">
-              
-              <div className="bg-gray-905 p-6 rounded-[2rem] border border-gray-900">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4">{t('upgrades_title')}</h3>
-                <p className="text-gray-400 text-[10px] uppercase font-bold tracking-wider leading-relaxed mb-6">
-                  {t('upgrades_desc')}
-                </p>
-
-                <div className="space-y-4">
-                  {upgradeRequests.length > 0 ? (
-                    upgradeRequests.map((req) => (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        key={req.id}
-                        className="p-5 bg-gray-950 rounded-2xl border border-gray-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-gray-800 transition-all font-sans"
-                      >
-                        <div className="space-y-3 flex-1 font-sans">
-                          <div className="flex items-center gap-3 font-sans">
-                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest font-sans ${
-                              req.status === 'approved' ? 'bg-green-950/45 text-green-400 border border-green-900/40' :
-                              req.status === 'rejected' ? 'bg-red-950/45 text-red-400 border border-red-900/40' :
-                              req.status === 'paid_awaiting_admin' ? 'bg-amber-955/20 text-amber-400 border border-amber-900/40 animate-pulse' :
-                              'bg-indigo-950/45 text-indigo-400 border border-indigo-900/40'
-                            }`}>
-                              {statusText(req.status)}
-                            </span>
-                            <span className="text-gray-550 font-black text-[9px] uppercase tracking-wider">{req.date}</span>
-                          </div>
-
-                          <div>
-                            <h4 className="text-sm font-black text-white leading-tight font-sans">{req.userName}</h4>
-                            <p className="text-[10px] text-gray-450 font-mono mt-0.5">
-                              {req.userEmail} • {t('phone_label')}: {req.paymentPhoneOrCard}
-                              {req.momoTxRef && <span className="text-amber-400 font-bold ml-2">{t('tx_ref')} {req.momoTxRef}</span>}
-                            </p>
-                          </div>
-
-                          <div className="p-3.5 bg-gray-905 rounded-xl border border-gray-900 max-w-sm">
-                            <div className="flex justify-between items-center text-[10px] font-bold">
-                              <span className="text-gray-455 uppercase tracking-widest text-[9px]">{t('selected_tier')}</span>
-                              <span className="text-white font-black">{req.tierName}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-[11px] font-extrabold mt-1 border-t border-gray-900/60 pt-1.5">
-                              <span className="text-gray-455 uppercase tracking-widest text-[9px]">{t('review_fee')}</span>
-                              <span className="text-emerald-400">RWF {req.price}</span>
-                            </div>
-                          </div>
-
-                          {/* Process Timeline Steps inside the list */}
-                          <div className="pt-2">
-                            <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-2 font-sans">{t('process_logs_timeline')}</p>
-                            <div className="space-y-1.5 border-l border-gray-900 pl-3">
-                              {req.steps?.map((step: any, sIdx: number) => (
-                                <div key={sIdx} className="flex items-center gap-2">
-                                  <span className={`h-1.5 w-1.5 rounded-full ${step.done ? 'bg-green-500' : 'bg-amber-500 animate-pulse'}`}></span>
-                                  <p className="text-[9px] font-bold text-gray-400 font-sans italic">
-                                    {step.title} <span className="text-gray-555 font-mono not-italic text-[8px]">({step.date})</span>
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-col gap-2 shrink-0 w-full sm:w-auto self-stretch sm:self-center justify-center">
-                          {req.status === 'paid_awaiting_admin' ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleApproveUpgrade(req.id)}
-                                className="w-full sm:w-36 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-1.5"
-                              >
-                                <CheckCircle2 size={12} />
-                                {t('approve_verify')}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRejectUpgrade(req.id)}
-                                className="w-full sm:w-36 py-2.5 px-4 bg-red-950/40 hover:bg-red-950/80 text-red-400 border border-red-900/30 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                              >
-                                <XCircle size={12} />
-                                {t('reject_clear')}
-                              </button>
-                            </>
-                          ) : req.status === 'request_sent' ? (
-                            <div className="text-center p-3 bg-indigo-950/25 border border-indigo-900/35 rounded-xl font-mono text-[9px] text-indigo-305 uppercase font-black tracking-widest">
-                              <Smartphone className="mx-auto mb-1 animate-bounce text-indigo-400" size={16} />
-                              {t('awaiting_user_pin')}
-                            </div>
-                          ) : req.status === 'approved' ? (
-                            <div className="text-center p-3 bg-emerald-955/10 border border-emerald-900/30 rounded-xl font-mono text-[9px] text-emerald-400 uppercase font-black tracking-widest">
-                              {t('approved_shield_live')}
-                            </div>
-                          ) : (
-                            <div className="text-center p-3 bg-gray-900 border border-gray-805 rounded-xl font-mono text-[9px] text-gray-500 uppercase font-bold tracking-widest">
-                              {t('rejected_log')}
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))
-                  ) : (
-                    <div className="p-12 text-center bg-gray-950 border border-gray-904 rounded-2xl">
-                      <p className="text-gray-500 font-sans text-xs italic">{t('no_active_upgrades')}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Recent Activities */}
+              <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900">
+                <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest mb-5">{t('dash_recent_activities')}</h3>
+                <div className="space-y-3">
+                  {recentActivities.length > 0 ? recentActivities.slice(0, 6).map((act, i) => (
+                    <div key={i} className="p-3.5 bg-gray-950 rounded-xl border border-gray-900 flex items-center gap-3">
+                      <span className={`h-8 w-8 rounded-lg bg-gray-900 flex items-center justify-center shrink-0 ${colorFor(act.color)}`}>
+                        {iconFor(act.icon)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-200 truncate">{act.text}</p>
+                        <p className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mt-0.5">{act.time}</p>
+                      </div>
                     </div>
+                  )) : (
+                    <p className="py-12 text-center text-gray-500 font-sans text-xs italic font-semibold">{t('no_system_warnings')}</p>
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* Right section: Form query directly on user phone */}
-            <div className="space-y-6">
-              <div className="bg-gray-905 p-6 rounded-[2rem] border border-gray-900 shadow-sm">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4">{t('direct_push_title')}</h3>
-                <p className="text-gray-400 font-sans text-[10px] leading-relaxed mb-6 font-bold uppercase">
-                  {t('direct_push_desc')}
-                </p>
-
-                <form onSubmit={handleCreatePaymentRequest} className="space-y-4 font-sans">
-                  <div>
-                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('target_user_name')}</label>
-                    <input 
-                      type="text"
-                      required
-                      placeholder="Shema Honore"
-                      value={adminSelectUser}
-                      onChange={(e) => setAdminSelectUser(e.target.value)}
-                      className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-emerald-500 rounded-xl outline-none font-sans font-bold text-xs text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('momo_mobile_number')}</label>
-                    <input 
-                      type="text"
-                      required
-                      placeholder="+250 788 300 120"
-                      value={adminSendPhone}
-                      onChange={(e) => setAdminSendPhone(e.target.value)}
-                      className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-emerald-500 rounded-xl outline-none font-sans font-black text-xs text-white font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('target_role')}</label>
-                    <div className="grid grid-cols-2 gap-2 bg-gray-950 p-1 rounded-xl border border-gray-900">
-                      <button 
-                        type="button" 
-                        onClick={() => setAdminSendRole('worker')}
-                        className={`py-2 rounded-lg text-[9px] font-black uppercase tracking-wider font-sans cursor-pointer transition-colors ${adminSendRole === 'worker' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-white'}`}
-                      >
-                        {t('role_worker')}
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={() => setAdminSendRole('company')}
-                        className={`py-2 rounded-lg text-[9px] font-black uppercase tracking-wider font-sans cursor-pointer transition-colors ${adminSendRole === 'company' ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-white'}`}
-                      >
-                        {t('role_company')}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('membership_shield_level')}</label>
-                    <select 
-                      value={adminSelectTier}
-                      onChange={(e) => setAdminSelectTier(e.target.value)}
-                      className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-emerald-500 rounded-xl outline-none font-sans font-bold text-xs text-white cursor-pointer"
-                    >
-                      <option value="Verified Bronze">Verified Bronze (RWF 15,000)</option>
-                      <option value="Verified Silver">Verified Silver (RWF 35,000)</option>
-                    </select>
-                  </div>
-
-                  <button 
-                    type="submit"
-                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2"
+              {/* Quick Actions */}
+              <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900">
+                <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest mb-5">{t('dash_quick_actions')}</h3>
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('verification')}
+                    className="w-full p-4 bg-gray-950 border border-gray-900 hover:border-red-600 rounded-2xl flex items-center gap-4 transition-all cursor-pointer text-left"
                   >
-                    <Smartphone size={14} className="animate-bounce" />
-                    {t('dispatch_handshake')}
+                    <span className="h-10 w-10 bg-red-950/30 text-red-400 border border-red-900/40 rounded-xl flex items-center justify-center">
+                      <ShieldCheck size={18} />
+                    </span>
+                    <div>
+                      <p className="text-sm font-black text-white">{t('dash_verify_users')}</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('dash_verify_hint', { count: pendingVerifications })}</p>
+                    </div>
                   </button>
-                </form>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('notifications')}
+                    className="w-full p-4 bg-gray-950 border border-gray-900 hover:border-blue-600 rounded-2xl flex items-center gap-4 transition-all cursor-pointer text-left"
+                  >
+                    <span className="h-10 w-10 bg-blue-950/30 text-blue-400 border border-blue-900/40 rounded-xl flex items-center justify-center">
+                      <Bell size={18} />
+                    </span>
+                    <div>
+                      <p className="text-sm font-black text-white">{t('dash_send_notification')}</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('dash_notify_hint')}</p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('activity')}
+                    className="w-full p-4 bg-gray-950 border border-gray-900 hover:border-emerald-600 rounded-2xl flex items-center gap-4 transition-all cursor-pointer text-left"
+                  >
+                    <span className="h-10 w-10 bg-green-950/30 text-green-400 border border-green-900/40 rounded-xl flex items-center justify-center">
+                      <Activity size={18} />
+                    </span>
+                    <div>
+                      <p className="text-sm font-black text-white">{t('dash_view_activity')}</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('dash_activity_hint')}</p>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ==========================================
-            1. TAB VIEW: VERIFICATION QUEUE
-            ========================================== */}
-        {activeTab === 'verification' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Verification Feed list */}
-            <div className="lg:col-span-2 space-y-4">
-              {verificationQueue.length > 0 ? (
-                verificationQueue.map((item) => (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }} 
-                    animate={{ opacity: 1, y: 0 }}
-                    key={item.id} 
-                    className={`p-6 rounded-[2rem] flex flex-col sm:flex-row items-start sm:items-center justify-between border transition-all gap-4 bg-gray-905 ${
-                      selectedVerification?.id === item.id 
-                        ? 'border-red-500/40 bg-red-950/5 shadow-lg shadow-red-950/10' 
-                        : 'border-gray-900 hover:border-gray-800'
+        {/* ═══════════ USERS ═══════════ */}
+        {activeTab === 'users' && (
+          <div className="space-y-6">
+            {/* Role summary counts */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: t('users_workers'), count: users.filter(u => u.role === 'WORKER').length, color: 'text-blue-400' },
+                { label: t('users_employers'), count: users.filter(u => u.role === 'EMPLOYER').length, color: 'text-indigo-400' },
+                { label: t('users_companies'), count: users.filter(u => u.role === 'COMPANY').length, color: 'text-emerald-400' },
+              ].map((c, i) => (
+                <div key={i} className="p-5 bg-gray-905 border border-gray-900 rounded-[2rem]">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{c.label}</p>
+                  <p className={`text-2xl font-extrabold font-sans tracking-tight mt-1 ${c.color}`}>{c.count.toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Search + filters */}
+            <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 flex flex-col lg:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full lg:w-80 font-sans">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder={t('users_search_placeholder')}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-950 border border-gray-900 rounded-xl text-xs font-bold outline-none focus:border-red-600 font-sans text-white"
+                />
+              </div>
+              <div className="flex gap-2 shrink-0 flex-wrap">
+                {(['all', 'WORKER', 'EMPLOYER', 'COMPANY'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setUserRole(r)}
+                    className={`px-4 py-2.5 rounded-xl text-[9px] uppercase tracking-wider font-black transition-all cursor-pointer ${
+                      userRole === r ? 'bg-red-650 hover:bg-red-600 border border-red-500/25 text-white' : 'bg-gray-950 border border-gray-850 text-gray-400 hover:text-white'
                     }`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 bg-gray-900 rounded-xl flex items-center justify-center text-gray-500 border border-gray-800 shrink-0">
-                        <User size={22} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-black text-white font-sans">{item.user}</h3>
-                          <span className="text-[8px] font-black px-2 py-0.5 bg-gray-900 text-gray-400 rounded border border-gray-800 uppercase tracking-widest">{roleLabel(item.type)}</span>
-                        </div>
-                        <p className="text-gray-400 text-[10px] mt-1 font-semibold">
-                          {t('submitted_file')}: <span className="font-mono text-gray-300 bg-gray-900 px-1.5 py-0.5 rounded text-[9px] border border-gray-800">{item.idType}</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                      <button 
-                        type="button"
-                        onClick={() => setSelectedVerification(item)}
-                        className="py-2.5 px-3.5 bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-850 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Eye size={12} />
-                        {t('review_folder')}
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => handleApproveVerification(item.id, item.user)}
-                        className="p-2.5 bg-green-950/35 hover:bg-green-650 text-green-400 hover:text-white border border-green-900/40 hover:border-green-600 rounded-lg transition-all cursor-pointer"
-                        title={t('grant_badge_tip')}
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => handleRejectVerification(item.id, item.user)}
-                        className="p-2.5 bg-red-950/30 hover:bg-red-650 text-red-400 hover:text-white border border-red-900/30 hover:border-red-600 rounded-lg transition-all cursor-pointer"
-                        title={t('reject_id_tip')}
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))
-              ) : (
-                <div className="p-12 text-center bg-gray-905 border border-gray-900 rounded-[2.5rem] flex flex-col items-center justify-center">
-                  <CheckCircle2 size={40} className="text-green-500/40 mb-3 animate-pulse" />
-                  <p className="font-sans font-black uppercase tracking-wider text-xs text-gray-300">{t('identity_desk_cleared')}</p>
-                  <p className="text-gray-500 font-sans text-[10px] mt-1 italic font-semibold">{t('all_pending_processed')}</p>
-                </div>
-              )}
+                    {r === 'all' ? t('filter_all') : roleLabel(r)}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Verification Folder detail pane (Right column) */}
-            <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 space-y-6">
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center justify-between border-b border-gray-900 pb-4">
-                <span>{t('verification_file_detail')}</span>
-                <span className="text-[8px] tracking-normal font-bold bg-gray-900 px-1.5 py-0.5 rounded border border-gray-805">{t('audit_locker')}</span>
-              </h3>
-
-              {selectedVerification ? (
-                <div className="space-y-5">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-red-950/20 text-red-400 border border-red-900/50 rounded-lg flex items-center justify-center font-black text-[9px]">
-                      {selectedVerification.code}
-                    </div>
-                    <div>
-                      <h4 className="font-black text-white text-sm leading-none">{selectedVerification.user}</h4>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">{t('pending_type_verification', { type: roleLabel(selectedVerification.type) })}</p>
-                    </div>
-                  </div>
-
-                  {/* Real uploaded ID document images */}
-                  {(selectedVerification.frontId || selectedVerification.backId) ? (
-                    <div className="space-y-3">
-                      <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block leading-none">{t('uploaded_id_documents')}</span>
-                      <div className="grid grid-cols-2 gap-3">
-                        {selectedVerification.frontId ? (
-                          <div className="space-y-1">
-                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">{t('front_id')}</p>
-                            <img
-                              src={selectedVerification.frontId}
-                              alt={t('front_id')}
-                              className="w-full h-28 object-cover rounded-xl border border-gray-800 bg-gray-950"
-                            />
-                          </div>
-                        ) : (
-                          <div className="h-28 rounded-xl border border-dashed border-gray-800 bg-gray-950 flex items-center justify-center">
-                            <p className="text-[9px] text-gray-600 font-bold uppercase">{t('no_front_id')}</p>
-                          </div>
-                        )}
-                        {selectedVerification.backId ? (
-                          <div className="space-y-1">
-                            <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">{t('back_id')}</p>
-                            <img
-                              src={selectedVerification.backId}
-                              alt={t('back_id')}
-                              className="w-full h-28 object-cover rounded-xl border border-gray-800 bg-gray-950"
-                            />
-                          </div>
-                        ) : (
-                          <div className="h-28 rounded-xl border border-dashed border-gray-800 bg-gray-950 flex items-center justify-center">
-                            <p className="text-[9px] text-gray-600 font-bold uppercase">{t('no_back_id')}</p>
-                          </div>
-                        )}
-                      </div>
-                      {selectedVerification.selfie && (
-                        <div className="space-y-1">
-                          <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">{t('biometric_selfie')}</p>
-                          <img
-                            src={selectedVerification.selfie}
-                            alt={t('biometric_selfie')}
-                            referrerPolicy="no-referrer"
-                            className="w-24 h-24 object-cover rounded-2xl border border-gray-800 bg-gray-950"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="py-3">
-                      <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block mb-2 leading-none">{t('scanned_identity_artifact')}</span>
-                      <IdentityCardVisual 
-                        name={selectedVerification.user}
-                        type={selectedVerification.type}
-                        idType={selectedVerification.idType}
-                        details={selectedVerification.details}
-                        code={selectedVerification.code}
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-3 text-xs leading-relaxed">
-                    {selectedVerification.nationalIdNum && (
-                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('national_id_number')}</span>
-                        <p className="font-mono font-black text-white tracking-widest">{selectedVerification.nationalIdNum}</p>
-                      </div>
-                    )}
-
-                    <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('uploaded_document_type')}</span>
-                      <p className="font-black text-white">{selectedVerification.idType}</p>
-                    </div>
-
-                    {selectedVerification.selectedTier && (
-                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('requested_verification_tier')}</span>
-                        <p className="font-black text-orange-400 uppercase tracking-wider">{selectedVerification.selectedTier}</p>
-                      </div>
-                    )}
-
-                    {selectedVerification.certFile && (
-                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900 space-y-2">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('business_registration_cert')}</span>
-                        {selectedVerification.certFile.startsWith('data:') ? (
-                          <img src={selectedVerification.certFile} alt={t('business_certificate_alt')} className="w-full h-32 object-cover rounded-lg border border-gray-800" />
-                        ) : (
-                          <p className="font-bold text-gray-300 text-xs">{selectedVerification.certFileName || t('certificate_uploaded')}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {selectedVerification.address && (
-                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('office_address')}</span>
-                        <p className="font-bold text-gray-200">{selectedVerification.address}</p>
-                      </div>
-                    )}
-
-                    {selectedVerification.website && (
-                      <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                        <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('company_website')}</span>
-                        <p className="font-bold text-blue-400">{selectedVerification.website}</p>
-                      </div>
-                    )}
-
-                    <div className="p-3 bg-gray-950 rounded-xl border border-gray-900">
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider block mb-1">{t('submission_timestamp')}</span>
-                      <p className="text-gray-400 font-mono font-bold">{selectedVerification.date}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-4 border-t border-gray-900">
-                    <button
-                      type="button"
-                      onClick={() => handleApproveVerification(selectedVerification.id, selectedVerification.user)}
-                      className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-green-950/20"
-                    >
-                      <CheckCircle2 size={14} />
-                      {t('approve_file')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRejectVerification(selectedVerification.id, selectedVerification.user)}
-                      className="flex-1 py-3 bg-red-950 hover:bg-red-900 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-red-900/30"
-                    >
-                      <XCircle size={14} />
-                      {t('reject_flag')}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-16 text-center text-gray-500 font-sans text-xs italic font-semibold flex flex-col items-center justify-center">
-                  <Eye size={24} className="text-gray-502 mb-2 stroke-1" />
-                  {t('select_folder_hint')}
-                </div>
-              )}
+            {/* Status filter */}
+            <div className="flex gap-2 flex-wrap">
+              {([
+                { id: 'all', label: t('filter_all') },
+                { id: 'verified', label: t('status_verified') },
+                { id: 'pending', label: t('status_pending') },
+                { id: 'suspended', label: t('status_suspended') },
+              ] as const).map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setUserStatus(s.id)}
+                  className={`px-3.5 py-2 rounded-xl text-[9px] uppercase tracking-wider font-black transition-all cursor-pointer ${
+                    userStatus === s.id ? 'bg-red-650 text-white' : 'bg-gray-900 border border-gray-850 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
             </div>
 
-          </div>
-        )}
-
-        {/* ==========================================
-            2. TAB VIEW: SAFETY & REPORTS
-            ========================================== */}
-        {activeTab === 'reports' && (
-          <div className="space-y-6">
+            {/* Users table */}
             <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
-              <div className="p-6 bg-gray-900/50 border-b border-gray-900 flex justify-between items-center">
-                <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest">{t('active_safety_incidents_log')}</h3>
-                <span className="text-[9px] font-black uppercase bg-red-955/20 text-red-500 border border-red-900/30 px-2.5 py-0.5 rounded">{t('emergency_escrow_monitor')}</span>
-              </div>
-              
-              {reports.length > 0 ? (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-900 bg-gray-950 text-gray-500 text-[10px] font-black uppercase tracking-widest">
-                      <th className="px-6 py-4">{t('th_reported_account')}</th>
-                      <th className="px-6 py-4">{t('th_issue_description')}</th>
-                      <th className="px-6 py-4 text-center">{t('th_severity')}</th>
-                      <th className="px-6 py-4">{t('th_filer_info')}</th>
-                      <th className="px-6 py-4 text-right">{t('th_emergency_actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-900 font-sans">
-                    {reports.map((report) => (
-                      <tr key={report.id} className="hover:bg-gray-900/20 transition-colors">
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 bg-gray-900 rounded-lg flex items-center justify-center text-xs font-black text-gray-400 shrink-0 select-none">
-                              {report.reported[0]}
-                            </div>
-                            <div>
-                              <p className="font-bold text-gray-200 text-sm">{report.reported}</p>
-                              <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">{report.date}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5 max-w-sm">
-                          <p className="text-xs font-black text-gray-350 tracking-tight leading-relaxed">{report.reason}</p>
-                          <p className="text-[10px] text-gray-400 mt-1 italic font-medium line-clamp-2 leading-relaxed">{report.details}</p>
-                        </td>
-                        <td className="px-6 py-5 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
-                            report.severity === 'high' ? 'bg-red-950/40 text-red-400 border border-red-900/40' : 'bg-yellow-950/30 text-yellow-500 border border-yellow-905'
-                          }`}>
-                            {statusText(report.severity)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5 text-xs text-gray-400 font-semibold">{report.reporter}</td>
-                        <td className="px-6 py-5 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleResolveReport(report.id, report.reported)}
-                              className="px-3.5 py-1.5 bg-gray-900 hover:bg-gray-800 text-gray-300 rounded-lg text-[9px] font-black uppercase tracking-wider border border-gray-850 cursor-pointer"
-                            >
-                              {t('dismiss_false_alarm')}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleBanAccount(report.id, report.reported, report.reason)}
-                              className="px-3.5 py-1.5 bg-red-650 hover:bg-red-600 text-white rounded-lg text-[9px] font-black uppercase tracking-wider shadow-lg shadow-red-950/20 cursor-pointer flex items-center gap-1"
-                            >
-                              <Ban size={10} />
-                              {t('ban_account_file')}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="p-16 text-center flex flex-col items-center justify-center">
-                  <ShieldAlert size={48} className="text-green-500/20 mb-3 animate-bounce" />
-                  <p className="font-sans font-black uppercase tracking-wider text-xs text-gray-300">{t('operations_fully_vetted')}</p>
-                  <p className="text-gray-500 font-sans text-[10px] mt-1 italic font-semibold">{t('zero_active_reports')}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ==========================================
-            3. TAB VIEW: FINANCIAL ANALYTICS
-            ========================================== */}
-        {activeTab === 'analytics' && (
-          <div className="space-y-6">
-            
-            {/* Visual Charts row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Main Area Chart: Platform Volume flow */}
-              <div className="lg:col-span-2 bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">{t('system_escrow_volume')}</h3>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={volumeData}>
-                      <defs>
-                        <linearGradient id="colorEscrow" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="name" stroke="#4b5563" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#4b5563" fontSize={10} tickLine={false} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '12px' }}
-                        labelStyle={{ fontWeight: 'bold', color: '#fff', fontSize: '11px' }}
-                        itemStyle={{ color: '#ef4444', fontSize: '11px' }}
-                      />
-                      <Area type="monotone" dataKey="Escrowed" stroke="#ef4444" fillOpacity={1} fill="url(#colorEscrow)" strokeWidth={2.5} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 flex gap-6 text-[10px] text-gray-500 font-black uppercase tracking-wider">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-red-500"></span>
-                    RWF {t('cumulative_transferred_volume')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Bar Chart: User Demographics */}
-              <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900">
-                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">{t('platform_segment_distribution')}</h3>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={distributionData}>
-                      <XAxis dataKey="name" stroke="#4b5563" fontSize={9} tickLine={false} />
-                      <YAxis stroke="#4b5563" fontSize={10} tickLine={false} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '12px' }}
-                        itemStyle={{ color: '#f59e0b', fontSize: '11px' }}
-                      />
-                      <Bar dataKey="count" fill="#4f46e5" radius={[10, 10, 0, 0]} barSize={28} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 text-center text-[9px] text-gray-500 font-bold italic uppercase tracking-wider">
-                  {t('directory_distribution_metrics')}
-                </div>
-              </div>
-
-            </div>
-
-            {/* Platform Commission Controls */}
-            <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h4 className="text-xs font-black text-gray-300 uppercase tracking-widest text-white">{t('outstanding_commission_controls')}</h4>
-                  <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wider">{t('commission_controls_desc')}</p>
-                </div>
-                <div className="flex flex-wrap gap-3 items-center">
-                  <div className="px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-xs font-sans">
-                    <span className="text-gray-500 uppercase font-black text-[8px] block mb-0.5 tracking-wider font-sans leading-none">{t('worker_account_due')}</span>
-                    <span className="font-black text-gray-200 font-mono">RWF {workerUnpaid.toLocaleString()}</span>
-                  </div>
-                  <div className="px-4 py-2 bg-gray-950 border border-gray-900 rounded-xl text-xs font-sans">
-                    <span className="text-gray-500 uppercase font-black text-[8px] block mb-0.5 tracking-wider font-sans leading-none">{t('company_account_due')}</span>
-                    <span className="font-black text-gray-200 font-mono">RWF {companyUnpaid.toLocaleString()}</span>
-                  </div>
-                  {(workerUnpaid > 0 || companyUnpaid > 0) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setWorkerUnpaid(0);
-                        setCompanyUnpaid(0);
-                        
-                        const logEntry: AuditLog = {
-                          id: `log_${Date.now()}`,
-                          action: t('audit_commissions_waived'),
-                          category: 'FINANCIAL',
-                          date: t('time_just_now'),
-                          user: 'Linekora Admin'
-                        };
-                        setAuditLogs(prev => [logEntry, ...prev]);
-                        triggerNotification(t('toast_commissions_waived'));
-                      }}
-                      className="px-4 py-3.5 bg-green-650 hover:bg-green-600 border border-transparent text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-lg shadow-green-950/25"
-                    >
-                      <CheckCircle2 size={12} />
-                      {t('waive_all_commissions')}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Financial Ledger Details Table - LIVE INFO */}
-            <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
-              <div className="p-6 bg-gray-900/40 border-b border-gray-900 flex justify-between items-center">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest">{t('commission_escrow_ledger')}</h3>
-                <span className="text-[8px] font-black uppercase tracking-widest bg-blue-950 text-blue-400 px-2.5 py-1 rounded border border-blue-900/30 font-sans">{t('total_records_count', { count: contracts.length })}</span>
-              </div>
-              <table className="w-full text-left">
-                <thead className="bg-gray-950 text-gray-500 text-[9px] font-black uppercase tracking-widest border-b border-gray-900">
+              <table className="w-full text-left font-sans">
+                <thead className="bg-gray-950 border-b border-gray-900 text-[10px] font-black uppercase text-gray-500 tracking-widest">
                   <tr>
-                    <th className="px-6 py-4">{t('th_transaction_scope')}</th>
-                    <th className="px-6 py-4">{t('th_source_employer')}</th>
-                    <th className="px-6 py-4">{t('th_assigned_worker')}</th>
-                    <th className="px-6 py-4">{t('th_verification_check')}</th>
-                    <th className="px-6 py-4">{t('th_escrow_value')}</th>
-                    <th className="px-6 py-4 text-right font-black">{t('th_authorized_operations')}</th>
+                    <th className="px-6 py-4">{t('users_photo')}</th>
+                    <th className="px-6 py-4">{t('users_name')}</th>
+                    <th className="px-6 py-4">{t('users_phone')}</th>
+                    <th className="px-6 py-4">{t('users_status')}</th>
+                    <th className="px-6 py-4">{t('users_trust_score')}</th>
+                    <th className="px-6 py-4">{t('users_joined')}</th>
+                    <th className="px-6 py-4 text-right">{t('users_actions')}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-900 text-xs font-sans text-gray-300">
-                  {contracts.length > 0 ? (
-                    contracts.map((contract) => {
-                      const amount = Number(contract.salary?.replace(/[^0-9]/g, '') || '0');
-                      const platformFee = Math.round(amount * 0.05); // 5% dynamic fee representation
-                      return (
-                        <tr key={contract.id} className="hover:bg-gray-900/15 transition-all">
-                          <td className="px-6 py-5">
-                            <div>
-                              <p className="font-extrabold text-gray-250 font-sans text-sm">{contract.jobTitle}</p>
-                              <span className="text-[9px] uppercase font-black text-gray-500 tracking-wider">{t('locker_token_id', { id: contract.id })}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-5 font-bold text-gray-400">{contract.company || contract.employerName}</td>
-                          <td className="px-6 py-5 font-bold text-gray-400">{contract.workerName || t('not_assigned')}</td>
-                          <td className="px-6 py-5">
-                            <span className={`text-[9px] font-black px-2.5 py-0.5 border rounded uppercase tracking-widest ${
-                              contract.status === 'accepted' ? 'bg-blue-955/20 text-blue-400 border-blue-900/30' :
-                              contract.status === 'completion_requested' ? 'bg-yellow-955/20 text-yellow-400 border-yellow-904/30' :
-                              contract.status === 'completed' ? 'bg-green-955/20 text-green-400 border-green-900/40' :
-                              'bg-gray-900 text-gray-500 border-gray-800'
-                            }`}>
-                              {statusText(contract.status)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-5 font-sans font-black text-gray-200">{contract.salary}</td>
-                          <td className="px-6 py-5 text-right font-sans">
-                            <div className="flex justify-end gap-2">
-                              {(contract.status === 'accepted' || contract.status === 'completion_requested') && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    // Manually Complete Contract / Release Escrow
-                                    setContracts(prev => prev.map(c => 
-                                      c.id === contract.id ? { ...c, status: 'completed', commissionPaidWorker: true, commissionPaidEmployer: true } : c
-                                    ));
-                                    
-                                    // Record audit trail
-                                    const logEntry: AuditLog = {
-                                      id: `log_${Date.now()}`,
-                                      action: t('audit_escrow_released', { salary: contract.salary, jobTitle: contract.jobTitle, id: contract.id }),
-                                      category: 'FINANCIAL',
-                                      date: t('time_just_now'),
-                                      user: 'Linekora Admin'
-                                    };
-                                    setAuditLogs(prev => [logEntry, ...prev]);
-                                    triggerNotification(t('toast_escrow_released', { salary: contract.salary, workerName: contract.workerName }));
-                                  }}
-                                  className="px-3.5 py-2 bg-red-650 hover:bg-red-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all shadow-md shadow-red-950/15 cursor-pointer block border border-transparent hover:border-red-500/25 active:scale-95"
-                                >
-                                  {t('release_escrow')}
-                                </button>
-                              )}
-                              
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  triggerNotification(t('toast_contract_synced', { id: contract.id }));
-                                }}
-                                className="px-3.5 py-2 bg-gray-900 hover:bg-gray-850 border border-gray-850 text-gray-400 hover:text-white text-[9px] font-black uppercase tracking-widest rounded-xl cursor-pointer block transition-all"
-                              >
-                                {t('audit_file')}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
+                <tbody className="divide-y divide-gray-900">
+                  {filteredUsers.length > 0 ? filteredUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-gray-900/15 transition-all">
+                      <td className="px-6 py-4">
+                        {u.avatarUrl ? (
+                          <img src={u.avatarUrl} alt={u.displayName} className="h-9 w-9 rounded-full object-cover border border-gray-800" />
+                        ) : (
+                          <div className="h-9 w-9 bg-gray-900 border border-gray-800 rounded-full flex items-center justify-center text-xs font-black text-gray-400 uppercase">
+                            {u.displayName.slice(0, 2)}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-150 text-sm">{u.displayName}</span>
+                          <span className="text-[8px] tracking-wider font-extrabold uppercase bg-gray-950 text-gray-400 border border-gray-800 px-2 py-0.5 rounded">
+                            {roleLabel(u.role)}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mt-1 uppercase font-black tracking-wider">{u.email}</p>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-xs font-bold text-gray-300">{u.phone || '—'}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest inline-flex items-center gap-1 leading-none ${
+                          bannedIds.includes(u.id) ? 'bg-red-651/10 text-red-400 border border-red-550/20' :
+                          suspendedIds.includes(u.id) ? 'bg-amber-652/10 text-amber-500 border border-amber-550/20' :
+                          u.verificationStatus === 'verified' ? 'bg-green-650/10 text-green-400 border border-green-550/20' :
+                          u.verificationStatus === 'pending' ? 'bg-yellow-950/30 text-yellow-500 border border-yellow-905' :
+                          'bg-gray-900 text-gray-500 border border-gray-800'
+                        }`}>
+                          {statusLabel(u)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-xs font-mono font-black ${u.trustScore >= 80 ? 'text-green-400' : u.trustScore >= 50 ? 'text-yellow-405' : 'text-red-400'}`}>
+                          {u.trustScore}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{fmtDate(u.createdAt)}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setInspectingUser(u)}
+                            className="p-2 text-gray-500 hover:text-blue-400 hover:bg-gray-950 border border-transparent hover:border-gray-800 rounded-lg transition-all cursor-pointer"
+                            title={t('users_view')}
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyUser(u)}
+                            className="p-2 text-green-500 hover:text-white hover:bg-green-650 rounded-lg transition-all cursor-pointer"
+                            title={t('users_verify')}
+                          >
+                            <BadgeCheck size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSuspendUser(u)}
+                            className={`p-2 rounded-lg transition-all cursor-pointer ${suspendedIds.includes(u.id) ? 'text-green-400 hover:bg-green-950/40' : 'text-amber-500 hover:bg-amber-950/30'}`}
+                            title={suspendedIds.includes(u.id) ? t('users_unsuspend') : t('users_suspend')}
+                          >
+                            <Clock size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBanUser(u)}
+                            className="p-2 text-red-500 hover:text-white hover:bg-red-650 rounded-lg transition-all cursor-pointer"
+                            title={t('users_ban')}
+                          >
+                            <Ban size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
                     <tr>
-                      <td colSpan={6} className="px-6 py-16 text-center text-gray-500 font-sans text-xs italic font-semibold">
-                        {t('no_active_contracts')}
+                      <td colSpan={7} className="px-6 py-16 text-center text-gray-500 font-sans text-xs italic font-semibold">
+                        {t('no_users_found')}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-
           </div>
         )}
 
-        {/* ==========================================
-            4. TAB VIEW: USER DIRECTORY
-            ========================================== */}
-        {activeTab === 'users' && (
+        {/* ═══════════ JOBS ═══════════ */}
+        {activeTab === 'jobs' && (
           <div className="space-y-6">
-            
-            {/* Search and filter controls */}
-            <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="relative w-full md:w-80 font-sans">
+            {/* Search + filter */}
+            <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 flex flex-col lg:flex-row gap-4 items-center justify-between">
+              <div className="relative w-full lg:w-80 font-sans">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
                 <input
                   type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={t('search_registry_placeholder')}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-950 border border-gray-900 rounded-xl text-xs font-bold outline-none focus:border-red-600 font-sans"
+                  value={jobSearch}
+                  onChange={(e) => setJobSearch(e.target.value)}
+                  placeholder={t('jobs_search_placeholder')}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-950 border border-gray-900 rounded-xl text-xs font-bold outline-none focus:border-red-600 font-sans text-white"
                 />
               </div>
-
               <div className="flex gap-2 shrink-0 flex-wrap">
-                {['all', 'worker', 'company', 'individual'].map((role) => (
+                {([
+                  { id: 'all', label: t('filter_all') },
+                  { id: 'active', label: t('jobs_active') },
+                  { id: 'completed', label: t('jobs_completed') },
+                  { id: 'cancelled', label: t('jobs_cancelled') },
+                ] as const).map((s) => (
                   <button
-                    key={role}
+                    key={s.id}
                     type="button"
-                    onClick={() => setRoleFilter(role as any)}
+                    onClick={() => setJobStatus(s.id)}
                     className={`px-4 py-2.5 rounded-xl text-[9px] uppercase tracking-wider font-black transition-all cursor-pointer ${
-                      roleFilter === role 
-                        ? 'bg-red-650 hover:bg-red-600 border border-red-500/25 text-white' 
-                        : 'bg-gray-950 border border-gray-850 text-gray-400 hover:text-white'
+                      jobStatus === s.id ? 'bg-red-650 hover:bg-red-600 border border-red-500/25 text-white' : 'bg-gray-950 border border-gray-850 text-gray-400 hover:text-white'
                     }`}
                   >
-                    {t('segment_label', { role: roleLabel(role) })}
+                    {s.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Registry List table */}
+            {/* Jobs table */}
             <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
               <table className="w-full text-left font-sans">
                 <thead className="bg-gray-950 border-b border-gray-900 text-[10px] font-black uppercase text-gray-500 tracking-widest">
                   <tr>
-                    <th className="px-6 py-4">{t('th_account_file')}</th>
-                    <th className="px-6 py-4 text-center">{t('th_trust_rating')}</th>
-                    <th className="px-6 py-4">{t('th_identity_vetting')}</th>
-                    <th className="px-6 py-4">{t('th_profile_status')}</th>
-                    <th className="px-6 py-4 text-right">{t('th_force_overrides')}</th>
+                    <th className="px-6 py-4">{t('jobs_title')}</th>
+                    <th className="px-6 py-4">{t('jobs_employer')}</th>
+                    <th className="px-6 py-4">{t('jobs_worker')}</th>
+                    <th className="px-6 py-4">{t('jobs_district')}</th>
+                    <th className="px-6 py-4">{t('jobs_amount')}</th>
+                    <th className="px-6 py-4">{t('jobs_status')}</th>
+                    <th className="px-6 py-4">{t('jobs_date')}</th>
+                    <th className="px-6 py-4 text-right">{t('users_actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-900">
-                  {users
-                    .filter(user => {
-                      const matchRole = roleFilter === 'all' || user.role === roleFilter;
-                      const matchSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                          user.location.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
-                      return matchRole && matchSearch;
-                    })
-                    .map((user) => (
-                      <tr key={user.uid} className="hover:bg-gray-900/15 transition-all">
-                        <td className="px-6 py-5">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-gray-150 text-sm">{user.name}</span>
-                              <span className="text-[8px] tracking-wider font-extrabold uppercase bg-gray-950 text-gray-400 border border-gray-800 px-2 py-0.5 rounded">
-                                {roleLabel(user.role)}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-gray-500 mt-1 uppercase font-black tracking-wider font-mono">
-                              {t('email_loc', { email: user.email, loc: user.location })}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5 max-w-xs">
-                          <div className="flex items-center gap-3">
-                            <span className={`text-xs font-mono font-black shrink-0 ${
-                              user.trustScore >= 80 ? 'text-green-400' : user.trustScore >= 50 ? 'text-yellow-405' : 'text-red-400'
-                            }`}>
-                              {t('trust_vetted', { score: user.trustScore })}
-                            </span>
-                            
-                            {/* Adjustment slider to dynamically demonstrate editing in real-time */}
-                            <input 
-                              type="range" 
-                              min="0" 
-                              max="100" 
-                              value={user.trustScore}
-                              onChange={(e) => handleSetTrustScore(user.uid, Number(e.target.value))}
-                              className="w-24 accent-red-600 bg-gray-950 rounded-lg h-1.5 focus:outline-none cursor-pointer"
-                            />
-                          </div>
-                        </td>
-                        <td className="px-6 py-5 text-center">
-                          <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${
-                            user.verificationStatus === 'verified' ? 'bg-green-950/40 text-green-300 border border-green-900/40' :
-                            user.verificationStatus === 'pending' ? 'bg-yellow-950/30 text-yellow-500 border border-yellow-905' :
-                            'bg-gray-900 text-gray-500 border border-gray-800'
-                          }`}>
-                            {statusText(user.verificationStatus)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest inline-flex items-center gap-1 leading-none ${
-                            user.status === 'active' ? 'bg-green-650/10 text-green-400 border border-green-550/20' :
-                            user.status === 'warning' ? 'bg-amber-652/10 text-amber-500 border border-amber-550/20' :
-                            'bg-red-651/10 text-red-400 border border-red-550/20 shadow-inner'
-                          }`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${
-                              user.status === 'active' ? 'bg-green-500' :
-                              user.status === 'warning' ? 'bg-amber-500 animate-pulse' :
-                              'bg-red-500 animate-ping'
-                            }`}></span>
-                            {statusText(user.status)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5 text-right font-sans">
-                          <div className="flex justify-end gap-2.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setInspectingUser(user);
-                                triggerNotification(t('toast_audit_requested', { name: user.name }), "info");
-                              }}
-                              className="p-2 text-gray-500 hover:text-blue-400 hover:bg-gray-950 border border-transparent hover:border-gray-800 rounded-lg transition-all cursor-pointer"
-                              title={t('inspect_folder_tip')}
-                            >
-                              <Eye size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleUserStatus(user.uid, user.status)}
-                              className={`py-1.5 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all cursor-pointer ${
-                                user.status === 'active' ? 'bg-yellow-950/20 border-yellow-900/40 text-yellow-500 hover:bg-yellow-650 hover:text-white hover:border-yellow-600' :
-                                user.status === 'warning' ? 'bg-red-955/20 border-red-900/40 text-red-400 hover:bg-red-650 hover:text-white hover:border-red-600' :
-                                'bg-green-955/20 border-green-900/40 text-green-400 hover:bg-green-650 hover:text-white hover:border-green-600'
-                              }`}
-                            >
-                              {user.status === 'active' ? t('btn_warn_profile') : user.status === 'warning' ? t('btn_suspend_profile') : t('btn_restore_active')}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                  {filteredJobs.length > 0 ? filteredJobs.map((j) => (
+                    <tr key={j.id} className="hover:bg-gray-900/15 transition-all">
+                      <td className="px-6 py-5">
+                        <p className="font-extrabold text-gray-150 font-sans text-sm">{j.title}</p>
+                        <span className="text-[9px] uppercase font-black text-gray-500 tracking-wider">{t('job_id', { id: j.id })}</span>
+                      </td>
+                      <td className="px-6 py-5 font-bold text-gray-400">{j.employer?.displayName || '—'}</td>
+                      <td className="px-6 py-5 font-bold text-gray-400">{workerNamesForJob(j.id)}</td>
+                      <td className="px-6 py-5 flex items-center gap-1.5 font-bold text-gray-400">
+                        <MapPin size={12} className="text-gray-500" />
+                        {j.location || '—'}
+                      </td>
+                      <td className="px-6 py-5 font-sans font-black text-gray-200">{j.salary}</td>
+                      <td className="px-6 py-5">
+                        <span className={`text-[9px] font-black px-2.5 py-0.5 border rounded uppercase tracking-widest ${
+                          j.status === 'open' ? 'bg-blue-955/20 text-blue-400 border-blue-900/30' :
+                          j.status === 'accepted' ? 'bg-indigo-955/20 text-indigo-400 border-indigo-900/30' :
+                          j.status === 'completion_requested' ? 'bg-yellow-955/20 text-yellow-400 border-yellow-904/30' :
+                          j.status === 'completed' ? 'bg-green-955/20 text-green-400 border-green-900/40' :
+                          j.status === 'cancelled' ? 'bg-red-955/20 text-red-400 border-red-900/30' :
+                          'bg-gray-900 text-gray-500 border-gray-800'
+                        }`}>
+                          {jobStatusLabel(j.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{fmtDate(j.createdAt)}</td>
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setInspectingJob(j)}
+                            className="p-2 text-gray-500 hover:text-blue-400 hover:bg-gray-950 border border-transparent hover:border-gray-800 rounded-lg transition-all cursor-pointer"
+                            title={t('jobs_view')}
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleHideJob(j)}
+                            className="p-2 text-amber-500 hover:text-white hover:bg-amber-650 rounded-lg transition-all cursor-pointer"
+                            title={t('jobs_hide')}
+                          >
+                            <Shield size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteJob(j)}
+                            className="p-2 text-red-500 hover:text-white hover:bg-red-650 rounded-lg transition-all cursor-pointer"
+                            title={t('jobs_delete')}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={8} className="px-6 py-16 text-center text-gray-500 font-sans text-xs italic font-semibold">
+                        {t('no_jobs_found')}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-
           </div>
         )}
 
-        {/* ==========================================
-            5. TAB VIEW: SYSTEM AUDIT LOGS
-            ========================================== */}
-        {activeTab === 'logs' && (
+        {/* ═══════════ VERIFICATION ═══════════ */}
+        {activeTab === 'verification' && (
+          <div className="space-y-6">
+            {/* Sub-tabs */}
+            <div className="flex gap-2 flex-wrap">
+              {([
+                { id: 'pending', label: `${t('verif_pending')} (${verificationQueue.length})` },
+                { id: 'approved', label: `${t('verif_approved')} (${approvedUsers.length})` },
+                { id: 'rejected', label: `${t('verif_rejected')} (${rejectedUsers.length})` },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setVerifTab(tab.id)}
+                  className={`px-4 py-2.5 rounded-xl text-[9px] uppercase tracking-wider font-black transition-all cursor-pointer ${
+                    verifTab === tab.id ? 'bg-red-650 hover:bg-red-600 border border-red-500/25 text-white' : 'bg-gray-905 border border-gray-850 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {verifTab === 'pending' && (
+              <div className="space-y-4">
+                {verificationQueue.length > 0 ? verificationQueue.map((v) => {
+                  const docs = v.verificationData as any;
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      key={v.id}
+                      className="p-6 rounded-[2rem] bg-gray-905 border border-gray-900 hover:border-gray-800 transition-all"
+                    >
+                      <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+                        {/* Identity images */}
+                        <div className="flex gap-4 items-center">
+                          {docs?.selfie ? (
+                            <img src={docs.selfie} alt={t('verif_selfie')} referrerPolicy="no-referrer" className="h-16 w-16 rounded-2xl object-cover border border-gray-800 bg-gray-950" />
+                          ) : (
+                            <div className="h-16 w-16 rounded-2xl border border-dashed border-gray-800 bg-gray-950 flex items-center justify-center">
+                              <User size={20} className="text-gray-600" />
+                            </div>
+                          )}
+                          {(docs?.frontId || docs?.backId) && (
+                            <div className="grid grid-cols-2 gap-2">
+                              {docs.frontId && <img src={docs.frontId} alt={t('front_id')} className="h-16 w-24 object-cover rounded-xl border border-gray-800 bg-gray-950" />}
+                              {docs.backId && <img src={docs.backId} alt={t('back_id')} className="h-16 w-24 object-cover rounded-xl border border-gray-800 bg-gray-950" />}
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm font-black text-white font-sans">{v.displayName}</h3>
+                              <span className="text-[8px] font-black px-2 py-0.5 bg-gray-900 text-gray-400 rounded border border-gray-800 uppercase tracking-widest">
+                                {roleLabel(v.role)}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-1 font-semibold">
+                              {t('national_id_number')}: <span className="font-mono text-gray-300">{docs?.nationalIdNum || docs?.idNumber || docs?.tinNumber || '—'}</span>
+                            </p>
+                            <p className="text-[10px] text-gray-500 mt-0.5 font-bold uppercase tracking-wider">
+                              {t('verif_submitted_date')}: {docs?.date || fmtDate(v.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Face match placeholder + actions */}
+                        <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
+                          <div className="text-center">
+                            <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">{t('verif_face_match')}</p>
+                            <span className="text-[10px] font-black px-2.5 py-1 bg-blue-950/40 text-blue-400 border border-blue-900/40 rounded-lg uppercase tracking-widest">
+                              {t('verif_manual')}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleApproveVerification(v)}
+                              className="py-2.5 px-4 bg-green-650 hover:bg-green-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-1.5 shadow-lg shadow-green-950/30"
+                            >
+                              <Check size={12} />
+                              {t('verif_approve')}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setRejectReason(''); setRejectingVerification(v); }}
+                              className="py-2.5 px-4 bg-red-950/40 hover:bg-red-950/80 text-red-400 border border-red-900/30 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-1.5"
+                            >
+                              <X size={12} />
+                              {t('verif_reject')}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                }) : (
+                  <div className="p-16 text-center bg-gray-905 border border-gray-900 rounded-[2.5rem] flex flex-col items-center justify-center">
+                    <CheckCircle2 size={40} className="text-green-500/40 mb-3 animate-pulse" />
+                    <p className="font-sans font-black uppercase tracking-wider text-xs text-gray-300">{t('identity_desk_cleared')}</p>
+                    <p className="text-gray-500 font-sans text-[10px] mt-1 italic font-semibold">{t('all_pending_processed')}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {verifTab === 'approved' && (
+              <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
+                <table className="w-full text-left font-sans">
+                  <thead className="bg-gray-950 border-b border-gray-900 text-[10px] font-black uppercase text-gray-500 tracking-widest">
+                    <tr>
+                      <th className="px-6 py-4">{t('users_name')}</th>
+                      <th className="px-6 py-4">{t('users_role')}</th>
+                      <th className="px-6 py-4">{t('users_email')}</th>
+                      <th className="px-6 py-4">{t('users_trust_score')}</th>
+                      <th className="px-6 py-4">{t('users_joined')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-900">
+                    {approvedUsers.length > 0 ? approvedUsers.map((u) => (
+                      <tr key={u.id} className="hover:bg-gray-900/15 transition-all">
+                        <td className="px-6 py-4 font-bold text-gray-150 text-sm">{u.displayName}</td>
+                        <td className="px-6 py-4 text-[9px] font-black text-gray-400 uppercase">{roleLabel(u.role)}</td>
+                        <td className="px-6 py-4 font-mono text-xs font-bold text-gray-400">{u.email}</td>
+                        <td className="px-6 py-4 font-mono font-black text-green-400">{u.trustScore}</td>
+                        <td className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{fmtDate(u.createdAt)}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-16 text-center text-gray-500 font-sans text-xs italic font-semibold">{t('no_approved_yet')}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {verifTab === 'rejected' && (
+              <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
+                <table className="w-full text-left font-sans">
+                  <thead className="bg-gray-950 border-b border-gray-900 text-[10px] font-black uppercase text-gray-500 tracking-widest">
+                    <tr>
+                      <th className="px-6 py-4">{t('users_name')}</th>
+                      <th className="px-6 py-4">{t('users_role')}</th>
+                      <th className="px-6 py-4">{t('users_email')}</th>
+                      <th className="px-6 py-4">{t('users_trust_score')}</th>
+                      <th className="px-6 py-4">{t('verif_reason_column')}</th>
+                      <th className="px-6 py-4">{t('users_joined')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-900">
+                    {rejectedUsers.length > 0 ? rejectedUsers.map((u) => (
+                      <tr key={u.id} className="hover:bg-gray-900/15 transition-all">
+                        <td className="px-6 py-4 font-bold text-gray-150 text-sm">{u.displayName}</td>
+                        <td className="px-6 py-4 text-[9px] font-black text-gray-400 uppercase">{roleLabel(u.role)}</td>
+                        <td className="px-6 py-4 font-mono text-xs font-bold text-gray-400">{u.email}</td>
+                        <td className="px-6 py-4 font-mono font-black text-red-400">{u.trustScore}</td>
+                        <td className="px-6 py-4 max-w-[260px]">
+                          <p className="text-xs font-sans font-semibold text-amber-400/90 leading-snug">{rejectionReasonOf(u) || t('verif_no_reason')}</p>
+                        </td>
+                        <td className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">{fmtDate(u.createdAt)}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-16 text-center text-gray-500 font-sans text-xs italic font-semibold">{t('no_rejected_yet')}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══════════ NOTIFICATIONS ═══════════ */}
+        {activeTab === 'notifications' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Composer */}
+            <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 space-y-5">
+              <div>
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-2">{t('notif_composer')}</h3>
+                <p className="text-gray-400 font-sans text-[10px] leading-relaxed font-bold uppercase tracking-wider">{t('notif_composer_desc')}</p>
+              </div>
+
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('notif_audience')}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { id: 'all', label: t('notif_all_users') },
+                    { id: 'workers', label: t('users_workers') },
+                    { id: 'employers', label: t('users_employers') },
+                    { id: 'companies', label: t('users_companies') },
+                    { id: 'specific', label: t('notif_specific_user') },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setNotifAudience(opt.id);
+                        if (opt.id !== 'specific') setNotifTargetUser(null);
+                      }}
+                      className={`py-2.5 rounded-lg text-[9px] font-black uppercase tracking-wider font-sans cursor-pointer transition-colors border ${
+                        notifAudience === opt.id ? 'bg-red-650 border-red-500/40 text-white' : 'bg-gray-950 border-gray-900 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {notifAudience === 'specific' && (
+                  <div className="mt-3 relative">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+                      <input
+                        type="text"
+                        value={userSearchQuery}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                        placeholder={t('notif_search_user_placeholder')}
+                        className="w-full pl-9 pr-4 py-2.5 bg-gray-950 border border-gray-900 focus:border-blue-600 rounded-xl outline-none font-sans font-bold text-xs text-white"
+                      />
+                    </div>
+                    {userSearchQuery.trim() && (
+                      <div className="mt-2 bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
+                        {matchingUsers.length > 0 ? matchingUsers.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => { setNotifTargetUser(u); setUserSearchQuery(''); }}
+                            className="w-full px-3 py-2.5 flex items-center gap-2 hover:bg-gray-900 transition-colors text-left cursor-pointer"
+                          >
+                            <span className="h-7 w-7 bg-gray-900 border border-gray-800 rounded-full flex items-center justify-center text-[9px] font-black text-gray-400 uppercase shrink-0">
+                              {u.displayName.slice(0, 2)}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-xs font-bold text-gray-200 truncate">{u.displayName}</span>
+                              <span className="block text-[9px] text-gray-500 font-bold uppercase tracking-wider truncate">{roleLabel(u.role)} · {u.email}</span>
+                            </span>
+                            <Check size={12} className={`ml-auto shrink-0 ${notifTargetUser?.id === u.id ? 'text-green-400' : 'text-gray-700'}`} />
+                          </button>
+                        )) : (
+                          <p className="px-3 py-3 text-center text-gray-500 text-[10px] font-bold italic">{t('notif_no_matching_users')}</p>
+                        )}
+                      </div>
+                    )}
+                    {notifTargetUser && (
+                      <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-blue-950/40 border border-blue-900/40 rounded-xl">
+                        <User size={12} className="text-blue-400 shrink-0" />
+                        <span className="text-[10px] font-black text-blue-300 uppercase tracking-wider truncate">{notifTargetUser.displayName} · {notifTargetUser.email}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('notif_type_label')}</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {([
+                    { id: 'info', label: t('notif_priority_info'), icon: <Info size={11} />, active: 'bg-blue-950/40 border-blue-500/40 text-blue-300', inactive: 'bg-gray-950 border-gray-900 text-gray-400 hover:text-white' },
+                    { id: 'success', label: t('notif_priority_success'), icon: <CheckCircle2 size={11} />, active: 'bg-green-650/10 border-green-500/40 text-green-400', inactive: 'bg-gray-950 border-gray-900 text-gray-400 hover:text-white' },
+                    { id: 'urgent', label: t('notif_priority_urgent'), icon: <AlertTriangle size={11} />, active: 'bg-red-650/10 border-red-500/40 text-red-400', inactive: 'bg-gray-950 border-gray-900 text-gray-400 hover:text-white' },
+                    { id: 'warning', label: t('notif_priority_warning'), icon: <Bell size={11} />, active: 'bg-yellow-950/30 border-yellow-500/40 text-yellow-400', inactive: 'bg-gray-950 border-gray-900 text-gray-400 hover:text-white' },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setNotifType(opt.id)}
+                      className={`py-2 rounded-lg text-[9px] font-black uppercase tracking-wider font-sans cursor-pointer transition-colors border flex items-center justify-center gap-1.5 ${notifType === opt.id ? opt.active : opt.inactive}`}
+                    >
+                      {opt.icon}
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('notif_title')}</label>
+                <input
+                  type="text"
+                  value={notifTitle}
+                  onChange={(e) => setNotifTitle(e.target.value)}
+                  placeholder={t('notif_title_placeholder')}
+                  className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('notif_body')}</label>
+                <textarea
+                  value={notifBody}
+                  onChange={(e) => setNotifBody(e.target.value)}
+                  placeholder={t('notif_body_placeholder')}
+                  rows={5}
+                  className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white resize-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-950 border border-gray-900 rounded-xl">
+                <Users size={12} className="text-gray-500 shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t('notif_recipient_preview', { count: notifTargetCount })}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSendNotification}
+                className="w-full py-4 bg-red-650 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-red-950/20 flex items-center justify-center gap-2"
+              >
+                <Send size={14} />
+                {t('notif_send')}
+              </button>
+            </div>
+
+            {/* Sent-notifications history */}
+            <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900">
+              <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest mb-5">{t('notif_history')}</h3>
+              <div className="space-y-3">
+                {sentNotifs.length > 0 ? sentNotifs.slice(0, 8).map((n) => (
+                  <div key={n.id} className="p-4 bg-gray-950 rounded-xl border border-gray-904/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="flex items-start md:items-center gap-3 min-w-0">
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black shrink-0 ${
+                        n.type === 'urgent' ? 'bg-red-955/20 text-red-400 border border-red-900/40' :
+                        n.type === 'success' ? 'bg-green-955/20 text-green-400 border border-green-900/40' :
+                        n.type === 'warning' ? 'bg-yellow-955/20 text-yellow-400 border border-yellow-904/30' :
+                        'bg-blue-950/55 text-blue-400 border border-blue-900/40'
+                      }`}>
+                        {n.type.toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-gray-200 font-sans font-bold tracking-tight leading-snug text-xs truncate">{n.title}</p>
+                        <p className="text-[9px] text-gray-500 uppercase tracking-wider font-bold mt-0.5">
+                          {t('notif_to_audience', { audience: n.audience, count: n.count })}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[9px] text-gray-550 font-bold font-mono shrink-0">{n.date}</span>
+                  </div>
+                )) : (
+                  <p className="py-12 text-center text-gray-500 font-sans text-xs italic font-semibold">{t('notif_history_empty')}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ SETTINGS ═══════════ */}
+        {activeTab === 'settings' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* General */}
+            <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 space-y-5">
+              <h3 className="text-xs font-black text-white uppercase tracking-widest">{t('settings_general')}</h3>
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('settings_platform_name')}</label>
+                <input
+                  type="text"
+                  value={settings.platformName}
+                  onChange={(e) => saveSettings({ platformName: e.target.value })}
+                  className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('settings_contact_email')}</label>
+                <input
+                  type="email"
+                  value={settings.contactEmail}
+                  onChange={(e) => saveSettings({ contactEmail: e.target.value })}
+                  className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('settings_commission_rate')}</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={settings.commissionRate}
+                    onChange={(e) => saveSettings({ commissionRate: Number(e.target.value) })}
+                    className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white"
+                  />
+                  <Percent size={16} className="text-gray-500 shrink-0" />
+                </div>
+              </div>
+            </div>
+
+            {/* SMS + Email */}
+            <div className="space-y-8">
+              <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 space-y-5">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                  <Smartphone size={14} className="text-blue-400" />
+                  {t('settings_sms')}
+                </h3>
+                <div>
+                  <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('settings_sms_provider')}</label>
+                  <input
+                    type="text"
+                    value={settings.smsProvider}
+                    onChange={(e) => saveSettings({ smsProvider: e.target.value })}
+                    className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('settings_sms_sender')}</label>
+                  <input
+                    type="text"
+                    value={settings.smsSenderId}
+                    onChange={(e) => saveSettings({ smsSenderId: e.target.value })}
+                    className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 space-y-5">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                  <Mail size={14} className="text-emerald-400" />
+                  {t('settings_email')}
+                </h3>
+                <div>
+                  <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('settings_smtp_host')}</label>
+                  <input
+                    type="text"
+                    value={settings.smtpHost}
+                    onChange={(e) => saveSettings({ smtpHost: e.target.value })}
+                    className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[8px] font-black uppercase tracking-widest text-gray-500 mb-2 font-sans">{t('settings_smtp_from')}</label>
+                  <input
+                    type="email"
+                    value={settings.smtpFrom}
+                    onChange={(e) => saveSettings({ smtpFrom: e.target.value })}
+                    className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-red-600 rounded-xl outline-none font-sans font-bold text-xs text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════ ACTIVITY CENTER ═══════════ */}
+        {activeTab === 'activity' && (
           <div className="space-y-6">
             <div className="bg-gray-905 p-6 rounded-[2.5rem] border border-gray-900 space-y-6">
-              
               <div className="flex justify-between items-center border-b border-gray-900 pb-4">
                 <div>
-                  <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest">{t('core_audit_log_trail')}</h3>
+                  <h3 className="text-xs font-black text-gray-300 uppercase tracking-widest">{t('activity_center_title')}</h3>
                   <p className="text-[10px] text-gray-500 font-bold italic mt-1 uppercase tracking-wider">{t('audit_ledger_subtitle')}</p>
                 </div>
-                <button 
+                <button
                   type="button"
                   onClick={() => {
-                    setAuditLogs([]);
+                    persistAudit([]);
                     triggerNotification(t('toast_audit_cleared'));
                   }}
                   className="flex items-center gap-1.5 text-[9px] font-black uppercase text-red-500 hover:text-red-400 hover:underline cursor-pointer"
@@ -1680,64 +1609,56 @@ export default function AdminDashboard() {
               </div>
 
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 scrollbar-none font-mono text-[11px] leading-relaxed">
-                {auditLogs.length > 0 ? (
-                  auditLogs.map((log) => (
-                    <div key={log.id} className="p-4 bg-gray-950 rounded-xl border border-gray-904/80 flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono hover:border-gray-800 transition-colors">
-                      <div className="flex items-start md:items-center gap-3">
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black shrink-0 ${
-                          log.category === 'SECURITY' ? 'bg-blue-950/55 text-blue-400 border border-blue-900/40' :
-                          log.category === 'FINANCIAL' ? 'bg-green-955/20 text-green-400 border border-green-900/40' :
-                          log.category === 'SAFETY' ? 'bg-red-955/20 text-red-400 border border-red-900/40' :
-                          'bg-gray-900 text-gray-400 border border-gray-800'
-                        }`}>
-                          {log.category}
-                        </span>
-                        <p className="text-gray-300 font-sans font-semibold tracking-tight leading-snug">{log.action}</p>
-                      </div>
-                      <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-gray-900 pt-2 md:pt-0 shrink-0 uppercase tracking-wider text-[9px] text-gray-550 font-bold">
-                        <span>{t('terminal_label', { user: log.user })}</span>
-                        <span className="text-gray-500 font-mono">{log.date}</span>
-                      </div>
+                {auditLogs.length > 0 ? auditLogs.map((log) => (
+                  <div key={log.id} className="p-4 bg-gray-950 rounded-xl border border-gray-904/80 flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono hover:border-gray-800 transition-colors">
+                    <div className="flex items-start md:items-center gap-3">
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black shrink-0 ${
+                        log.category === 'SECURITY' ? 'bg-blue-950/55 text-blue-400 border border-blue-900/40' :
+                        log.category === 'FINANCIAL' ? 'bg-green-955/20 text-green-400 border border-green-900/40' :
+                        log.category === 'SAFETY' ? 'bg-red-955/20 text-red-400 border border-red-900/40' :
+                        'bg-gray-900 text-gray-400 border border-gray-800'
+                      }`}>
+                        {log.category}
+                      </span>
+                      <p className="text-gray-300 font-sans font-semibold tracking-tight leading-snug">{log.action}</p>
                     </div>
-                  ))
-                ) : (
+                    <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-gray-900 pt-2 md:pt-0 shrink-0 uppercase tracking-wider text-[9px] text-gray-550 font-bold">
+                      <span>{t('terminal_label', { user: log.user })}</span>
+                      <span className="text-gray-500 font-mono">{log.date}</span>
+                    </div>
+                  </div>
+                )) : (
                   <div className="py-16 text-center text-gray-500 font-sans text-xs italic font-semibold">
                     {t('audit_void_msg')}
                   </div>
                 )}
               </div>
-
             </div>
           </div>
         )}
 
       </main>
 
-      {/* ==========================================
-          ADMIN SECURITY COMPLIANCE: 5-MIN INACTIVITY AUTO-LOGOUT WARNING MODAL
-          ========================================== */}
+      {/* Inactivity warning modal */}
       <AnimatePresence>
         {showInactivityWarning && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-gray-950/80 backdrop-blur-md flex items-center justify-center p-4 font-sans font-medium"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
               className="w-full max-w-md bg-gray-905 border border-red-900/40 p-8 rounded-[2.5rem] text-center shadow-2xl relative overflow-hidden"
             >
-              {/* Pulsing Caution Icon */}
               <div className="mx-auto h-16 w-16 bg-red-950/40 border border-red-500/30 text-red-500 rounded-3xl flex items-center justify-center mb-6 animate-pulse select-none">
                 <Lock size={28} />
               </div>
-
               <h3 className="text-lg font-black text-white uppercase tracking-widest leading-tight">{t('session_expiring')}</h3>
               <p className="text-[10px] text-red-500 uppercase tracking-widest font-sans font-black mt-1">{t('security_guard_active')}</p>
-
               <div className="my-6 p-4 bg-gray-950 border border-gray-900 rounded-2xl text-[11px] leading-relaxed text-gray-400">
                 <p>{t('inactivity_modal_desc')}</p>
                 <div className="mt-4 flex items-center justify-center gap-2">
@@ -1745,16 +1666,14 @@ export default function AdminDashboard() {
                   <span className="font-mono font-black text-white text-base bg-red-955/20 border border-red-900/30 px-2.5 py-0.5 rounded tracking-wide">{300 - idleTime}s</span>
                 </div>
               </div>
-
               <div className="flex flex-col gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setIdleTime(0);
                     setShowInactivityWarning(false);
-                    triggerNotification(t('toast_session_extended'), "info");
                   }}
-                  className="w-full py-4 bg-red-650 hover:bg-red-600 border border-transparent text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-1.5 hover:shadow-red-950/10 hover:translate-y-[-1px] select-none"
+                  className="w-full py-4 bg-red-650 hover:bg-red-600 border border-transparent text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-1.5 select-none"
                 >
                   {t('confirm_authorize_extend')}
                 </button>
@@ -1771,25 +1690,22 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
-      {/* ==========================================
-          DURABLE MODAL: DETAILED USER CREDENTIALS VETTING & OVERRIDES
-          ========================================== */}
+      {/* User View Modal */}
       <AnimatePresence>
         {inspectingUser && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans font-medium overflow-y-auto"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 15 }}
               className="w-full max-w-xl bg-gray-905 border border-gray-900 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden my-8"
             >
-              {/* Close Button */}
-              <button 
+              <button
                 type="button"
                 onClick={() => setInspectingUser(null)}
                 className="absolute top-6 right-6 p-2 rounded-xl bg-gray-950/80 border border-gray-900 text-gray-500 hover:text-white cursor-pointer transition-all hover:border-gray-800"
@@ -1798,172 +1714,164 @@ export default function AdminDashboard() {
               </button>
 
               <div className="flex items-center gap-3.5 border-b border-gray-900 pb-5 mb-5 select-none">
-                <div className="h-10 w-10 bg-red-950/30 text-red-400 border border-red-900/40 rounded-xl flex items-center justify-center">
-                  <User size={20} />
-                </div>
+                {inspectingUser.avatarUrl ? (
+                  <img src={inspectingUser.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover border border-gray-800" />
+                ) : (
+                  <div className="h-12 w-12 bg-red-950/30 text-red-400 border border-red-900/40 rounded-full flex items-center justify-center font-black">
+                    {inspectingUser.displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
                 <div>
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider font-sans leading-none">{inspectingUser.name}</h3>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1.5">{t('segment_registry_uid', { role: roleLabel(inspectingUser.role), uid: inspectingUser.uid })}</p>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider font-sans leading-none">{inspectingUser.displayName}</h3>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1.5">{roleLabel(inspectingUser.role)}</p>
                 </div>
               </div>
 
-              {/* Subliminal ID Preview Section */}
-              <div className="space-y-5">
-                <div>
-                  <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest block mb-2 leading-none">{t('dossier_document_vetted')}</span>
-                  <IdentityCardVisual 
-                    name={inspectingUser.name}
-                    type={inspectingUser.role === 'company' ? 'Company' : 'Worker'}
-                    idType={inspectingUser.role === 'company' ? 'Certificate of Inc.' : 'National ID'}
-                    details={inspectingUser.role === 'company' ? `Company Reg Code: C-2025-${inspectingUser.uid.toUpperCase()}` : `NID: 1199${inspectingUser.uid.toUpperCase()}054231`}
-                    code={inspectingUser.uid.toUpperCase()}
-                  />
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                  <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('users_email')}</span>
+                  <span className="font-sans font-bold text-gray-200 break-all">{inspectingUser.email}</span>
                 </div>
-
-                {/* Account details & information list */}
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
-                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('contact_email_address')}</span>
-                    <span className="font-sans font-bold text-gray-200">{inspectingUser.email}</span>
-                  </div>
-                  <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
-                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('geographic_headquarters')}</span>
-                    <span className="font-sans font-bold text-gray-200">{inspectingUser.location}</span>
-                  </div>
+                <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                  <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('users_phone')}</span>
+                  <span className="font-sans font-bold text-gray-200">{inspectingUser.phone || '—'}</span>
                 </div>
-
-                {/* Live Overrides Section */}
-                <div className="bg-gray-950/40 border border-gray-900 p-5 rounded-2xl space-y-4">
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-900/60 pb-2">{t('active_admin_compliance')}</h4>
-                  
-                  {/* Verification Vetting Overrides */}
-                  <div className="flex items-center justify-between gap-4 py-1">
-                    <div>
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('verified_trust_status')}</span>
-                      <p className="text-[10px] text-gray-500 leading-normal max-w-xs">{t('verified_trust_hint')}</p>
-                    </div>
-
-                    {inspectingUser.verificationStatus === 'verified' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updatedUsers = users.map((u) => 
-                            u.uid === inspectingUser.uid ? { ...u, verificationStatus: 'unverified' as const, trustScore: Math.max(u.trustScore - 15, 0) } : u
-                          );
-                          setUsers(updatedUsers);
-                          setInspectingUser(prev => prev ? { ...prev, verificationStatus: 'unverified', trustScore: Math.max(prev.trustScore - 15, 0) } : null);
-                          
-                          const logEntry: AuditLog = {
-                            id: `log_${Date.now()}`,
-                            action: t('audit_revoked_badge', { name: inspectingUser.name }),
-                            category: 'SECURITY',
-                            date: t('time_just_now'),
-                            user: 'Linekora Admin'
-                          };
-                          setAuditLogs(prev => [logEntry, ...prev]);
-                          triggerNotification(t('toast_revoked_badge', { name: inspectingUser.name }), "error");
-                        }}
-                        className="px-3.5 py-2.5 bg-red-950 border border-red-900/30 text-red-400 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-red-900 hover:text-white transition-all cursor-pointer shrink-0"
-                      >
-                        {t('revoke_badge')}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updatedUsers = users.map((u) => 
-                            u.uid === inspectingUser.uid ? { ...u, verificationStatus: 'verified' as const, trustScore: Math.min(u.trustScore + 20, 100) } : u
-                          );
-                          setUsers(updatedUsers);
-                          setInspectingUser(prev => prev ? { ...prev, verificationStatus: 'verified', trustScore: Math.min(prev.trustScore + 20, 100) } : null);
-
-                          const logEntry: AuditLog = {
-                            id: `log_${Date.now()}`,
-                            action: t('audit_doc_optin', { name: inspectingUser.name }),
-                            category: 'SECURITY',
-                            date: t('time_just_now'),
-                            user: 'Linekora Admin'
-                          };
-                          setAuditLogs(prev => [logEntry, ...prev]);
-                          triggerNotification(t('toast_doc_optin', { name: inspectingUser.name }));
-                        }}
-                        className="px-3.5 py-2.5 bg-green-950/50 border border-green-900/40 text-green-400 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-green-650 hover:text-white transition-all cursor-pointer shrink-0"
-                      >
-                        {t('approve_credentials')}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Trust Adjuster Slider inside Modal */}
-                  <div className="pt-2 border-t border-gray-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('direct_trust_score', { score: inspectingUser.trustScore })}</span>
-                      <p className="text-[10px] text-gray-500 leading-normal">{t('trust_slider_hint')}</p>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
-                      value={inspectingUser.trustScore}
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        handleSetTrustScore(inspectingUser.uid, val);
-                        setInspectingUser(prev => prev ? { ...prev, trustScore: val } : null);
-                      }}
-                      className="accent-red-650 w-full sm:w-32 bg-gray-950 rounded-lg h-2"
-                    />
-                  </div>
-
-                  {/* Profile Status Override buttons */}
-                  <div className="pt-2.5 border-t border-gray-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest block mb-1">{t('force_system_interventions')}</span>
-                      <p className="text-[10px] text-gray-500 leading-normal">{t('force_state_hint')}</p>
-                    </div>
-                    <div className="flex gap-1.5">
-                      {(['active', 'warning', 'suspended'] as const).map((st) => (
-                        <button
-                          key={st}
-                          type="button"
-                          onClick={() => {
-                            handleToggleUserStatus(inspectingUser.uid, st === 'active' ? 'suspended' : st === 'warning' ? 'active' : 'warning'); // custom cycle helper
-                            // Or let's apply a precise status update code
-                            setUsers(prev => prev.map(u => u.uid === inspectingUser.uid ? { ...u, status: st } : u));
-                            setInspectingUser(prev => prev ? { ...prev, status: st } : null);
-                            
-                            const logEntry: AuditLog = {
-                              id: `log_${Date.now()}`,
-                              action: t('audit_force_state', { name: inspectingUser.name, status: st.toUpperCase() }),
-                              category: 'SAFETY',
-                              date: t('time_just_now'),
-                              user: 'Linekora Admin'
-                            };
-                            setAuditLogs(prev => [logEntry, ...prev]);
-                            triggerNotification(t('toast_force_status', { name: inspectingUser.name, status: st.toUpperCase() }), st === 'active' ? 'success' : 'error');
-                          }}
-                          className={`px-2.5 py-1.5 text-[8px] font-black uppercase tracking-wider rounded border transition-all cursor-pointer ${
-                            inspectingUser.status === st 
-                              ? 'bg-red-955/20 border-red-900/55 text-red-400' 
-                              : 'bg-gray-900 border-gray-850 text-gray-500 hover:text-white'
-                          }`}
-                        >
-                          {st === 'active' ? t('state_override_active') : st === 'warning' ? t('state_override_warn') : t('state_override_ban')}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                  <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('users_verification_status')}</span>
+                  <span className="font-sans font-bold text-gray-200 uppercase">{statusLabel(inspectingUser)}</span>
+                </div>
+                <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                  <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('users_trust_score')}</span>
+                  <span className="font-sans font-black text-green-400">{inspectingUser.trustScore}</span>
+                </div>
+                <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900 col-span-2">
+                  <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('users_location')}</span>
+                  <span className="font-sans font-bold text-gray-200 flex items-center gap-1.5">
+                    <MapPin size={12} className="text-gray-500" />
+                    {inspectingUser.location || 'Kigali, Rwanda'}
+                  </span>
+                </div>
+                <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900 col-span-2">
+                  <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('users_joined')}</span>
+                  <span className="font-sans font-bold text-gray-200">{fmtDate(inspectingUser.createdAt)}</span>
                 </div>
               </div>
 
-              {/* Close Bottom Area */}
-              <div className="mt-8 pt-5 border-t border-gray-900 text-right">
+              <div className="mt-6 pt-5 border-t border-gray-900 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setInspectingUser(null)}
-                  className="px-5 py-3 bg-gray-950 border border-gray-900 hover:bg-gray-900 text-gray-400 hover:text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer select-none"
+                  onClick={() => { handleVerifyUser(inspectingUser); setInspectingUser(null); }}
+                  className="flex-1 py-3 bg-green-650 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  {t('close_dossier_file')}
+                  <Check size={14} />
+                  {t('users_verify')}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => { handleSuspendUser(inspectingUser); }}
+                  className="flex-1 py-3 bg-amber-650 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Clock size={14} />
+                  {suspendedIds.includes(inspectingUser.id) ? t('users_unsuspend') : t('users_suspend')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { handleBanUser(inspectingUser); setInspectingUser(null); }}
+                  className="flex-1 py-3 bg-red-950 hover:bg-red-900 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-red-900/30"
+                >
+                  <Ban size={14} />
+                  {t('users_ban')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Job View Modal */}
+      <AnimatePresence>
+        {inspectingJob && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-gray-950/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans font-medium overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-2xl bg-gray-905 border border-gray-900 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden my-8"
+            >
+              <button
+                type="button"
+                onClick={() => setInspectingJob(null)}
+                className="absolute top-6 right-6 p-2 rounded-xl bg-gray-950/80 border border-gray-900 text-gray-500 hover:text-white cursor-pointer transition-all hover:border-gray-800"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="border-b border-gray-900 pb-5 mb-5">
+                <h3 className="text-lg font-black text-white font-sans leading-tight">{inspectingJob.title}</h3>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none mt-1.5">
+                  {t('job_id', { id: inspectingJob.id })}
+                </p>
+              </div>
+
+              <div className="space-y-5">
+                <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                  <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-2">{t('jobs_description')}</span>
+                  <p className="text-gray-300 font-sans font-semibold text-xs leading-relaxed whitespace-pre-wrap">{inspectingJob.description}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('jobs_employer')}</span>
+                    <span className="font-sans font-bold text-gray-200">{inspectingJob.employer?.displayName || '—'}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('jobs_worker')}</span>
+                    <span className="font-sans font-bold text-gray-200">{workerNamesForJob(inspectingJob.id)}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('jobs_district')}</span>
+                    <span className="font-sans font-bold text-gray-200 flex items-center gap-1.5">
+                      <MapPin size={12} className="text-gray-500" />
+                      {inspectingJob.location || '—'}
+                    </span>
+                  </div>
+                  <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('jobs_amount')}</span>
+                    <span className="font-sans font-black text-emerald-400">{inspectingJob.salary}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('jobs_status')}</span>
+                    <span className="font-sans font-bold text-gray-200 uppercase">{jobStatusLabel(inspectingJob.status)}</span>
+                  </div>
+                  <div className="p-3.5 bg-gray-950 rounded-xl border border-gray-900">
+                    <span className="text-[8px] text-gray-500 font-black uppercase tracking-wider block mb-1">{t('jobs_date')}</span>
+                    <span className="font-sans font-bold text-gray-200">{fmtDate(inspectingJob.createdAt)}</span>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-5 border-t border-gray-900 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { handleHideJob(inspectingJob); setInspectingJob(null); }}
+                    className="flex-1 py-3 bg-amber-650 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Shield size={14} />
+                    {t('jobs_hide')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { handleDeleteJob(inspectingJob); setInspectingJob(null); }}
+                    className="flex-1 py-3 bg-red-950 hover:bg-red-900 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-red-900/30"
+                  >
+                    <Trash2 size={14} />
+                    {t('jobs_delete')}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

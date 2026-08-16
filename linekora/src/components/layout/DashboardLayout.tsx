@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Search, FileText, MessageSquare, 
   ShieldCheck, Star, Wallet, Settings, LogOut, Menu, X, 
   Briefcase, PlusSquare, Users, ShieldAlert, Shield, User, TrendingUp,
-  Bell, Trash, Inbox, ChevronRight, Sparkles, Lock,
+  Bell, BellOff, Trash, Inbox, ChevronRight, Sparkles, Lock,
   Home
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
@@ -13,6 +13,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { getNotifications, markAllNotificationsRead } from '../../lib/api';
 import { formatDistanceToNow } from 'date-fns';
+import { applyThemePrefs } from '../../lib/theme';
 import { useLanguage, Language } from '../../lib/LanguageContext';
 
 interface DashboardLayoutProps {
@@ -65,6 +66,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Customized Alerts DB based on role
   const [alerts, setAlerts] = useState<WebAlert[]>([]);
   const [chats, setChats] = useState<ChatPreview[]>([]);
+
+  // Notification channel preferences (set in Account Settings → Notifications)
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>(() => {
+    const cached = localStorage.getItem(`linekora_prefs_${roleKey}`);
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) {}
+    }
+    return { email: true, sms: false, inApp: true, marketing: false };
+  });
+
+  useEffect(() => {
+    applyThemePrefs(roleKey);
+    const sync = () => {
+      const cached = localStorage.getItem(`linekora_prefs_${roleKey}`);
+      if (cached) {
+        try { setNotifPrefs(JSON.parse(cached)); } catch (e) {}
+      }
+    };
+    sync();
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, [roleKey]);
+
+  const inAppEnabled = notifPrefs.inApp !== false;
 
   useEffect(() => {
     if (!user?.id) return;
@@ -166,13 +191,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleLogout = async () => {
     try {
+      // Stop background intervals/polls by ensuring we navigate first, then sign out
       console.log('Attempting to sign out...');
       await signOut(auth);
       console.log('Successfully signed out');
-      navigate('/');
     } catch (err) {
       console.error('Error signing out:', err);
+    } finally {
+      // Clear per-user local session data so no stale app data persists
+      try {
+        const uid = user?.firebaseUid || user?.id;
+        if (uid) {
+          Object.keys(localStorage).forEach((key) => {
+            if (key.startsWith(`linekora_${uid}`) || key === `linekora_profile_picture_${uid}`) {
+              localStorage.removeItem(key);
+            }
+          });
+        }
+      } catch (e) {
+        console.error('Failed to clear local session data', e);
+      }
       navigate('/');
+      window.scrollTo({ top: 0 });
     }
   };
 
@@ -409,7 +449,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 className={`relative p-2.5 rounded-xl transition-all ${isPanelOpen ? 'bg-blue-50 text-blue-600' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
               >
                 <MessageSquare size={20} />
-                {totalAlertBadge > 0 && (
+                {inAppEnabled && totalAlertBadge > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 h-5 w-5 bg-blue-600 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white animate-pulse">
                     {totalAlertBadge}
                   </span>
@@ -431,22 +471,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -10 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }}
-                    className="fixed md:absolute right-0 left-0 md:left-auto bottom-0 md:bottom-auto top-auto md:top-full md:mt-3 w-full md:w-96 bg-white md:rounded-3xl rounded-t-3xl border border-gray-150 shadow-2xl z-[200] overflow-hidden"
+                    className="fixed md:absolute right-0 left-0 md:left-auto bottom-0 md:bottom-auto top-auto md:top-full md:mt-3 w-full md:w-96 max-w-[calc(100vw-1rem)] bg-white md:rounded-3xl rounded-t-3xl border border-gray-150 shadow-2xl z-[200] overflow-hidden"
                   >
-                    <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                      <div>
-                        <h4 className="font-sans font-black text-xs text-gray-950 uppercase tracking-widest flex items-center gap-1.5">
-                          {t('alerts_inbox')}
-                          <span className="bg-blue-100 text-blue-700 text-[8px] font-black px-2 py-0.5 rounded-full">
-                            {t('new_count', { count: totalAlertBadge })}
+                    <div className="p-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3 bg-gray-50/50">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-sans font-black text-xs text-gray-950 uppercase tracking-wide flex items-center gap-1.5">
+                          <span className="truncate">{t('alerts_inbox')}</span>
+                          <span className="bg-blue-100 text-blue-700 text-[8px] font-black px-2 py-0.5 rounded-full shrink-0">
+                            {t('new_count', { count: inAppEnabled ? totalAlertBadge : 0 })}
                           </span>
                         </h4>
-                        <p className="text-[10px] text-gray-400 font-sans font-medium italic mt-0.5">{t('real_time_updates')}</p>
+                        <p className="text-[10px] text-gray-400 font-sans font-medium italic mt-0.5 truncate">{t('real_time_updates')}</p>
                       </div>
                       {totalAlertBadge > 0 && (
                         <button 
                           onClick={handleMarkAllRead}
-                          className="text-[9px] font-black text-blue-600 uppercase tracking-wider hover:underline"
+                          className="text-[9px] font-black text-blue-600 uppercase tracking-wide hover:underline shrink-0"
                         >
                           {t('mark_all_read')}
                         </button>
@@ -457,13 +497,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <div className="flex border-b border-gray-100 bg-white">
                       <button 
                         onClick={() => setActiveTab('alerts')}
-                        className={`flex-1 py-3 text-center text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'alerts' ? 'text-blue-650 border-blue-600 bg-blue-50/15' : 'text-gray-405 border-transparent hover:text-gray-900 bg-white'}`}
+                        className={`flex-1 min-w-0 px-2 py-3 text-center text-[10px] font-black uppercase tracking-wide border-b-2 transition-all truncate ${activeTab === 'alerts' ? 'text-blue-650 border-blue-600 bg-blue-50/15' : 'text-gray-405 border-transparent hover:text-gray-900 bg-white'}`}
                       >
                         {t('system_alerts_count', { count: unreadAlertsCount })}
                       </button>
                       <button 
                         onClick={() => setActiveTab('messages')}
-                        className={`flex-1 py-3 text-center text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'messages' ? 'text-blue-650 border-blue-600 bg-blue-50/15' : 'text-gray-405 border-transparent hover:text-gray-900 bg-white'}`}
+                        className={`flex-1 min-w-0 px-2 py-3 text-center text-[10px] font-black uppercase tracking-wide border-b-2 transition-all truncate ${activeTab === 'messages' ? 'text-blue-650 border-blue-600 bg-blue-50/15' : 'text-gray-405 border-transparent hover:text-gray-900 bg-white'}`}
                       >
                         {t('unread_chats_count', { count: unreadChatsCount })}
                       </button>
@@ -472,7 +512,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     {/* Panel Body */}
                     <div className="max-h-[360px] overflow-y-auto bg-white divide-y divide-gray-50">
                       {activeTab === 'alerts' ? (
-                        alerts.length > 0 ? (
+                        !inAppEnabled ? (
+                          <div className="py-12 px-6 text-center">
+                            <BellOff className="mx-auto text-gray-300 mb-2" size={32} />
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none">{t('notif_paused_title')}</p>
+                            <p className="text-[10px] text-gray-400 font-sans italic mt-1">{t('notif_paused_desc')}</p>
+                          </div>
+                        ) : alerts.length > 0 ? (
                           alerts.map((alert) => (
                             <div 
                               key={alert.id}
@@ -568,6 +614,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Mobile-only logout button so phones always have access */}
+            <button
+              onClick={handleLogout}
+              aria-label={t('logout')}
+              title={t('logout')}
+              className="lg:hidden p-2.5 rounded-xl text-red-500 hover:bg-red-50 transition-all"
+            >
+              <LogOut size={20} />
+            </button>
 
             {/* Clickable Header Avatar for direct Settings access on mobile & desktop */}
             <Link 

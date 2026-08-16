@@ -4,6 +4,7 @@ import {
   CreditCard, Smartphone, CheckCircle2, AlertCircle, Plus, X, Shield, Landmark, ArrowRight, Loader2
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import PaymentsUnderDevelopment from '../../components/payments/PaymentsUnderDevelopment';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
@@ -29,6 +30,7 @@ export default function WorkerWallet() {
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [devNotice, setDevNotice] = useState(false);
 
   // Stateful financial values
   const [balance, setBalance] = useState<number>(() => {
@@ -112,25 +114,7 @@ export default function WorkerWallet() {
       return;
     }
     setDepositErrorMsg('');
-    setDepositIsLoading(true);
-
-    setTimeout(() => {
-      setDepositIsLoading(false);
-      setDepositSuccess(true);
-      setBalance(prev => prev + amt);
-
-      const newTx: Transaction = {
-        id: Date.now(),
-        type: 'payment',
-        amount: `RWF ${amt.toLocaleString()}`,
-        method: depositMethod === 'momo' ? t('momo_deposit') : t('card_settlement'),
-        status: 'completed',
-        date: t('today'),
-        description: t('deposit_desc'),
-        refCode: `DEP-TXN-${Math.floor(Math.random() * 90000) + 10000}`
-      };
-      setTxList(prev => [newTx, ...prev]);
-    }, 1200);
+    setDevNotice(true);
   };
 
   const handleWithdrawConfirm = () => {
@@ -144,41 +128,7 @@ export default function WorkerWallet() {
       return;
     }
     setWithdrawErrorMsg('');
-    setWithdrawIsLoading(true);
-
-    setTimeout(() => {
-      setWithdrawIsLoading(false);
-      setWithdrawSuccess(true);
-      setBalance(prev => prev - amt);
-      setTotalWithdrawn(prev => prev + amt);
-
-      const resolvedMethod = 
-        withdrawType === 'mtn' ? 'MTN Mobile Money' : 
-        withdrawType === 'airtel' ? 'Airtel Money' : 'Bank Transfer (I&M Bank)';
-
-      const resolvedRef = 
-        withdrawType === 'mtn' ? `TXN-MTN-${Math.floor(Math.random() * 900000) + 100000}X` : 
-        withdrawType === 'airtel' ? `TXN-AIR-${Math.floor(Math.random() * 900000) + 100000}Y` : 
-        `TXN-BNK-${Math.floor(Math.random() * 900000) + 100000}B`;
-
-      const descriptionMsg = 
-        withdrawType === 'bank' 
-          ? t('withdraw_bank_desc', { last4: withdrawBankAcc.slice(-4) })
-          : t('withdraw_mobile_desc', { phone: withdrawPhone });
-
-      const newTx: Transaction = {
-        id: Date.now(),
-        type: 'withdraw',
-        amount: `RWF ${amt.toLocaleString()}`,
-        method: resolvedMethod,
-        status: 'completed',
-        date: t('today'),
-        description: descriptionMsg,
-        refCode: resolvedRef
-      };
-
-      setTxList(prev => [newTx, ...prev]);
-    }, 1500);
+    setDevNotice(true);
   };
 
   const filteredTransactions = txList.filter(tx => {
@@ -203,6 +153,7 @@ export default function WorkerWallet() {
                 setDepositAmount('');
                 setDepositErrorMsg('');
                 setDepositIsLoading(false);
+                setDevNotice(false);
                 setShowDeposit(true);
               }}
               className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl font-sans font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all cursor-pointer"
@@ -215,6 +166,7 @@ export default function WorkerWallet() {
                 setWithdrawSuccess(false);
                 setWithdrawAmount('');
                 setWithdrawErrorMsg('');
+                setDevNotice(false);
                 setShowWithdraw(true);
               }}
               className="flex items-center gap-2 bg-gray-900 text-white px-6 py-3 rounded-2xl font-sans font-bold shadow-lg hover:bg-black transition-all cursor-pointer"
@@ -224,6 +176,10 @@ export default function WorkerWallet() {
             </button>
           </div>
         </header>
+
+        <div className="mb-8">
+          <PaymentsUnderDevelopment />
+        </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -444,6 +400,12 @@ export default function WorkerWallet() {
                     </div>
                   )}
 
+                  {devNotice && (
+                    <div className="mb-6">
+                      <PaymentsUnderDevelopment compact />
+                    </div>
+                  )}
+
                   <div className="space-y-6">
                     <div>
                       <div className="flex items-center justify-between mb-2">
@@ -618,6 +580,12 @@ export default function WorkerWallet() {
                     <div className="mb-6 p-4 bg-red-50 text-red-600 border border-red-100 text-xs font-bold rounded-2xl flex items-start gap-2 animate-pulse">
                       <AlertCircle size={16} className="shrink-0" />
                       <span>{depositErrorMsg}</span>
+                    </div>
+                  )}
+
+                  {devNotice && (
+                    <div className="mb-6">
+                      <PaymentsUnderDevelopment compact />
                     </div>
                   )}
 

@@ -9,32 +9,44 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { updateUser, saveVerificationDocs } from '../../lib/api';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import { isValidNationalId, checkIdImage, normalizeNationalId } from '../../lib/idValidation';
+import { VERIFICATION_UNAVAILABLE } from '../../lib/verificationAvailability';
+import VerificationUnavailable from '../../components/verification/VerificationUnavailable';
 
 type Tier = 'bronze' | 'silver';
 type VerificationStep = 'intro' | 'tier_select' | 'documents' | 'selfie' | 'otp' | 'completed';
 
 export default function WorkerVerification() {
+  if (VERIFICATION_UNAVAILABLE) {
+    return <VerificationUnavailable dashboardPath="/dashboard/worker" />;
+  }
+
   const { t } = useLanguage();
   const { profile } = useAuth();
   const [step, setStep] = useState<VerificationStep>('intro');
   const [selectedTier, setSelectedTier] = useState<Tier>('bronze');
   const [isUploading, setIsUploading] = useState(false);
+  const [biometricConsent, setBiometricConsent] = useState(false);
 
   // Functional ID document upload states
   const [frontId, setFrontId] = useState<string | null>(null);
   const [backId, setBackId] = useState<string | null>(null);
   const [nationalIdNum, setNationalIdNum] = useState('');
+  const [idNumError, setIdNumError] = useState<string | null>(null);
+  const [frontIdError, setFrontIdError] = useState<string | null>(null);
+  const [backIdError, setBackIdError] = useState<string | null>(null);
   const frontInputRef = useRef<HTMLInputElement | null>(null);
   const backInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleAutoFillSampleDocs = () => {
     setNationalIdNum('1 1998 8 0012345 0 88');
+    setIdNumError(null);
   };
 
   const saveVerificationToApi = async () => {
     try {
       const verificationPayload = {
-        nationalId: nationalIdNum,
+        nationalId: normalizeNationalId(nationalIdNum),
         frontId: frontId || undefined,
         backId: backId || undefined,
         selfie: capturedPhoto || undefined,
@@ -59,30 +71,42 @@ export default function WorkerVerification() {
     }
   };
 
-  const handleFrontIdChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setFrontId(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+  const handleFrontIdChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const check = await checkIdImage(file);
+    if (!check.valid || check.message) {
+      setFrontIdError(check.message || 'file_not_image');
+      setFrontId(null);
+      return;
     }
+    setFrontIdError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setFrontId(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleBackIdChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setBackId(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+  const handleBackIdChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const check = await checkIdImage(file);
+    if (!check.valid || check.message) {
+      setBackIdError(check.message || 'file_not_image');
+      setBackId(null);
+      return;
     }
+    setBackIdError(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setBackId(event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // Biometric selfie camera states
@@ -345,16 +369,36 @@ export default function WorkerVerification() {
                     <input 
                       type="text" 
                       value={nationalIdNum}
-                      onChange={(e) => setNationalIdNum(e.target.value)}
+                      onChange={(e) => {
+                        setNationalIdNum(e.target.value);
+                        setIdNumError(e.target.value.trim() ? (!isValidNationalId(e.target.value) ? 'id_must_be_16_digits' : null) : null);
+                      }}
                       placeholder="e.g. 1 1999 8 0000000 0 00"
-                      className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm"
+                      className={`w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all shadow-sm ${
+                        idNumError ? 'border-red-300 bg-red-50/40 focus:border-red-500' : ''
+                      }`}
+                      inputMode="numeric"
+                      maxLength={20}
                     />
+                    {idNumError ? (
+                      <p className="text-[11px] font-bold text-red-500 px-1 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 inline-block" />
+                        {t(idNumError)}
+                      </p>
+                    ) : nationalIdNum.trim() ? (
+                      <p className="text-[11px] font-bold text-green-600 px-1 flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />
+                        {t('id_valid')} · {normalizeNationalId(nationalIdNum).length} / 16
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div 
                       onClick={() => frontInputRef.current?.click()}
-                      className="border-2 border-dashed border-gray-150 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-600 transition-colors group bg-gray-50/50 relative overflow-hidden min-h-[140px]"
+                      className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-600 transition-colors group bg-gray-50/50 relative overflow-hidden min-h-[140px] ${
+                        frontIdError ? 'border-red-300 bg-red-50/30' : 'border-gray-150'
+                      }`}
                     >
                       <input 
                         type="file" 
@@ -377,13 +421,21 @@ export default function WorkerVerification() {
                             <Upload size={20} />
                           </div>
                           <p className="text-xs font-black text-gray-900 uppercase tracking-widest italic">{t('front_id')}</p>
+                          <p className="text-[9px] text-gray-400 font-bold mt-1">{t('front_id_hint')}</p>
                         </>
+                      )}
+                      {frontIdError && (
+                        <div className="absolute inset-x-0 bottom-0 bg-red-500/90 text-white text-[9px] font-black uppercase tracking-wide py-1.5 px-2">
+                          {t(frontIdError)}
+                        </div>
                       )}
                     </div>
  
                     <div 
                       onClick={() => backInputRef.current?.click()}
-                      className="border-2 border-dashed border-gray-150 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-600 transition-colors group bg-gray-50/50 relative overflow-hidden min-h-[140px]"
+                      className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-blue-600 transition-colors group bg-gray-50/50 relative overflow-hidden min-h-[140px] ${
+                        backIdError ? 'border-red-300 bg-red-50/30' : 'border-gray-150'
+                      }`}
                     >
                       <input 
                         type="file" 
@@ -406,14 +458,20 @@ export default function WorkerVerification() {
                             <Upload size={20} />
                           </div>
                           <p className="text-xs font-black text-gray-900 uppercase tracking-widest italic">{t('back_id')}</p>
+                          <p className="text-[9px] text-gray-400 font-bold mt-1">{t('back_id_hint')}</p>
                         </>
+                      )}
+                      {backIdError && (
+                        <div className="absolute inset-x-0 bottom-0 bg-red-500/90 text-white text-[9px] font-black uppercase tracking-wide py-1.5 px-2">
+                          {t(backIdError)}
+                        </div>
                       )}
                     </div>
                   </div>
                 </div>
 
                 <button 
-                  disabled={isUploading || !nationalIdNum || !frontId || !backId}
+                  disabled={isUploading || !isValidNationalId(nationalIdNum) || !frontId || !backId || !!frontIdError || !!backIdError}
                   onClick={handleNext} 
                   className="w-full py-5 bg-blue-600 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-sm hover:bg-blue-700 disabled:hover:bg-gray-200 shadow-xl shadow-blue-200 disabled:shadow-none transition-all flex items-center justify-center gap-2"
                 >
@@ -490,6 +548,36 @@ export default function WorkerVerification() {
                   )}
                 </div>
 
+                <div className="border-2 border-blue-100 bg-blue-50/40 rounded-3xl p-5 mb-5">
+                  <div className="flex items-start gap-3 mb-3">
+                    <ShieldCheck size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest font-sans mb-1">{t('biometric_consent_title')}</h4>
+                      <p className="text-[11px] text-gray-600 font-sans font-medium leading-relaxed">{t('biometric_consent_body')}</p>
+                      <p className="text-[10px] text-gray-500 font-sans font-medium leading-relaxed mt-1">{t('biometric_consent_usage')}</p>
+                      <p className="text-[10px] text-gray-500 font-sans font-medium leading-relaxed mt-1">{t('biometric_consent_agree')}</p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-3 bg-white border-2 border-blue-200 rounded-2xl px-4 py-3 cursor-pointer hover:border-blue-400 transition-colors">
+                    <span className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${biometricConsent ? 'bg-blue-600 border-blue-600' : 'border-gray-300'}`}>
+                      {biometricConsent && <CheckCircle2 size={14} className="text-white" />}
+                    </span>
+                    <span className="text-sm font-black text-gray-900 font-sans uppercase tracking-wider">{t('i_agree')}</span>
+                    <input
+                      type="checkbox"
+                      checked={biometricConsent}
+                      onChange={(e) => setBiometricConsent(e.target.checked)}
+                      className="sr-only"
+                    />
+                  </label>
+                  {!biometricConsent && (
+                    <p className="text-[10px] font-bold text-blue-600 mt-2 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-600 inline-block animate-pulse" />
+                      {t('consent_required_hint')}
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-3">
                   {!cameraActive && !capturedPhoto ? (
                     <button 
@@ -503,9 +591,13 @@ export default function WorkerVerification() {
                   ) : cameraActive ? (
                     <button 
                       type="button"
-                      disabled={isScanning}
+                      disabled={isScanning || !biometricConsent}
                       onClick={handleCaptureAndScan} 
-                      className="w-full py-5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-[2rem] font-sans font-black uppercase tracking-widest text-xs hover:shadow-xl hover:shadow-cyan-100 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      className={`w-full py-5 rounded-[2rem] font-sans font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        !biometricConsent 
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                          : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:shadow-xl hover:shadow-cyan-100'
+                      }`}
                     >
                       {isScanning ? (
                         <>

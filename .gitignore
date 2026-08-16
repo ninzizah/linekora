@@ -38,3 +38,8 @@ linekora-backend/generated/
 # Coverage
 coverage/
 .vercel
+
+# Personal / legal documents (never commit these)
+DPO_Registration_Answers_For_Yves.md
+Data-Controller-Registration-Form.pdf
+karamera 2.docx

@@ -29,6 +29,19 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+// ─── STATS ───────────────────────────────────────────────────────────────────
+
+export interface PlatformStats {
+  totalUsers: number;
+  verifiedWorkers: number;
+  verifiedCompanies: number;
+  pendingVerifications: number;
+  activeJobs: number;
+  completedHires: number;
+}
+
+export const getStats = () => request<PlatformStats>('/stats');
+
 // ─── USERS ───────────────────────────────────────────────────────────────────
 
 export interface UserProfile {
@@ -42,6 +55,7 @@ export interface UserProfile {
   trustScore: number;
   tier: string;
   verificationStatus: string;
+  verificationData?: string | null;
   avatarUrl?: string;
   createdAt: string;
 }
@@ -59,6 +73,11 @@ export const updateUser = (id: string, data: Partial<UserProfile>) =>
   request<UserProfile>(`/users/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
+  });
+
+export const deleteUserRecord = (id: string) =>
+  request<{ success: boolean }>(`/users/${id}`, {
+    method: 'DELETE',
   });
 
 export const getUsers = () => request<UserProfile[]>('/users');

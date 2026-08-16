@@ -177,13 +177,25 @@ export default function EmployerPostTask() {
     if (!files) return;
     const maxFiles = 5 - attachedPhotos.length;
     const toProcess = Array.from(files).slice(0, maxFiles);
+    const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
+    const MAX_TOTAL_BYTES = 3.5 * 1024 * 1024;
     toProcess.forEach((file: File) => {
+      if (file.size > MAX_PHOTO_BYTES) {
+        addToast(t('photo_too_large_error'), 'error');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
         const dataUrl = reader.result as string;
         setAttachedPhotos(prev => {
           if (prev.length >= 5) {
             addToast(t('toast_max_5_photos'), 'info');
+            return prev;
+          }
+          const currentBytes = prev.reduce((sum, url) => sum + (url.length * 3) / 4, 0);
+          const newBytes = (dataUrl.length * 3) / 4;
+          if (currentBytes + newBytes > MAX_TOTAL_BYTES) {
+            addToast(t('toast_photo_storage_limit'), 'error');
             return prev;
           }
           addToast(t('toast_photo_attached'), 'success');
@@ -312,7 +324,7 @@ export default function EmployerPostTask() {
               {t('milestone_resolve_desc')}
             </div>
             <button
-              onClick={() => navigate('/dashboard/employer')}
+              onClick={() => navigate('/dashboard/employer#contracts')}
               className="px-8 py-4 bg-gray-950 hover:bg-gray-800 text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs transition-colors"
             >
               {t('milestone_go_dashboard')}

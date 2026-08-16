@@ -59,7 +59,7 @@ export default function WorkerApplications() {
     status: a.status || 'pending',
     date: a.createdAt ? new Date(a.createdAt).toLocaleDateString() : t('just_now'),
     logo: (a.job?.title || 'PJ').slice(0, 2).toUpperCase(),
-    phone: a.job?.phone || '+250 780 000 000',
+    phone: a.job?.phone || '',
     description: a.job?.description || t('milestone_opportunity_desc'),
     employerId: a.job?.employer?.id,
     isContract: false,
@@ -91,13 +91,14 @@ export default function WorkerApplications() {
               c.status === 'still_in_progress' ? t('revision_in_progress') : 
               c.status === 'disputed' ? t('disputed_milestone') : t('flagged_untrusted'),
         logo: c.logo || 'PJ',
-        phone: c.phone || '+250 780 000 000',
+        phone: c.phone || '',
         description: c.description || t('milestone_opportunity_desc'),
         employerId: c.employerId,
         isContract: true
       }));
 
-      setApps([...formattedApi, ...formattedContracts]);
+      const contractIds = new Set(formattedContracts.map(c => c.id));
+      setApps([...formattedApi.filter(a => !contractIds.has(a.id)), ...formattedContracts]);
     } catch (err) {
       console.error('Failed to load applications', err);
     } finally {
@@ -155,10 +156,21 @@ export default function WorkerApplications() {
         c.id === id ? { ...c, status: 'rejected' } : c
       );
       writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
+      syncEmployerContract(declinedApp?.employerId, list => list.map(c =>
+        c.id === id ? { ...c, status: 'rejected' } : c
+      ));
     }
 
-    // Push alert
+    // Notify the employer so they know the worker declined their offer
     if (declinedApp) {
+      await notifyEmployer(
+        declinedApp.employerId,
+        t('job_offer_declined'),
+        t('offer_declined_details', { name: profile?.displayName || t('worker'), title: declinedApp.jobTitle }),
+        'urgent'
+      );
+
+      // Push alert
       const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
       alertsArr.push({
         id: Date.now().toString(),
@@ -305,7 +317,7 @@ export default function WorkerApplications() {
       }
 
       const updated = apps.map(ap => 
-        ap.id === id ? { ...ap, status: 'accepted' as const, date: t('active_shift_contract') } : ap
+        ap.id === id ? { ...ap, status: 'accepted' as const, date: t('active_shift_contract'), isContract: true } : ap
       );
       setApps(updated);
       saveAppsOnly(updated);
@@ -655,7 +667,7 @@ export default function WorkerApplications() {
                     {(selectedApp.status === 'accepted' || selectedApp.status === 'still_in_progress' || selectedApp.status === 'completion_requested') && (
                       <div className="p-4 bg-green-50/50 border border-green-150 rounded-2xl animate-fade-in">
                         <span className="text-[9px] font-black text-green-700 uppercase tracking-widest block mb-1">{t('employer_helpline')}</span>
-                        <p className="text-xs font-black text-green-950 mb-0.5">{t('reach_out', { phone: selectedApp.phone || '+250 788 123 456' })}</p>
+                        <p className="text-xs font-black text-green-950 mb-0.5">{t('reach_out', { phone: selectedApp.phone || t('not_provided') })}</p>
                         <p className="text-[10px] text-green-700/80 font-medium font-sans">{t('helpline_hint')}</p>
                       </div>
                     )}

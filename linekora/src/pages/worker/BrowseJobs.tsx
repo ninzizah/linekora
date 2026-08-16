@@ -38,6 +38,11 @@ export default function BrowseJobs() {
   // Filter states
   const [filterCategory, setFilterCategory] = useState('');
   const [filterUrgent, setFilterUrgent] = useState(false);
+  const [filterNearby, setFilterNearby] = useState(false);
+
+  // Worker's own location for "near you" matching
+  const myLocation = (profile?.location || '').trim();
+  const myLocationTokens = myLocation.toLowerCase().split(/[\s,]+/).filter(Boolean);
 
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ msg, type });
@@ -118,6 +123,11 @@ export default function BrowseJobs() {
   };
 
   const filteredJobs = jobs.filter(job => {
+    if (filterNearby && myLocationTokens.length > 0) {
+      const jobLoc = (job.location || '').toLowerCase();
+      const nearby = myLocationTokens.some(token => token.length >= 3 && jobLoc.includes(token));
+      if (!nearby) return false;
+    }
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -128,6 +138,10 @@ export default function BrowseJobs() {
       job.description.toLowerCase().includes(q)
     );
   });
+
+  // Keep the subtitle honest: only claim "near you" when the nearby filter is active
+  const nearbyActive = filterNearby && myLocationTokens.length > 0;
+  const subtitleCount = `${filteredJobs.length} verified ${filteredJobs.length === 1 ? t('opportunity') : t('opportunities')}`;
 
   const categories = [
     { value: 'Construction', key: 'category_construction' },
@@ -147,7 +161,7 @@ export default function BrowseJobs() {
           <div>
             <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight">{t('marketplace')}</h1>
             <p className="text-gray-500 font-sans font-medium mt-1">
-              {loading ? t('loading_opportunities') : `${filteredJobs.length} verified ${filteredJobs.length === 1 ? t('opportunity') : t('opportunities')} available near you.`}
+              {loading ? t('loading_opportunities') : `${subtitleCount} ${nearbyActive ? `${t('available_near_you')}.` : t('available')}.`}
             </p>
           </div>
           <button
@@ -231,10 +245,25 @@ export default function BrowseJobs() {
                     {t('urgent_tasks_only')}
                   </label>
                 </div>
+                <div className="flex items-center gap-2 mt-2 bg-blue-50/50 p-2.5 border border-blue-100 rounded-xl">
+                  <input 
+                    type="checkbox" 
+                    id="nearby-only" 
+                    checked={filterNearby}
+                    onChange={e => setFilterNearby(e.target.checked)}
+                    className="h-4 w-4 rounded text-blue-600 accent-blue-600 cursor-pointer" 
+                  />
+                  <label htmlFor="nearby-only" className="text-xs font-black text-blue-700 uppercase tracking-wider cursor-pointer">
+                    {t('nearby_only')}
+                  </label>
+                </div>
+                {filterNearby && !myLocation && (
+                  <p className="text-[10px] font-bold text-amber-600 mt-1.5 italic">{t('nearby_location_hint')}</p>
+                )}
               </div>
               <div className="flex items-end">
                 <button
-                  onClick={() => { setFilterCategory(''); setFilterUrgent(false); }}
+                  onClick={() => { setFilterCategory(''); setFilterUrgent(false); setFilterNearby(false); }}
                   className="w-full py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-xl font-sans font-black text-xs uppercase tracking-widest transition-all"
                 >
                   {t('reset_filters')}

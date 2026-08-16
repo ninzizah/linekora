@@ -23,6 +23,32 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'Linekora API is running 🚀' });
 });
 
+// ─── STATS ──────────────────────────────────────────────────────────────────
+
+app.get('/api/stats', async (_req, res) => {
+  try {
+    const [totalUsers, verifiedWorkers, verifiedCompanies, pendingVerifications, activeJobs, completedHires] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { role: 'WORKER', verificationStatus: 'verified' } }),
+      prisma.user.count({ where: { role: 'COMPANY', verificationStatus: 'verified' } }),
+      prisma.user.count({ where: { verificationStatus: 'pending' } }),
+      prisma.job.count({ where: { OR: [{ status: 'open' }, { status: 'accepted' }, { status: 'completion_requested' }] } }),
+      prisma.job.count({ where: { status: 'completed' } }),
+    ]);
+    res.json({
+      totalUsers,
+      verifiedWorkers,
+      verifiedCompanies,
+      pendingVerifications,
+      activeJobs,
+      completedHires,
+    });
+  } catch (error: any) {
+    console.error('Failed to fetch stats:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch stats' });
+  }
+});
+
 // ─── USERS ──────────────────────────────────────────────────────────────────
 
 app.get('/api/users', async (_req, res) => {
@@ -83,6 +109,48 @@ app.patch('/api/users/:id', async (req, res) => {
   } catch (error: any) {
     console.error('Failed to update user:', error);
     res.status(500).json({ error: error.message || 'Failed to update user' });
+  }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ id }, { firebaseUid: id }] },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userId = existing.id;
+
+    // Applications on jobs this user posted
+    const jobs = await prisma.job.findMany({ where: { employerId: userId } });
+    if (jobs.length > 0) {
+      await prisma.application.deleteMany({ where: { jobId: { in: jobs.map(j => j.id) } } });
+    }
+    // Jobs this user posted
+    await prisma.job.deleteMany({ where: { employerId: userId } });
+
+    // Applications where this user is the worker
+    await prisma.application.deleteMany({ where: { workerId: userId } });
+
+    // Messages sent/received
+    await prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } });
+
+    // Notifications
+    await prisma.notification.deleteMany({ where: { userId } });
+
+    // Reviews given/received
+    await prisma.review.deleteMany({ where: { OR: [{ reviewerId: userId }, { targetId: userId }] } });
+
+    // Finally the user record
+    await prisma.user.delete({ where: { id: userId } });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to delete user:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete user' });
   }
 });
 

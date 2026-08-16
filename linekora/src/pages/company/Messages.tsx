@@ -3,7 +3,7 @@ import {
   MessageSquare, Search, Send, Plus, 
   MoreVertical, Phone, Video, Shield,
   Check, CheckCheck, Clock, AlertCircle,
-  Pin, VolumeX, Flag, Trash, AlertTriangle, X, Users
+  Pin, VolumeX, Flag, Trash, AlertTriangle, X, Users, ArrowLeft
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
@@ -211,7 +211,7 @@ export default function CompanyMessages() {
     <DashboardLayout>
       <div className="h-[calc(100vh-12rem)] flex bg-white rounded-[3rem] border border-gray-100 shadow-xl shadow-gray-200/50 overflow-hidden relative">
         {/* Sidebar */}
-        <div className="w-80 border-r border-gray-50 flex flex-col shrink-0">
+        <div className={`w-full md:w-80 border-r border-gray-50 flex-col shrink-0 ${activeChat ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-6 border-b border-gray-50">
             <h2 className="text-xl font-black text-gray-900 font-sans tracking-tight mb-6 uppercase">{t('talent_messages')}</h2>
             <div className="relative group">
@@ -260,12 +260,19 @@ export default function CompanyMessages() {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col bg-gray-50/20">
+        <div className={`flex-1 flex-col bg-gray-50/20 ${activeChat ? 'flex' : 'hidden md:flex'}`}>
           {activeChat && currentChatObj ? (
             <>
               {/* Header */}
               <div className="h-20 px-8 bg-white border-b border-gray-50 flex items-center justify-between relative z-10">
                 <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setActiveChat(null)}
+                    className="md:hidden p-2 -ml-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                    aria-label={t('back')}
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
                   <div className="h-10 w-10 rounded-full bg-blue-105 text-blue-700 font-sans font-black text-xs flex items-center justify-center border border-blue-200">
                     {currentChatObj.avatar}
                   </div>

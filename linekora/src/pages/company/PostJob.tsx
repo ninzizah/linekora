@@ -196,7 +196,7 @@ export default function PostJob() {
               {t('corporate_resolve_desc_prefix')}<span className="font-bold">"{t('approve_complete')}"</span>{t('corporate_resolve_desc_suffix')}
             </div>
             <button
-              onClick={() => navigate('/dashboard/company')}
+              onClick={() => navigate('/dashboard/company#contracts')}
               className="px-8 py-4 bg-gray-950 hover:bg-gray-800 text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs transition-colors"
             >
               {t('corporate_go_dashboard')}

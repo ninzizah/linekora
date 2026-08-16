@@ -1,21 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, CreditCard,
-  Save, LogOut, Trash2, Camera, X, FileText, Upload, Loader2, Download, File
+  Save, Trash2, Camera, X, FileText, Upload, Loader2, Download, File
 } from 'lucide-react';
-import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
-import { signOut } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
-import { useNavigate } from 'react-router-dom';
 import { updateUser } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
+import SettingsHub from '../../components/settings/SettingsHub';
 
 export default function WorkerSettings() {
   const { t } = useLanguage();
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cvInputRef = useRef<HTMLInputElement>(null);
   
@@ -54,16 +50,6 @@ export default function WorkerSettings() {
       );
     }
   }, [profile?.id]);
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {
-      console.error('Error signing out:', err);
-    } finally {
-      navigate('/');
-    }
-  };
 
   // Handle photo file selection
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,14 +153,9 @@ export default function WorkerSettings() {
   ];
 
   return (
-    <DashboardLayout>
-      <div className="max-w-4xl mx-auto px-2 sm:px-4">
-        <header className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 font-sans tracking-tight">{t('account_settings')}</h1>
-          <p className="text-gray-500 font-sans font-medium mt-1 italic text-sm">{t('account_settings_subtitle')}</p>
-        </header>
-
-        {/* Tab Bar — horizontal scroll on mobile */}
+    <SettingsHub role="WORKER" accountSection={
+      <div>
+        {/* Sub Tab Bar — horizontal scroll on mobile */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
           {tabs.map((tab) => (
             <button
@@ -190,18 +171,9 @@ export default function WorkerSettings() {
               {tab.label}
             </button>
           ))}
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl font-sans font-bold text-xs whitespace-nowrap shrink-0 text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 transition-all ml-auto"
-          >
-            <LogOut size={15} />
-            {t('sign_out')}
-          </button>
         </div>
 
-        {/* Content Card */}
-        <div className="bg-white rounded-3xl sm:rounded-[3rem] p-5 sm:p-10 border border-gray-100 shadow-sm">
-          {activeTab === 'profile' && (
+        {activeTab === 'profile' && (
             <div className="space-y-8 font-sans">
 
               {/* Avatar Upload */}
@@ -426,7 +398,6 @@ export default function WorkerSettings() {
             </div>
           )}
         </div>
-      </div>
-    </DashboardLayout>
+      } />
   );
 }

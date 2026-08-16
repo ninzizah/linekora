@@ -153,6 +153,63 @@ export default function Legal() {
                     <p>
                       {t('privacy_h3_body')}
                     </p>
+
+                    <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest pt-4">{t('privacy_h4')}</h3>
+                    <p>
+                      {t('privacy_h4_body_1')}
+                    </p>
+                    <p>
+                      {t('privacy_h4_body_2')}
+                    </p>
+                    <div className="bg-gray-50 border border-gray-150 rounded-2xl p-5 space-y-1.5 text-sm">
+                      <p><strong>{t('privacy_h4_company')}</strong></p>
+                      <p><strong>{t('privacy_h4_email')}</strong> <a href="mailto:Ndivelabs@gmail.com" className="text-blue-600 hover:underline">{t('data_controller_email')}</a></p>
+                      <p><strong>{t('privacy_h4_location')}</strong></p>
+                    </div>
+
+                    <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest pt-4">{t('privacy_h5')}</h3>
+                    <p>
+                      {t('privacy_h5_intro')}
+                    </p>
+                    <ul className="list-disc pl-5 space-y-2">
+                      <li>{t('privacy_h5_li1')}</li>
+                      <li>{t('privacy_h5_li2')}</li>
+                      <li>{t('privacy_h5_li3')}</li>
+                      <li>{t('privacy_h5_li4')}</li>
+                      <li>{t('privacy_h5_li5')}</li>
+                      <li>{t('privacy_h5_li6')}</li>
+                      <li>{t('privacy_h5_li7')}</li>
+                    </ul>
+
+                    <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest pt-4">{t('privacy_h6')}</h3>
+                    <p>
+                      {t('privacy_h6_body')}
+                    </p>
+
+                    <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest pt-4">{t('privacy_h7')}</h3>
+                    <p>
+                      {t('privacy_h7_body')}
+                    </p>
+                    <ul className="list-disc pl-5 space-y-2">
+                      <li>{t('privacy_h7_li1')}</li>
+                      <li>{t('privacy_h7_li2')}</li>
+                      <li>{t('privacy_h7_li3')}</li>
+                      <li>{t('privacy_h7_li4')}</li>
+                    </ul>
+
+                    <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest pt-4">{t('privacy_h8')}</h3>
+                    <p>
+                      {t('privacy_h8_body')}
+                    </p>
+                    <div className="bg-gray-50 border border-gray-150 rounded-2xl p-5 space-y-1.5 text-sm">
+                      <p><strong>{t('privacy_h8_team')}</strong></p>
+                      <p><strong>{t('privacy_h8_company')}</strong></p>
+                      <p><strong>{t('privacy_h4_email')}</strong> <a href="mailto:Ndivelabs@gmail.com" className="text-blue-600 hover:underline">{t('contact_us_email')}</a></p>
+                      <p><strong>{t('privacy_h4_location')}</strong></p>
+                    </div>
+                    <p>
+                      {t('privacy_h8_officer')}
+                    </p>
                   </div>
                 </motion.div>
               )}
