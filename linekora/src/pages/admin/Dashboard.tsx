@@ -165,7 +165,7 @@ export default function AdminDashboard() {
       console.error('Error signing out admin:', err);
     }
     setTimeout(() => {
-      window.location.href = '/login';
+      window.location.href = '/';
     }, 800);
   };
 

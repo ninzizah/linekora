@@ -211,7 +211,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       } catch (e) {
         console.error('Failed to clear local session data', e);
       }
-      navigate('/login');
+      navigate('/');
       window.scrollTo({ top: 0 });
     }
   };
