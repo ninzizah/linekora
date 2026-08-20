@@ -140,14 +140,14 @@ export default function EmployerPostTask() {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
+      setToasts(prev => prev.filter(x => x.id !== id));
     }, 4000);
   };
 
   // Tag Toggling Handler
   const handleToggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
-      setSelectedTags(prev => prev.filter(t => t !== tag));
+      setSelectedTags(prev => prev.filter(x => x !== tag));
     } else {
       if (selectedTags.length >= 4) {
         addToast(t('toast_max_4_tags'), 'info');
@@ -696,9 +696,9 @@ export default function EmployerPostTask() {
                       {/* Display active tags if any */}
                       {selectedTags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-3">
-                          {selectedTags.map(t => (
-                            <span key={t} className="bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-0.5 rounded-lg border border-gray-150">
-                              #{t.replace(/\s+/g,'')}
+                          {selectedTags.map(tag => (
+                            <span key={tag} className="bg-gray-100 text-gray-600 text-[9px] font-black px-2 py-0.5 rounded-lg border border-gray-150">
+                              #{tag.replace(/\s+/g,'')}
                             </span>
                           ))}
                         </div>
@@ -761,23 +761,23 @@ export default function EmployerPostTask() {
       {/* FLOATING TOASTS PANEL */}
       <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
         <AnimatePresence>
-          {toasts.map(t => (
+          {toasts.map(toast => (
             <motion.div
-              key={t.id}
+              key={toast.id}
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
               className="pointer-events-auto bg-white rounded-2xl border border-gray-150 p-4.5 shadow-xl flex items-center gap-3.5 relative overflow-hidden"
             >
               <div className={`absolute left-0 top-0 bottom-0 w-1.5 shrink-0 ${
-                t.type === 'error' ? 'bg-red-500' : 'bg-green-500'
+                toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'
               }`} />
               <div className="flex-1 pl-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{t('task_wizard')}</span>
-                <p className="font-sans text-[11px] font-bold text-gray-800 leading-normal mt-0.5">{t.message}</p>
+                <p className="font-sans text-[11px] font-bold text-gray-800 leading-normal mt-0.5">{toast.message}</p>
               </div>
               <button 
-                onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}
+                onClick={() => setToasts(prev => prev.filter(x => x.id !== toast.id))}
                 className="text-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
               >
                 <X size={12} />
