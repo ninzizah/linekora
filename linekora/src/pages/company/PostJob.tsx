@@ -10,8 +10,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { createJob } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
-import { readScopedStorage } from '../../lib/userScopedStorage';
-
 interface NotificationMsg {
   id: string;
   type: 'success' | 'info' | 'error' | 'invite';
@@ -27,11 +25,6 @@ export default function PostJob() {
   const [verifiedOnly, setVerifiedOnly] = useState(true);
   const [isUrgent, setIsUrgent] = useState(false);
 
-  // Check if there are active uncompleted contracts in database
-  const [hasUncompleted, setHasUncompleted] = useState(() => {
-    const contractsList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
-    return contractsList.some(c => c.status !== 'completed' && c.status !== 'not_trusted');
-  });
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -41,7 +34,8 @@ export default function PostJob() {
     category: 'Construction',
     deadline: '',
     requirements: '',
-    jobType: 'on-demand'
+    jobType: 'on-demand',
+    workerType: 'individual'
   });
 
   // Success flow state
@@ -108,6 +102,10 @@ export default function PostJob() {
         urgent: isUrgent,
         employerId: profile.id,
         deadline: formData.deadline || undefined,
+        phone: formData.phone || undefined,
+        jobType: formData.jobType,
+        requirements: formData.requirements || undefined,
+        workerType: formData.workerType,
       });
 
       // Also cache locally for offline use
@@ -179,32 +177,7 @@ export default function PostJob() {
           {t('back_to_dashboard')}
         </Link>
 
-        {hasUncompleted ? (
-          <div className="bg-white rounded-[3rem] border border-red-155 shadow-2xl p-8 md:p-12 text-center max-w-2xl mx-auto py-16 space-y-6 font-sans">
-            <div className="h-20 w-20 bg-red-50 text-red-500 rounded-[2.5rem] flex items-center justify-center mx-auto border border-red-105">
-              <AlertCircle size={40} className="text-red-600" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight font-sans">{t('corporate_blockage_title')}</h2>
-              <p className="text-gray-400 uppercase tracking-widest font-black text-[10px]">{t('corporate_blockage_platform')}</p>
-              <p className="text-sm font-sans font-medium text-gray-500 max-w-md mx-auto leading-relaxed">
-                {t('corporate_blockage_desc')}
-              </p>
-            </div>
-            <div className="bg-amber-50 border border-amber-100 p-5 rounded-3xl max-w-lg mx-auto text-left text-amber-900 text-xs font-medium leading-relaxed font-sans">
-              <span className="font-extrabold uppercase tracking-wider block mb-1">{t('corporate_resolve_hint')}</span>
-              {t('corporate_resolve_desc_prefix')}<span className="font-bold">"{t('approve_complete')}"</span>{t('corporate_resolve_desc_suffix')}
-            </div>
-            <button
-              onClick={() => navigate('/dashboard/company#contracts')}
-              className="px-8 py-4 bg-gray-950 hover:bg-gray-800 text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs transition-colors"
-            >
-              {t('corporate_go_dashboard')}
-            </button>
-          </div>
-        ) : (
-          <>
-            <header className="mb-12">
+        <header className="mb-12">
               <h1 className="text-4xl font-black text-gray-900 font-sans tracking-tight uppercase">{t('post_job')}</h1>
               <p className="text-gray-500 font-sans font-medium mt-2 italic text-sm leading-relaxed">
                 {t('post_job_subtitle')}
@@ -341,6 +314,31 @@ export default function PostJob() {
                 </div>
               </div>
 
+              <div className="space-y-4 pt-4">
+                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-3">{t('worker_type')}</label>
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { value: 'individual', label: t('worker_type_individual'), icon: '👤' },
+                    { value: 'team', label: t('worker_type_team'), icon: '👥' },
+                    { value: 'both', label: t('worker_type_both'), icon: '🔄' },
+                  ].map((wt) => (
+                    <button
+                      key={wt.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, workerType: wt.value })}
+                      className={`py-3 px-4 rounded-xl font-sans font-black text-[10px] uppercase tracking-widest border-2 transition-all ${
+                        formData.workerType === wt.value
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100'
+                        : 'bg-white text-gray-400 border-gray-100 hover:border-indigo-100 hover:text-indigo-600'
+                      }`}
+                    >
+                      <span className="text-base block mb-1">{wt.icon}</span>
+                      {wt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Urgent Task Toggle */}
               <div className="pt-8 border-t border-gray-100 space-y-4">
                 <div className="flex flex-col md:flex-row items-start justify-between p-6 bg-red-50/55 rounded-3xl border border-red-100 gap-4">
@@ -369,7 +367,7 @@ export default function PostJob() {
                     <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${isUrgent ? 'text-white opacity-100' : 'opacity-0'}`}>{t('on')}</span>
                     <motion.div 
                       layout
-                      animate={{ x: isUrgent ? 0 : 0 }}
+                      animate={{ x: isUrgent ? 28 : 0 }}
                       className="h-6 w-6 bg-white rounded-full shadow-lg border border-slate-300 flex items-center justify-center font-black text-[9px] text-slate-900"
                     >
                       {isUrgent ? '✓' : '✕'}
@@ -402,7 +400,7 @@ export default function PostJob() {
                   <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${verifiedOnly ? 'text-white opacity-100' : 'opacity-0'}`}>{t('on')}</span>
                   <motion.div 
                     layout
-                    animate={{ x: verifiedOnly ? 0 : 0 }}
+                    animate={{ x: verifiedOnly ? 28 : 0 }}
                     className="h-6 w-6 bg-white rounded-full shadow-lg border border-slate-300 flex items-center justify-center font-black text-[9px] text-slate-900"
                   >
                     {verifiedOnly ? '✓' : '✕'}
@@ -434,9 +432,7 @@ export default function PostJob() {
             </div>
           </div>
         </form>
-      </>
-    )}
-  </div>
+      </div>
 
       {/* PUBLISH SUCCESS INTERACTIVE MODAL */}
       <AnimatePresence>

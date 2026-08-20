@@ -924,7 +924,8 @@ export default function AdminDashboard() {
 
             {/* Users table */}
             <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
-              <table className="w-full text-left font-sans">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left font-sans min-w-[800px]">
                 <thead className="bg-gray-950 border-b border-gray-900 text-[10px] font-black uppercase text-gray-500 tracking-widest">
                   <tr>
                     <th className="px-6 py-4">{t('users_photo')}</th>
@@ -1021,6 +1022,7 @@ export default function AdminDashboard() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}
@@ -1063,7 +1065,8 @@ export default function AdminDashboard() {
 
             {/* Jobs table */}
             <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
-              <table className="w-full text-left font-sans">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left font-sans min-w-[900px]">
                 <thead className="bg-gray-950 border-b border-gray-900 text-[10px] font-black uppercase text-gray-500 tracking-widest">
                   <tr>
                     <th className="px-6 py-4">{t('jobs_title')}</th>
@@ -1141,6 +1144,7 @@ export default function AdminDashboard() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}
@@ -1242,7 +1246,7 @@ export default function AdminDashboard() {
                     </motion.div>
                   );
                 }) : (
-                  <div className="p-16 text-center bg-gray-905 border border-gray-900 rounded-[2.5rem] flex flex-col items-center justify-center">
+                  <div className="p-8 md:p-16 text-center bg-gray-905 border border-gray-900 rounded-[2.5rem] flex flex-col items-center justify-center">
                     <CheckCircle2 size={40} className="text-green-500/40 mb-3 animate-pulse" />
                     <p className="font-sans font-black uppercase tracking-wider text-xs text-gray-300">{t('identity_desk_cleared')}</p>
                     <p className="text-gray-500 font-sans text-[10px] mt-1 italic font-semibold">{t('all_pending_processed')}</p>
@@ -1253,7 +1257,8 @@ export default function AdminDashboard() {
 
             {verifTab === 'approved' && (
               <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
-                <table className="w-full text-left font-sans">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left font-sans min-w-[600px]">
                   <thead className="bg-gray-950 border-b border-gray-900 text-[10px] font-black uppercase text-gray-500 tracking-widest">
                     <tr>
                       <th className="px-6 py-4">{t('users_name')}</th>
@@ -1280,11 +1285,13 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              </div>
             )}
 
             {verifTab === 'rejected' && (
               <div className="bg-gray-905 border border-gray-900 rounded-[2.5rem] overflow-hidden">
-                <table className="w-full text-left font-sans">
+                <div className="overflow-x-auto">
+                <table className="w-full text-left font-sans min-w-[700px]">
                   <thead className="bg-gray-950 border-b border-gray-900 text-[10px] font-black uppercase text-gray-500 tracking-widest">
                     <tr>
                       <th className="px-6 py-4">{t('users_name')}</th>
@@ -1314,6 +1321,7 @@ export default function AdminDashboard() {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>

@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { auth } from './firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, getRedirectResult, User } from 'firebase/auth';
 import { getUser, UserProfile } from './api';
 
 interface AuthContextType {
@@ -36,6 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const userRef = useRef<User | null>(null);
 
   const fetchProfile = async (firebaseUser: User) => {
     const data = await fetchProfileWithRetry(firebaseUser);
@@ -43,11 +44,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user);
+    if (userRef.current) await fetchProfile(userRef.current);
   };
 
   useEffect(() => {
+    const handleRedirect = async () => {
+      try {
+        await getRedirectResult(auth);
+      } catch {
+        // Redirect result errors are non-critical; onAuthStateChanged handles state
+      }
+    };
+    handleRedirect();
+
     const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      userRef.current = firebaseUser;
       setUser(firebaseUser);
       if (firebaseUser) {
         await fetchProfile(firebaseUser);

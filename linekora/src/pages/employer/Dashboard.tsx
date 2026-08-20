@@ -188,7 +188,7 @@ export default function EmployerDashboard() {
             {/* 🚀 CONTRACT RESOLVER CENTER */}
             <ActiveContractsResolver />
 
-            <section className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm">
+            <section className="bg-white rounded-[2.5rem] p-5 md:p-8 border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-bold text-gray-900 font-sans">{t('recently_posted_tasks')}</h3>
                 {!loadingTasks && recentTasks.length > 0 && (
@@ -241,7 +241,7 @@ export default function EmployerDashboard() {
           </div>
 
           <div className="space-y-8">
-            <section className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-8 text-white shadow-xl shadow-indigo-100 font-sans">
+            <section className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-indigo-100 font-sans">
               <ShieldCheck className="mb-4" size={32} />
               <h3 className="text-xl font-bold font-sans mb-2">{t('verified_only')}</h3>
               <p className="text-white/80 font-sans text-sm mb-6 leading-relaxed">

@@ -393,7 +393,6 @@ export default function WorkerSettings() {
               <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100 text-center">
                 <CreditCard size={32} className="mx-auto text-blue-400 mb-3" />
                 <p className="font-bold text-blue-700 text-sm">{t('no_active_subscriptions')}</p>
-                <p className="text-xs text-blue-500 mt-1">{t('free_tier_upgrade')}</p>
               </div>
             </div>
           )}

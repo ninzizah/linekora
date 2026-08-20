@@ -302,7 +302,7 @@ export default function BrowseWorkers() {
             <input 
               type="text" 
               placeholder={t('placeholder_search_workers_company')} 
-              className="w-full pl-11 pr-36 py-4 rounded-2xl bg-white border border-gray-100 shadow-sm focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none font-sans font-medium text-sm transition-all"
+              className="w-full pl-11 pr-24 md:pr-36 py-4 rounded-2xl bg-white border border-gray-100 shadow-sm focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none font-sans font-medium text-sm transition-all"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Escape') setSearch(''); }}
@@ -558,7 +558,7 @@ export default function BrowseWorkers() {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-[3rem] p-16 text-center border border-gray-100 max-w-md mx-auto my-12 space-y-4 shadow-sm">
+          <div className="bg-white rounded-[3rem] p-8 md:p-16 text-center border border-gray-100 max-w-md mx-auto my-12 space-y-4 shadow-sm">
             <Inbox size={48} className="mx-auto text-gray-300" />
             <div>
               <p className="text-sm font-black text-gray-800 uppercase tracking-wider font-sans leading-none">{t('no_candidates_match')}</p>

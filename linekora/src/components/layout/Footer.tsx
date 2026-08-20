@@ -10,12 +10,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
           <div className="col-span-1 md:col-span-1">
             <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-                <Shield size={20} strokeWidth={2.5} />
-              </div>
-              <span className="font-sans text-lg font-bold tracking-tight text-gray-900">
-                LINEKORA
-              </span>
+              <img src="/linekora-logo.png" alt="LINEKORA" className="h-8 w-8 rounded-lg object-contain" />
             </Link>
             <p className="mt-4 font-sans text-sm text-gray-500 leading-relaxed">
               {t('footer_tagline')}

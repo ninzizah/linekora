@@ -53,6 +53,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 // Auth Pages
 import Register from './pages/auth/Register';
 import Login from './pages/auth/Login';
+import RoleSelection from './pages/auth/RoleSelection';
 
 
 // Dashboard Layouts
@@ -68,9 +69,8 @@ const DashboardRedirect = () => {
   
   if (!user) return <Navigate to="/login" />;
   
-  if (!profile && !loading) {
-    // If we have a user but no profile doc, send to register to finish setup
-    return <Navigate to="/register" />;
+  if (!profile) {
+    return <Navigate to="/select-role" />;
   }
 
   if (profile?.role === 'WORKER') return <Navigate to="/dashboard/worker" />;
@@ -96,7 +96,7 @@ const HomeRoute = () => {
       if (user && profile?.role) {
         navigate('/dashboard', { replace: true });
       } else if (user && !profile) {
-        navigate('/register', { replace: true });
+        navigate('/select-role', { replace: true });
       }
     }
   }, [user, profile, loading, navigate]);
@@ -123,6 +123,7 @@ export default function App() {
           {/* Auth Routes */}
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/select-role" element={<RoleSelection />} />
 
           {/* Dashboard Entry */}
           <Route path="/dashboard" element={<DashboardRedirect />} />

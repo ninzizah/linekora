@@ -96,6 +96,10 @@ export interface Job {
   employerId: string;
   deadline?: string;
   phone?: string;
+  jobType?: string;
+  requirements?: string;
+  photos?: string;
+  workerType?: string;
   employer?: Pick<UserProfile, 'id' | 'displayName' | 'email' | 'phone'>;
   createdAt: string;
 }
@@ -125,10 +129,14 @@ export interface Application {
   id: number;
   jobId: number;
   workerId: string;
+  teamId?: string | null;
+  applyType: string;
   status: string;
+  assignedMembers?: string | null;
   createdAt: string;
   job?: Job;
   worker?: Pick<UserProfile, 'id' | 'displayName' | 'trustScore' | 'verificationStatus' | 'phone'>;
+  team?: { id: string; name: string; teamCode: string } | null;
 }
 
 export const getApplications = (params: { workerId?: string; jobId?: number; employerId?: string }) => {
@@ -138,7 +146,7 @@ export const getApplications = (params: { workerId?: string; jobId?: number; emp
   return request<Application[]>(`/applications${qs ? `?${qs}` : ''}`);
 };
 
-export const createApplication = (data: { jobId: number; workerId: string }) =>
+export const createApplication = (data: { jobId: number; workerId: string; teamId?: string; applyType?: string }) =>
   request<Application>('/applications', { method: 'POST', body: JSON.stringify(data) });
 
 export const updateApplication = (id: number, data: { status: string }) =>
@@ -250,3 +258,85 @@ export const getVerificationDocs = (userId: string) =>
 
 export const getPendingVerifications = () =>
   request<VerificationSubmission[]>('/verification');
+
+// ─── TEAMS ──────────────────────────────────────────────────────────────────
+
+export interface Team {
+  id: string;
+  teamCode: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  mainSkill?: string;
+  location?: string;
+  description?: string;
+  logoUrl?: string;
+  createdAt: string;
+}
+
+export interface TeamMembership {
+  id: string;
+  userId: string;
+  teamId: string;
+  role: string;
+  joinedAt: string;
+  user?: Pick<UserProfile, 'id' | 'displayName' | 'avatarUrl' | 'trustScore' | 'verificationStatus'>;
+  team?: Team;
+}
+
+export interface TeamInvitation {
+  id: string;
+  teamId: string;
+  email: string;
+  phone?: string;
+  role: string;
+  status: string;
+  invitedBy: string;
+  createdAt: string;
+  team?: Team;
+}
+
+export interface TeamAnnouncement {
+  id: string;
+  teamId: string;
+  title: string;
+  body: string;
+  authorId: string;
+  createdAt: string;
+}
+
+export const createTeam = (data: { name: string; userId: string; email?: string; phone?: string; mainSkill?: string; location?: string; description?: string; logoUrl?: string }) =>
+  request<Team>('/teams', { method: 'POST', body: JSON.stringify(data) });
+
+export const getTeam = (teamId: string) =>
+  request<Team & { memberships: TeamMembership[] }>(`/teams/${teamId}`);
+
+export const getTeamByUser = (userId: string) =>
+  request<TeamMembership | null>(`/teams/user/${userId}`);
+
+export const joinTeam = (data: { userId: string; teamCode: string; role?: string }) =>
+  request<TeamMembership>('/teams/join', { method: 'POST', body: JSON.stringify(data) });
+
+export const removeMember = (teamId: string, userId: string) =>
+  request<{ success: boolean }>(`/teams/${teamId}/members/${userId}`, { method: 'DELETE' });
+
+export const inviteMember = (data: { teamId: string; email: string; phone?: string; role: string; invitedBy: string }) =>
+  request<TeamInvitation>('/teams/invite', { method: 'POST', body: JSON.stringify(data) });
+
+export const getTeamInvitations = (teamId: string) =>
+  request<TeamInvitation[]>(`/teams/${teamId}/invitations`);
+
+export const acceptInvitation = (invitationId: string) =>
+  request<TeamMembership>(`/teams/invitations/${invitationId}/accept`, { method: 'PATCH' });
+
+export const createAnnouncement = (data: { teamId: string; title: string; body: string; authorId: string }) =>
+  request<TeamAnnouncement>('/teams/announcements', { method: 'POST', body: JSON.stringify(data) });
+
+export const getTeamAnnouncements = (teamId: string) =>
+  request<TeamAnnouncement[]>(`/teams/${teamId}/announcements`);
+
+export const getTeamStats = (teamId: string) =>
+  request<{ memberCount: number; activeJobs: number; announcementCount: number }>(`/teams/${teamId}/stats`);
+
+export const assignMembers = (applicationId: number, assignedMembers: string[]) =>
+  request<Application>(`/applications/${applicationId}/assign`, { method: 'PATCH', body: JSON.stringify({ assignedMembers }) });

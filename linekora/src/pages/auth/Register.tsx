@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../../lib/firebase';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, updateProfile } from 'firebase/auth';
 import { upsertUser } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage, Language } from '../../lib/LanguageContext';
@@ -43,7 +43,6 @@ export default function Register() {
       setFormData((prev) => ({ ...prev, [key]: e.target.value })),
   });
 
-  /** After Firebase auth, sync user to our PostgreSQL database */
   const syncToDatabase = async (
     firebaseUid: string,
     email: string,
@@ -63,15 +62,26 @@ export default function Register() {
   };
 
   const handleGoogleRegister = async () => {
-    if (!role) { setError(t('error_select_account_type')); return; }
+    if (!role) return;
     setLoading(true);
     setError(null);
     try {
-      // If already authenticated (e.g. redirected from Login), skip re-auth
-      const fbUser = user ?? (await signInWithPopup(auth, new GoogleAuthProvider())).user;
+      const provider = new GoogleAuthProvider();
+      let result;
+      try {
+        result = await signInWithPopup(auth, provider);
+      } catch (popupErr: any) {
+        if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request') {
+          await signInWithRedirect(auth, provider);
+          return;
+        }
+        throw popupErr;
+      }
+      const fbUser = result.user;
       await syncToDatabase(fbUser.uid, fbUser.email!, fbUser.displayName || 'User', role);
+      localStorage.setItem('lastAuthMethod', 'google');
       await refreshProfile();
-      navigate('/dashboard');
+      navigate(role === 'WORKER' ? '/dashboard/worker' : '/dashboard');
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') return;
       setError(err.message || t('error_google_registration_failed'));
@@ -88,18 +98,18 @@ export default function Register() {
 
     try {
       if (user) {
-        // Already authenticated (e.g. redirected from Login after DB record was missing)
         await syncToDatabase(user.uid, user.email || formData.email, formData.displayName, role);
+        localStorage.setItem('lastAuthMethod', 'email');
         await refreshProfile();
-        navigate('/dashboard');
+        navigate(role === 'WORKER' ? '/dashboard/worker' : '/dashboard');
       } else {
-        // New registration: create Firebase user
         const credential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
         const fbUser = credential.user;
         await updateProfile(fbUser, { displayName: formData.displayName });
         await syncToDatabase(fbUser.uid, formData.email, formData.displayName, role);
+        localStorage.setItem('lastAuthMethod', 'email');
         await refreshProfile();
-        navigate('/dashboard');
+        navigate(role === 'WORKER' ? '/dashboard/worker' : '/dashboard');
       }
     } catch (err: any) {
       const code = err.code;
@@ -125,13 +135,11 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4">
-      {/* Background glows */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl" />
       </div>
 
-      {/* Logo + Language Selector */}
       <div className="relative flex flex-col items-center gap-4 mb-10 mt-10">
         <Link to="/" className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-xl shadow-blue-900/50">
@@ -139,7 +147,6 @@ export default function Register() {
           </div>
           <span className="font-sans text-2xl font-black tracking-tight text-white">LINEKORA</span>
         </Link>
-        {/* Language Switcher */}
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value as Language)}
@@ -158,7 +165,6 @@ export default function Register() {
         transition={{ duration: 0.4 }}
         className="relative w-full max-w-2xl bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 p-8 md:p-12 mb-10"
       >
-        {/* Tab toggle */}
         <div className="flex bg-white/5 p-1 rounded-2xl mb-8 border border-white/10 max-w-sm mx-auto">
           <Link
             to="/login"
@@ -174,7 +180,6 @@ export default function Register() {
           </Link>
         </div>
 
-        {/* Step indicator */}
         <div className="flex items-center justify-center gap-2 mb-8">
           {[1, 2, 3].map((s) => (
             <div key={s} className={`h-2 rounded-full transition-all ${step >= s ? 'w-8 bg-blue-500' : 'w-2 bg-white/20'}`} />
@@ -182,7 +187,6 @@ export default function Register() {
         </div>
 
         <AnimatePresence mode="wait">
-          {/* ── STEP 1: Choose role ── */}
           {step === 1 && (
             <motion.div key="s1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
               <h2 className="font-sans text-3xl font-extrabold text-white text-center mb-2">{t('join')}</h2>
@@ -208,7 +212,6 @@ export default function Register() {
             </motion.div>
           )}
 
-          {/* ── STEP 2: Credentials ── */}
           {step === 2 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
               <h2 className="font-sans text-2xl font-extrabold text-white text-center mb-2">{t('create_account')}</h2>
@@ -228,7 +231,6 @@ export default function Register() {
                 </div>
               ) : (
                 <>
-                  {/* Google option */}
                   <button
                     type="button"
                     onClick={handleGoogleRegister}
@@ -288,7 +290,6 @@ export default function Register() {
             </motion.div>
           )}
 
-          {/* ── STEP 3: Profile details ── */}
           {step === 3 && (
             <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
               <h2 className="font-sans text-2xl font-extrabold text-white text-center mb-2">{t('profile_details')}</h2>

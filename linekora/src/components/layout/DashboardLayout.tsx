@@ -2,10 +2,10 @@ import React, { ReactNode, useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Search, FileText, MessageSquare, 
-  ShieldCheck, Star, Wallet, Settings, LogOut, Menu, X, 
+  ShieldCheck, Star, Settings, LogOut, Menu, X, 
   Briefcase, PlusSquare, Users, ShieldAlert, Shield, User, TrendingUp,
   Bell, BellOff, Trash, Inbox, ChevronRight, Sparkles, Lock,
-  Home
+  Megaphone
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
@@ -211,14 +211,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       } catch (e) {
         console.error('Failed to clear local session data', e);
       }
-      navigate('/');
+      navigate('/login');
       window.scrollTo({ top: 0 });
     }
   };
 
   const menuItems = {
     worker: [
-      { name: t('public_home'), icon: Home, path: '/' },
       { name: t('dashboard'), icon: LayoutDashboard, path: '/dashboard/worker' },
       { name: t('profile'), icon: User, path: '/dashboard/worker/profile' },
       { name: t('browse_jobs'), icon: Search, path: '/dashboard/worker/browse' },
@@ -226,33 +225,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       { name: t('messages'), icon: MessageSquare, path: '/dashboard/worker/messages' },
       { name: t('verification'), icon: ShieldCheck, path: '/dashboard/worker/verify' },
       { name: t('reviews'), icon: Star, path: '/dashboard/worker/reviews' },
-      { name: t('wallet'), icon: Wallet, path: '/dashboard/worker/wallet' },
       { name: t('settings'), icon: Settings, path: '/dashboard/worker/settings' },
     ],
     company: [
-      { name: t('public_home'), icon: Home, path: '/' },
       { name: t('dashboard'), icon: LayoutDashboard, path: '/dashboard/company' },
       { name: t('post_job'), icon: PlusSquare, path: '/dashboard/company/post' },
       { name: t('manage_jobs'), icon: Briefcase, path: '/dashboard/company/jobs' },
       { name: t('applicants'), icon: Users, path: '/dashboard/company/applicants' },
       { name: t('messages'), icon: MessageSquare, path: '/dashboard/company/messages' },
       { name: t('verification'), icon: ShieldCheck, path: '/dashboard/company/verify' },
-      { name: t('payments'), icon: Wallet, path: '/dashboard/company/payments' },
       { name: t('analytics'), icon: TrendingUp, path: '/dashboard/company/analytics' },
       { name: t('settings'), icon: Settings, path: '/dashboard/company/settings' },
     ],
     individual: [
-      { name: t('public_home'), icon: Home, path: '/' },
       { name: t('dashboard'), icon: LayoutDashboard, path: '/dashboard/employer' },
       { name: t('post_task'), icon: PlusSquare, path: '/dashboard/employer/post' },
       { name: t('browse_workers'), icon: Search, path: '/dashboard/employer/browse' },
       { name: t('messages'), icon: MessageSquare, path: '/dashboard/employer/messages' },
       { name: t('verification'), icon: ShieldCheck, path: '/dashboard/employer/verify' },
-      { name: t('wallet'), icon: Wallet, path: '/dashboard/employer/wallet' },
       { name: t('settings'), icon: Settings, path: '/dashboard/employer/settings' },
     ],
     admin: [
-      { name: t('public_home'), icon: Home, path: '/' },
       { name: t('dashboard'), icon: LayoutDashboard, path: '/admin' },
     ]
   };
@@ -322,10 +315,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       `}>
         <div className="h-full flex flex-col p-6">
           <div className="flex items-center gap-3 mb-10">
-            <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-              <Shield size={24} strokeWidth={2.5} />
-            </div>
-            <span className="font-sans text-xl font-bold tracking-tight text-gray-900">LINEKORA</span>
+            <img src="/linekora-logo.png" alt="LINEKORA" className="h-10 w-10 rounded-xl object-contain shadow-lg" />
             <button className="lg:hidden ml-auto text-gray-400" onClick={() => setIsSidebarOpen(false)}>
               <X size={20} />
             </button>

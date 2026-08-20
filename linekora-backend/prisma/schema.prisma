@@ -32,6 +32,61 @@ model User {
   messagesSent    Message[]     @relation("MessageSender")
   messagesReceived Message[]    @relation("MessageReceiver")
   notifications   Notification[]
+  teamMemberships TeamMembership[]
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  teamCode    String   @unique
+  name        String
+  email       String?
+  phone       String?
+  mainSkill   String?
+  location    String?
+  description String?  @db.Text
+  logoUrl     String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships   TeamMembership[]
+  invitations   TeamInvitation[]
+  announcements TeamAnnouncement[]
+  applications  Application[]
+}
+
+model TeamMembership {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  role      String   @default("member") // super_leader, senior_leader, assistant_leader, member
+  joinedAt  DateTime @default(now())
+
+  @@unique([userId, teamId])
+}
+
+model TeamInvitation {
+  id        String   @id @default(uuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  email     String
+  phone     String?
+  role      String   @default("member") // senior_leader, assistant_leader, member
+  status    String   @default("pending") // pending, accepted, declined
+  invitedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TeamAnnouncement {
+  id        String   @id @default(uuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  title     String
+  body      String   @db.Text
+  authorId  String
+  createdAt DateTime @default(now())
 }
 
 model Job {
@@ -44,6 +99,11 @@ model Job {
   urgent      Boolean   @default(false)
   status      String    @default("open") // open, accepted, completion_requested, completed, expired
   deadline    DateTime?
+  phone       String?
+  jobType     String?   @default("on-demand") // full-time, part-time, contract, on-demand
+  requirements String?
+  photos      String?   @db.Text // JSON array of base64 data URLs
+  workerType  String?   @default("individual") // individual, team, both
   employerId  String
   employer    User      @relation("EmployerJobs", fields: [employerId], references: [id])
   createdAt   DateTime  @default(now())
@@ -53,14 +113,20 @@ model Job {
 }
 
 model Application {
-  id        Int      @id @default(autoincrement())
-  jobId     Int
-  job       Job      @relation(fields: [jobId], references: [id])
-  workerId  String
-  worker    User     @relation(fields: [workerId], references: [id])
-  status    String   @default("pending") // pending, accepted, rejected
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              Int      @id @default(autoincrement())
+  jobId           Int
+  job             Job      @relation(fields: [jobId], references: [id])
+  workerId        String
+  worker          User     @relation(fields: [workerId], references: [id])
+  teamId          String?
+  team            Team?    @relation(fields: [teamId], references: [id])
+  applyType       String   @default("individual") // individual, team
+  status          String   @default("pending") // pending, accepted, rejected
+  assignedMembers String?  @db.Text  // JSON array of userIds assigned by leader
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([jobId, workerId])
 }
 
 model Review {

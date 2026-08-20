@@ -242,7 +242,7 @@ export default function WorkerDashboard() {
       <div className="max-w-6xl mx-auto">
         <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight uppercase flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-black text-gray-900 font-sans tracking-tight uppercase flex items-center gap-2 flex-wrap">
               {t('hi_user', { name: profile?.displayName || t('user') })}
               <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border ${
                 profile?.tier === 'Verified Bronze' ? 'bg-orange-50 text-orange-600 border-orange-100' :
@@ -529,7 +529,7 @@ export default function WorkerDashboard() {
 
           {/* Sidebar / Sidebar Content */}
           <div className="space-y-8">
-            <section className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl shadow-blue-200">
+            <section className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-200">
               <h3 className="text-xl font-bold font-sans mb-2 uppercase tracking-tight">{t('level_up_profile')}</h3>
               <p className="text-white/80 font-sans text-xs mb-6 leading-relaxed italic">
                 {profile?.tier === 'Silver Verified' 
@@ -690,7 +690,7 @@ export default function WorkerDashboard() {
                     {selectedJob.company || t('direct_premium_client')}
                   </p>
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                     <div className="p-4 bg-gray-50/70 border border-gray-100 rounded-2xl">
                       <span className="text-[10px] uppercase font-black tracking-widest text-gray-400 block mb-1">{t('compensation')}</span>
                       <span className="text-sm font-black text-gray-900 font-sans flex items-center gap-1">

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   FileText, Clock, CheckCircle2, XCircle, 
   ChevronRight, MapPin, DollarSign, Filter, Search,
-  X, Info, Phone, Calendar, ArrowRightLeft, Shield
+  X, Info, Phone, Calendar, ArrowRightLeft, Shield,
+  Star, Award, ShieldAlert
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
@@ -49,6 +50,13 @@ export default function WorkerApplications() {
   const [confirmingAction, setConfirmingAction] = useState<'withdraw' | 'decline' | null>(null);
   const [loading, setLoading] = useState(true);
   const [apps, setApps] = useState<any[]>([]);
+
+  // Worker review states
+  const [showWorkerReviewForm, setShowWorkerReviewForm] = useState(false);
+  const [workerRating, setWorkerRating] = useState(5);
+  const [workerReviewText, setWorkerReviewText] = useState('');
+  const [workerHoveredStar, setWorkerHoveredStar] = useState<number | null>(null);
+  const [reviewingContract, setReviewingContract] = useState<any | null>(null);
 
   const formatApiApp = (a: ApiApplication): any => ({
     id: a.id,
@@ -370,6 +378,67 @@ export default function WorkerApplications() {
     }, 1200);
   };
 
+  const handleApproveFinishJob = (id: number) => {
+    setIsProcessing(true);
+    const target = apps.find(ap => ap.id === id);
+    setTimeout(async () => {
+      const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
+      const updatedContracts = contractList.map(c => 
+        c.id === id ? { ...c, status: 'completion_requested', date: t('completion_pending') } : c
+      );
+      writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
+      syncEmployerContract(target?.employerId, list => list.map(c =>
+        c.id === id ? { ...c, status: 'completion_requested', date: t('completion_pending') } : c
+      ));
+      await notifyEmployer(
+        target?.employerId,
+        t('job_approved_finished'),
+        t('job_approved_finished_details', { name: profile?.displayName || t('worker'), title: target?.jobTitle || t('job') }),
+        'success'
+      );
+      const refreshedApps = apps.map(ap => 
+        ap.id === id ? { ...ap, status: 'completion_requested', date: t('completion_pending') } : ap
+      );
+      setApps(refreshedApps);
+      setSelectedApp(prev => prev && prev.id === id ? { ...prev, status: 'completion_requested' } : prev);
+      setIsProcessing(false);
+      setModalFeedback({
+        type: 'accept',
+        title: t('job_finished'),
+        message: t('job_finished_message')
+      });
+    }, 1000);
+  };
+
+  const handleWorkerSubmitReview = () => {
+    if (!reviewingContract) return;
+    setIsProcessing(true);
+    setTimeout(() => {
+      const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
+      const updatedContracts = contractList.map(c => 
+        c.id === reviewingContract.id ? { ...c, workerRating, workerReview: workerReviewText || t('great_employer') } : c
+      );
+      writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
+      syncEmployerContract(reviewingContract.employerId, list => list.map(c =>
+        c.id === reviewingContract.id ? { ...c, workerRating, workerReview: workerReviewText || t('great_employer') } : c
+      ));
+      const refreshedApps = apps.map(ap => 
+        ap.id === reviewingContract.id ? { ...ap, workerRating, workerReview: workerReviewText || t('great_employer') } : ap
+      );
+      setApps(refreshedApps);
+      setIsProcessing(false);
+      setShowWorkerReviewForm(false);
+      setReviewingContract(null);
+      setWorkerReviewText('');
+      setWorkerRating(5);
+      setModalFeedback({
+        type: 'accept',
+        title: t('review_submitted'),
+        message: t('review_submitted_message')
+      });
+    }, 1000);
+  };
+
 
 
   const filteredApps = filter === 'all' 
@@ -483,7 +552,9 @@ export default function WorkerApplications() {
                       {app.logo}
                     </div>
                     <div>
-                      <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{app.jobTitle}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{app.jobTitle}</h3>
+                      </div>
                       <p className="text-gray-500 font-sans font-bold italic mb-3">{app.company}</p>
                       <div className="flex flex-wrap gap-4">
                         <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 font-sans uppercase tracking-widest">
@@ -545,7 +616,7 @@ export default function WorkerApplications() {
               initial={{ opacity: 0, scale: 0.95, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 30 }}
-              className="bg-white rounded-[3rem] border border-gray-150 w-full max-w-lg p-8 relative shadow-2xl max-h-[85vh] overflow-y-auto"
+              className="bg-white rounded-[3rem] border border-gray-150 w-full max-w-lg p-5 sm:p-8 relative shadow-2xl max-h-[85vh] overflow-y-auto"
             >
               <button 
                 onClick={() => {
@@ -554,7 +625,7 @@ export default function WorkerApplications() {
                   setConfirmingAction(null);
                 }}
                 disabled={isProcessing}
-                className="absolute top-6 right-6 h-10 w-10 bg-gray-50 hover:bg-gray-100 border border-gray-150 text-gray-400 hover:text-gray-600 rounded-full flex items-center justify-center transition-colors disabled:opacity-50"
+                className="absolute top-5 right-5 sm:top-6 sm:right-6 h-11 w-11 bg-gray-50 hover:bg-gray-100 border border-gray-150 text-gray-400 hover:text-gray-600 rounded-full flex items-center justify-center transition-colors disabled:opacity-50"
               >
                 <X size={20} />
               </button>
@@ -643,7 +714,7 @@ export default function WorkerApplications() {
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('offered_salary')}</span>
                         <span className="text-sm font-black text-blue-600 font-sans tracking-tight">{selectedApp.salary}</span>
@@ -675,14 +746,36 @@ export default function WorkerApplications() {
 
                   {/* Action layout */}
                   <div className="border-t border-gray-100 pt-6 flex flex-col gap-3">
-                    {/* If it is an active contract and we can request completion */}
+                    {/* 3-BUTTON LAYOUT for active contracts (accepted / still_in_progress) */}
                     {selectedApp.isContract && (selectedApp.status === 'accepted' || selectedApp.status === 'still_in_progress') && (
-                      <button
-                        onClick={() => handleRequestCompletion(selectedApp.id)}
-                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-sans font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"
-                      >
-                        {t('request_completion_button')}
-                      </button>
+                      <div className="flex flex-col gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <button
+                            onClick={() => handleApproveFinishJob(selectedApp.id)}
+                            className="py-4 bg-gradient-to-r from-green-550 to-emerald-600 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-sans font-black uppercase text-[10px] sm:text-xs tracking-widest shadow-lg shadow-green-200 transition-all flex items-center justify-center gap-2"
+                          >
+                            <CheckCircle2 size={16} />
+                            {t('approve_finish_job')}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setReviewingContract(selectedApp);
+                              setShowWorkerReviewForm(true);
+                            }}
+                            className="py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-sans font-black uppercase text-[10px] sm:text-xs tracking-widest shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Star size={16} />
+                            {t('give_comments_reviews')}
+                          </button>
+                          <button
+                            onClick={() => setConfirmingAction('decline')}
+                            className="py-4 bg-red-500 hover:bg-red-600 text-white border border-red-600 rounded-2xl font-sans font-black uppercase text-[10px] sm:text-xs tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-200"
+                          >
+                            <XCircle size={16} />
+                            {t('reject_contract')}
+                          </button>
+                        </div>
+                      </div>
                     )}
 
                     {selectedApp.status === 'completion_requested' && (
@@ -738,7 +831,7 @@ export default function WorkerApplications() {
                         </>
                       )}
 
-                      {(!selectedApp.status || selectedApp.status === 'completed' || selectedApp.status === 'rejected' || selectedApp.isContract) && (
+                      {(!selectedApp.status || selectedApp.status === 'completed' || selectedApp.status === 'rejected' || (selectedApp.isContract && selectedApp.status !== 'accepted' && selectedApp.status !== 'still_in_progress')) && (
                         <button
                           onClick={() => setSelectedApp(null)}
                           className="w-full py-4 bg-gray-950 hover:bg-gray-800 text-white rounded-2xl font-sans font-black uppercase text-xs tracking-widest transition-all"
@@ -750,6 +843,97 @@ export default function WorkerApplications() {
                   </div>
                 </>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* WORKER REVIEW MODAL - Worker rates/reviews the employer */}
+      <AnimatePresence>
+        {showWorkerReviewForm && reviewingContract && (
+          <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[2.5rem] border border-gray-150 p-6 sm:p-8 w-full max-w-md relative shadow-2xl font-sans max-h-[90vh] overflow-y-auto"
+            >
+              <button
+                onClick={() => {
+                  setShowWorkerReviewForm(false);
+                  setReviewingContract(null);
+                  setWorkerReviewText('');
+                  setWorkerRating(5);
+                }}
+                className="absolute top-5 right-5 sm:top-6 sm:right-6 text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="space-y-5 sm:space-y-6">
+                <div className="text-center">
+                  <div className="h-12 w-12 sm:h-14 sm:w-14 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                    <Award size={24} className="sm:hidden" />
+                    <Award size={28} className="hidden sm:block" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black font-sans uppercase tracking-tight text-gray-900">
+                    {t('rate_employer_title')}
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-gray-550 mt-1 max-w-xs mx-auto leading-relaxed">
+                    {t('rate_employer_desc')} <span className="font-extrabold text-indigo-700">{reviewingContract.company}</span>.
+                  </p>
+                </div>
+
+                {/* STAR RATINGS */}
+                <div className="flex flex-col items-center justify-center space-y-2 py-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setWorkerRating(star)}
+                        onMouseEnter={() => setWorkerHoveredStar(star)}
+                        onMouseLeave={() => setWorkerHoveredStar(null)}
+                        className="p-2 sm:p-1.5 transition-all outline-none"
+                      >
+                        <Star 
+                          size={28} 
+                          className={`transition-colors sm:w-8 sm:h-8 ${
+                            star <= (workerHoveredStar ?? workerRating) 
+                              ? 'text-amber-400 fill-amber-400' 
+                              : 'text-gray-200'
+                          }`} 
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                    {workerRating === 5 ? t('masterclass_standard') :
+                     workerRating === 4 ? t('highly_commended') :
+                     workerRating === 3 ? t('standard_alignment') :
+                     workerRating === 2 ? t('needs_revision') : t('flagged_poor')}
+                  </span>
+                </div>
+
+                {/* TEXT REVIEW */}
+                <div className="space-y-1">
+                  <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-400">{t('written_review')}</label>
+                  <textarea
+                    rows={3}
+                    placeholder={t('review_employer_placeholder')}
+                    className="w-full text-xs font-medium p-3 sm:p-4 rounded-2xl border border-gray-200 outline-none focus:border-indigo-600 resize-none font-sans"
+                    value={workerReviewText}
+                    onChange={(e) => setWorkerReviewText(e.target.value)}
+                  />
+                </div>
+
+                {/* SUBMIT */}
+                <button
+                  onClick={handleWorkerSubmitReview}
+                  className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-blue-600 to-indigo-650 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-sans font-black uppercase tracking-widest text-[10px] sm:text-xs shadow-lg transition-transform hover:scale-[1.01]"
+                >
+                  {t('submit_review')}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

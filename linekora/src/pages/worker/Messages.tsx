@@ -259,19 +259,8 @@ export default function WorkerMessages() {
                 )}
               </button>
             ))}
-          </div>
+           </div>
 
-          <div className="p-4 bg-yellow-50 border-t border-yellow-105">
-            <div className="flex items-start gap-3">
-              <AlertCircle size={16} className="text-yellow-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-[10px] font-black text-yellow-905 uppercase tracking-widest mb-1">{t('free_tier_limit')}</p>
-                <p className="text-[10px] text-yellow-700 leading-tight font-sans font-bold italic">
-                  {t('free_tier_msg')}
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Chat Area */}

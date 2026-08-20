@@ -21,12 +21,7 @@ export default function Navbar() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-200">
-                <Shield size={24} strokeWidth={2.5} />
-              </div>
-              <span className="font-sans text-xl font-bold tracking-tight text-gray-900">
-                LINEKORA
-              </span>
+              <img src="/linekora-logo.png" alt="LINEKORA" className="h-10 w-10 rounded-xl object-contain shadow-lg" />
             </Link>
           </div>
 

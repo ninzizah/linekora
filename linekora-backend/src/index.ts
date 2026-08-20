@@ -78,9 +78,6 @@ app.get('/api/users/:firebaseUid', async (req, res) => {
 app.post('/api/users', async (req, res) => {
   try {
     const data = { ...req.body };
-    if (data.email === 'ndivelabs@gmail.com') {
-      data.role = 'ADMIN';
-    }
     const user = await prisma.user.upsert({
       where: { firebaseUid: req.body.firebaseUid },
       update: data,
@@ -354,6 +351,7 @@ app.get('/api/applications', async (req, res) => {
       include: {
         job: { include: { employer: { select: { displayName: true, email: true } } } },
         worker: { select: { id: true, displayName: true, trustScore: true, verificationStatus: true, phone: true, avatarUrl: true } },
+        team: { select: { id: true, name: true, teamCode: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -365,9 +363,36 @@ app.get('/api/applications', async (req, res) => {
 
 app.post('/api/applications', async (req, res) => {
   try {
-    const application = await prisma.application.create({ data: req.body });
+    const { jobId, workerId, teamId, applyType } = req.body;
+    if (!jobId || !workerId) {
+      return res.status(400).json({ error: 'jobId and workerId are required' });
+    }
+
+    const existing = await prisma.application.findUnique({
+      where: { jobId_workerId: { jobId, workerId } },
+    });
+    if (existing) {
+      return res.status(409).json({ error: 'Already applied to this job' });
+    }
+
+    const application = await prisma.application.create({
+      data: {
+        jobId,
+        workerId,
+        teamId: teamId || null,
+        applyType: applyType || 'individual',
+      },
+      include: {
+        job: { include: { employer: { select: { id: true, displayName: true } } } },
+        worker: { select: { id: true, displayName: true } },
+        team: teamId ? { select: { id: true, name: true } } : false,
+      },
+    });
     res.json(application);
   } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'Already applied to this job' });
+    }
     res.status(500).json({ error: error.message || 'Failed to create application' });
   }
 });
@@ -478,6 +503,246 @@ app.post('/api/messages', async (req, res) => {
     res.json(message);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to send message' });
+  }
+});
+
+// ─── TEAMS ──────────────────────────────────────────────────────────────────
+
+// Create a team (creator becomes super_leader)
+app.post('/api/teams', async (req, res) => {
+  try {
+    const { name, userId, email, phone, mainSkill, location, description, logoUrl } = req.body;
+    if (!name || !userId) return res.status(400).json({ error: 'name and userId are required' });
+
+    const teamCode = 'TEAM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    const team = await prisma.team.create({
+      data: {
+        name,
+        teamCode,
+        email: email || null,
+        phone: phone || null,
+        mainSkill: mainSkill || null,
+        location: location || null,
+        description: description || null,
+        logoUrl: logoUrl || null,
+      },
+    });
+
+    // Creator becomes super_leader
+    await prisma.teamMembership.create({
+      data: {
+        userId,
+        teamId: team.id,
+        role: 'super_leader',
+      },
+    });
+
+    res.json(team);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to create team' });
+  }
+});
+
+// Get team by ID with memberships
+app.get('/api/teams/:teamId', async (req, res) => {
+  try {
+    const team = await prisma.team.findUnique({
+      where: { id: req.params.teamId },
+      include: {
+        memberships: {
+          include: {
+            user: { select: { id: true, displayName: true, avatarUrl: true, trustScore: true, verificationStatus: true, phone: true, email: true } },
+          },
+        },
+      },
+    });
+    if (!team) return res.status(404).json({ error: 'Team not found' });
+    res.json(team);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch team' });
+  }
+});
+
+// Get team membership for a user
+app.get('/api/teams/user/:userId', async (req, res) => {
+  try {
+    const membership = await prisma.teamMembership.findFirst({
+      where: { userId: req.params.userId },
+      include: {
+        team: true,
+        user: { select: { id: true, displayName: true, avatarUrl: true } },
+      },
+    });
+    res.json(membership || null);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch team membership' });
+  }
+});
+
+// Join team by team code
+app.post('/api/teams/join', async (req, res) => {
+  try {
+    const { userId, teamCode, role } = req.body;
+    if (!userId || !teamCode) return res.status(400).json({ error: 'userId and teamCode are required' });
+
+    const team = await prisma.team.findUnique({ where: { teamCode } });
+    if (!team) return res.status(404).json({ error: 'Team not found. Check the team code.' });
+
+    const existing = await prisma.teamMembership.findUnique({
+      where: { userId_teamId: { userId, teamId: team.id } },
+    });
+    if (existing) return res.status(409).json({ error: 'Already a member of this team' });
+
+    const membership = await prisma.teamMembership.create({
+      data: {
+        userId,
+        teamId: team.id,
+        role: role || 'member',
+      },
+      include: { team: true },
+    });
+
+    res.json(membership);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to join team' });
+  }
+});
+
+// Remove member from team
+app.delete('/api/teams/:teamId/members/:userId', async (req, res) => {
+  try {
+    const { teamId, userId } = req.params;
+    await prisma.teamMembership.delete({
+      where: { userId_teamId: { userId, teamId } },
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to remove member' });
+  }
+});
+
+// Invite member to team
+app.post('/api/teams/invite', async (req, res) => {
+  try {
+    const { teamId, email, phone, role, invitedBy } = req.body;
+    if (!teamId || !email || !invitedBy) return res.status(400).json({ error: 'teamId, email, and invitedBy are required' });
+
+    const invitation = await prisma.teamInvitation.create({
+      data: {
+        teamId,
+        email,
+        phone: phone || null,
+        role: role || 'member',
+        invitedBy,
+      },
+      include: { team: true },
+    });
+
+    res.json(invitation);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to create invitation' });
+  }
+});
+
+// Get team invitations
+app.get('/api/teams/:teamId/invitations', async (req, res) => {
+  try {
+    const invitations = await prisma.teamInvitation.findMany({
+      where: { teamId: req.params.teamId },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(invitations);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch invitations' });
+  }
+});
+
+// Accept invitation
+app.patch('/api/teams/invitations/:id/accept', async (req, res) => {
+  try {
+    const invitation = await prisma.teamInvitation.update({
+      where: { id: req.params.id },
+      data: { status: 'accepted' },
+    });
+
+    // Find the user by email and create membership
+    const user = await prisma.user.findFirst({ where: { email: invitation.email } });
+    if (user) {
+      const existing = await prisma.teamMembership.findUnique({
+        where: { userId_teamId: { userId: user.id, teamId: invitation.teamId } },
+      });
+      if (!existing) {
+        await prisma.teamMembership.create({
+          data: {
+            userId: user.id,
+            teamId: invitation.teamId,
+            role: invitation.role,
+          },
+        });
+      }
+    }
+
+    res.json(invitation);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to accept invitation' });
+  }
+});
+
+// Create announcement
+app.post('/api/teams/announcements', async (req, res) => {
+  try {
+    const { teamId, title, body, authorId } = req.body;
+    if (!teamId || !title || !body || !authorId) return res.status(400).json({ error: 'teamId, title, body, and authorId are required' });
+
+    const announcement = await prisma.teamAnnouncement.create({
+      data: { teamId, title, body, authorId },
+    });
+    res.json(announcement);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to create announcement' });
+  }
+});
+
+// Get team announcements
+app.get('/api/teams/:teamId/announcements', async (req, res) => {
+  try {
+    const announcements = await prisma.teamAnnouncement.findMany({
+      where: { teamId: req.params.teamId },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(announcements);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch announcements' });
+  }
+});
+
+// Get team stats (member count, active jobs, announcements)
+app.get('/api/teams/:teamId/stats', async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const [memberCount, activeJobs, announcementCount] = await Promise.all([
+      prisma.teamMembership.count({ where: { teamId } }),
+      prisma.application.count({ where: { teamId, status: { not: 'rejected' } } }),
+      prisma.teamAnnouncement.count({ where: { teamId } }),
+    ]);
+    res.json({ memberCount, activeJobs, announcementCount });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch team stats' });
+  }
+});
+
+// Assign members to a team application (leader action)
+app.patch('/api/applications/:id/assign', async (req, res) => {
+  try {
+    const { assignedMembers } = req.body;
+    const app_ = await prisma.application.update({
+      where: { id: Number(req.params.id) },
+      data: { assignedMembers: JSON.stringify(assignedMembers || []) },
+    });
+    res.json(app_);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to assign members' });
   }
 });
 

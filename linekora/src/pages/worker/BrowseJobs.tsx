@@ -83,7 +83,10 @@ export default function BrowseJobs() {
 
     setApplyingId(job.id);
     try {
-      await createApplication({ jobId: job.id, workerId: profile.id });
+      await createApplication({
+        jobId: job.id,
+        workerId: profile.id,
+      });
 
       // Notify the employer in the database
       if (job.employerId) {
@@ -301,7 +304,7 @@ export default function BrowseJobs() {
 
         {/* Jobs Grid */}
         {!loading && filteredJobs.length > 0 && (
-          <div className="grid grid-cols-1 gap-6 pb-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
             {filteredJobs.map((job, i) => (
               <motion.div 
                 key={job.id}

@@ -225,7 +225,7 @@ export default function CompanyDashboard() {
       <div className="max-w-6xl mx-auto">
         <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 font-sans tracking-tight flex items-center gap-2 uppercase">
+            <h1 className="text-2xl md:text-3xl font-black text-gray-900 font-sans tracking-tight flex items-center gap-2 uppercase flex-wrap">
               {profile?.displayName || t('company_dashboard')}
               <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border ${
                 profile?.tier === 'Verified Company' ? 'bg-blue-50 text-blue-600 border-blue-105' : 'bg-gray-100 text-gray-500 border-gray-200'
@@ -320,7 +320,7 @@ export default function CompanyDashboard() {
                 <ActiveContractsResolver />
 
                 {/* Expired Jobs Card Action */}
-                <section className="bg-gray-50 rounded-[3rem] p-8 border border-dashed border-gray-250">
+                <section className="bg-gray-50 rounded-[3rem] p-6 md:p-8 border border-dashed border-gray-250">
                   <div className="flex flex-col items-center text-center">
                       <Clock className="text-gray-300 mb-4 animate-pulse" size={40} />
                       <h3 className="font-sans font-black text-gray-900 uppercase tracking-tight">{t('need_to_repost_job')}</h3>
@@ -338,7 +338,7 @@ export default function CompanyDashboard() {
 
               <div className="space-y-8">
                 {/* Compact Shortlist Card */}
-                <section className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm flex flex-col justify-between">
+                <section className="bg-white rounded-[2.5rem] p-5 md:p-8 border border-gray-100 shadow-sm flex flex-col justify-between">
                   <div>
                     <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">{t('shortlisted_workers_count', { count: shortlisted.length })}</h3>
                     {shortlisted.length > 0 ? (
@@ -379,7 +379,7 @@ export default function CompanyDashboard() {
                   </button>
                 </section>
 
-                <section className="bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-blue-200">
+                <section className="bg-blue-600 rounded-[2.5rem] p-6 md:p-8 text-white shadow-xl shadow-blue-200">
                   <ShieldCheck size={32} className="mb-4 text-blue-200 animate-bounce" />
                   <h3 className="text-lg font-black font-sans leading-tight mb-2 uppercase tracking-tight">
                       {profile?.tier === 'Verified Company' ? t('business_verified') : t('verify_business')}

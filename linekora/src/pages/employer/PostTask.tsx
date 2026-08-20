@@ -117,11 +117,6 @@ export default function EmployerPostTask() {
     'Furniture reassembly': t('tag_furniture_reassembly'),
   }[v] || v);
 
-  // Check if there are active uncompleted contracts in database
-  const [hasUncompleted, setHasUncompleted] = useState(() => {
-    const contractsList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
-    return contractsList.some(c => c.status !== 'completed' && c.status !== 'not_trusted');
-  });
   
   // Form State
   const [title, setTitle] = useState('');
@@ -133,6 +128,7 @@ export default function EmployerPostTask() {
   const [paymentType, setPaymentType] = useState('Per Task');
   const [startDate, setStartDate] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
+  const [workerType, setWorkerType] = useState('individual');
   
   // Custom interactive extensions
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -265,6 +261,9 @@ export default function EmployerPostTask() {
         urgent: isUrgent,
         employerId: profile.id,
         deadline: startDate || undefined,
+        phone: phone || undefined,
+        photos: attachedPhotos.length > 0 ? JSON.stringify(attachedPhotos) : undefined,
+        workerType: workerType,
       });
 
       // Cache locally too
@@ -307,31 +306,8 @@ export default function EmployerPostTask() {
           <p className="text-gray-500 font-sans font-medium mt-1 italic text-sm">{t('post_task_subtitle')}</p>
         </header>
 
-        {hasUncompleted ? (
-          <div className="bg-white rounded-[3rem] border border-red-150 shadow-2xl p-8 md:p-12 text-center max-w-2xl mx-auto py-16 space-y-6 font-sans">
-            <div className="h-20 w-20 bg-red-50 text-red-500 rounded-[2.5rem] flex items-center justify-center mx-auto border border-red-105">
-              <AlertCircle size={40} />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight font-sans">{t('milestone_blockage_title')}</h2>
-              <p className="text-gray-400 uppercase tracking-widest font-black text-[10px]">{t('milestone_blockage_platform')}</p>
-              <p className="text-sm font-sans font-medium text-gray-500 max-w-md mx-auto leading-relaxed">
-                {t('milestone_blockage_desc')}
-              </p>
-            </div>
-            <div className="bg-amber-50 border border-amber-100 p-5 rounded-3xl max-w-lg mx-auto text-left text-amber-900 text-xs font-medium leading-relaxed font-sans">
-              <span className="font-extrabold uppercase tracking-wider block mb-1">{t('milestone_resolve_hint')}</span>
-              {t('milestone_resolve_desc')}
-            </div>
-            <button
-              onClick={() => navigate('/dashboard/employer#contracts')}
-              className="px-8 py-4 bg-gray-950 hover:bg-gray-800 text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs transition-colors"
-            >
-              {t('milestone_go_dashboard')}
-            </button>
-          </div>
-        ) : showSuccessBlast ? (
-          <div className="bg-white rounded-[3rem] border border-gray-100 shadow-2xl p-12 text-center max-w-lg mx-auto py-16 space-y-6">
+        {showSuccessBlast ? (
+          <div className="bg-white rounded-[3rem] border border-gray-100 shadow-2xl p-6 md:p-12 text-center max-w-lg mx-auto py-10 md:py-16 space-y-6">
             <div className="h-20 w-20 bg-green-50 text-green-500 rounded-[2.5rem] flex items-center justify-center mx-auto animate-bounce border border-green-100">
               <CheckCircle size={40} />
             </div>
@@ -344,6 +320,12 @@ export default function EmployerPostTask() {
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-mono">
               {t('post_success_redirect')}
             </div>
+            <button
+              onClick={() => navigate('/dashboard/employer')}
+              className="w-full py-4 bg-gray-950 hover:bg-black text-white rounded-2xl font-sans font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-gray-200"
+            >
+              {t('back_to_dashboard')} →
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -550,7 +532,7 @@ export default function EmployerPostTask() {
                           <span className={`text-[9px] font-black uppercase px-1 transition-opacity ${isUrgent ? 'text-white opacity-100' : 'opacity-0'}`}>{t('on')}</span>
                           <motion.div 
                             layout
-                            animate={{ x: isUrgent ? 0 : 0 }}
+                            animate={{ x: isUrgent ? 28 : 0 }}
                             className="h-6 w-6 bg-white rounded-full shadow-lg border border-slate-300 flex items-center justify-center font-black text-[9px] text-slate-900"
                           >
                             {isUrgent ? '✓' : '✕'}

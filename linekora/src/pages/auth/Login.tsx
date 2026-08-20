@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Shield, Mail, Lock, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import { auth } from '../../lib/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
-import { getUser, upsertUser } from '../../lib/api';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
+import { getUser } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage, Language } from '../../lib/LanguageContext';
 
@@ -24,33 +24,32 @@ export default function Login() {
   const { refreshProfile } = useAuth();
   const { t, language, setLanguage } = useLanguage();
 
+  const [lastMethod, setLastMethod] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLastMethod(localStorage.getItem('lastAuthMethod'));
+  }, []);
+
   const handleAfterAuth = async (uid: string, email?: string) => {
+    const roleRoutes: Record<string, string> = {
+      WORKER: '/dashboard/worker',
+      COMPANY: '/dashboard/company',
+      EMPLOYER: '/dashboard/employer',
+      ADMIN: '/admin',
+    };
+
     try {
       const profile = await getUser(uid);
-      await refreshProfile();
-      const roleRoutes: Record<string, string> = {
-        WORKER: '/dashboard/worker',
-        COMPANY: '/dashboard/company',
-        EMPLOYER: '/dashboard/employer',
-        ADMIN: '/admin',
-      };
-      navigate(roleRoutes[profile.role] || '/dashboard');
-    } catch {
-      // User exists in Firebase but not in PostgreSQL (e.g. DB reset).
-      // Auto-create a minimal record so they don't get stuck redirecting
-      // back to register after every login.
-      try {
-        await upsertUser({
-          firebaseUid: uid,
-          email: email || '',
-          displayName: email?.split('@')[0] || 'User',
-        } as any);
-        await refreshProfile();
-        navigate('/dashboard');
+      if (profile?.role) {
+        localStorage.setItem('lastAuthMethod', 'google');
+        navigate(roleRoutes[profile.role] || '/dashboard');
         return;
-      } catch {}
-      navigate('/register');
+      }
+    } catch {
+      // User not in DB yet
     }
+
+    navigate('/select-role');
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -59,6 +58,7 @@ export default function Login() {
     setError(null);
     try {
       const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+      localStorage.setItem('lastAuthMethod', 'email');
       await handleAfterAuth(result.user.uid, result.user.email || email.trim());
     } catch (err: any) {
       const code = err.code;
@@ -69,7 +69,6 @@ export default function Login() {
       } else {
         setError(err.message || t('error_login_failed'));
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -79,13 +78,22 @@ export default function Login() {
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      let result;
+      try {
+        result = await signInWithPopup(auth, provider);
+      } catch (popupErr: any) {
+        if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request') {
+          await signInWithRedirect(auth, provider);
+          return;
+        }
+        throw popupErr;
+      }
       await handleAfterAuth(result.user.uid, result.user.email || undefined);
     } catch (err: any) {
       if (err.code === 'auth/operation-not-allowed') {
         setError(t('error_google_not_enabled'));
       } else if (err.code === 'auth/popup-closed-by-user') {
-        setError(null); // User just closed the popup, no error needed
+        setError(null);
       } else {
         setError(err.message || t('error_google_failed'));
       }
@@ -165,6 +173,12 @@ export default function Login() {
             {t('sign_up')}
           </Link>
         </div>
+
+        {lastMethod && (
+          <p className="text-center text-white/25 text-[10px] font-sans font-bold uppercase tracking-widest mb-2">
+            {t('last_used')}: {lastMethod === 'google' ? 'Google' : t('or_with_email')}
+          </p>
+        )}
 
         <h2 className="font-sans text-3xl font-extrabold text-white text-center mb-1">{t('welcome_back')}</h2>
         <p className="text-center text-white/50 font-sans text-sm mb-8">{t('login_subtitle')}</p>
