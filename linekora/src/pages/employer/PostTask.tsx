@@ -260,7 +260,7 @@ export default function EmployerPostTask() {
         status: 'open',
         urgent: isUrgent,
         employerId: profile.id,
-        deadline: startDate || undefined,
+        deadline: startDate ? new Date(startDate).toISOString() : undefined,
         phone: phone || undefined,
         photos: attachedPhotos.length > 0 ? JSON.stringify(attachedPhotos) : undefined,
         workerType: workerType,

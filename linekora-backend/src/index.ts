@@ -269,7 +269,11 @@ app.get('/api/jobs', async (req, res) => {
 
 app.post('/api/jobs', async (req, res) => {
   try {
-    const job = await prisma.job.create({ data: req.body });
+    const data = { ...req.body };
+    if (data.deadline && typeof data.deadline === 'string') {
+      data.deadline = new Date(data.deadline).toISOString();
+    }
+    const job = await prisma.job.create({ data });
     res.json(job);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create job' });

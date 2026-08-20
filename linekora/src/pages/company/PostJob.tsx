@@ -101,7 +101,7 @@ export default function PostJob() {
         status: 'open',
         urgent: isUrgent,
         employerId: profile.id,
-        deadline: formData.deadline || undefined,
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
         phone: formData.phone || undefined,
         jobType: formData.jobType,
         requirements: formData.requirements || undefined,
