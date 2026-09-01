@@ -95,14 +95,14 @@ export default function CompanyApplicants() {
 
       // Notify the worker
       if (app.workerId) {
-        const notifyMap: Record<string, { title: string; body: string; type: string }> = {
-          accepted: { title: t('notif_app_accepted'), body: t('notif_app_accepted_msg', { title: app.job?.title || t('the_job') }), type: 'success' },
-          rejected: { title: t('notif_app_rejected'), body: t('notif_app_rejected_msg', { title: app.job?.title || t('the_job') }), type: 'info' },
-          shortlisted: { title: t('notif_app_shortlisted'), body: t('notif_app_shortlisted_msg', { title: app.job?.title || t('the_job') }), type: 'success' },
+        const notifyMap: Record<string, { title: string; body: string; type: string; linkTarget: string }> = {
+          accepted: { title: t('notif_app_accepted'), body: t('notif_app_accepted_msg', { title: app.job?.title || t('the_job') }), type: 'success', linkTarget: 'contracts' },
+          rejected: { title: t('notif_app_rejected'), body: t('notif_app_rejected_msg', { title: app.job?.title || t('the_job') }), type: 'info', linkTarget: 'applications' },
+          shortlisted: { title: t('notif_app_shortlisted'), body: t('notif_app_shortlisted_msg', { title: app.job?.title || t('the_job') }), type: 'success', linkTarget: 'applications' },
         };
         const n = notifyMap[newStatus];
         if (n) {
-          await createNotification({ userId: app.workerId, title: n.title, body: n.body, type: n.type });
+          await createNotification({ userId: app.workerId, title: n.title, body: n.body, type: n.type, linkTarget: n.linkTarget });
         }
       }
       setApplicants(prev => prev.map(a => a.id === appId ? { ...a, status: newStatus } : a));

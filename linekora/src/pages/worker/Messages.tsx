@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   MessageSquare, Search, Send, Plus, 
   MoreVertical, Phone, Video, Shield,
@@ -9,26 +9,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
-
-interface ChatItem {
-  id: number;
-  name: string;
-  role: string;
-  lastMsg: string;
-  time: string;
-  unread: number;
-  online: boolean;
-  avatar: string;
-  pinned?: boolean;
-  muted?: boolean;
-}
-
-interface MessageItem {
-  id: number;
-  text: string;
-  sent: boolean;
-  time: string;
-}
+import { useLiveChat } from '../../lib/useLiveChat';
 
 interface ToastAlert {
   id: string;
@@ -40,40 +21,20 @@ interface ToastAlert {
 export default function WorkerMessages() {
   const { t } = useLanguage();
   const { profile } = useAuth();
-  const uid = profile?.id || 'default';
-  const CHATS_KEY = `linekora_worker_chats_${uid}`;
-  const MESSAGES_KEY = `linekora_worker_messages_${uid}`;
+  const uid = profile?.id || undefined;
 
-  const [activeChat, setActiveChat] = useState<number | null>(null);
+  const {
+    chatsList,
+    setChatsList,
+    threads,
+    setThreads,
+    activeChat,
+    setActiveChat,
+    openChat,
+    send,
+  } = useLiveChat(uid);
+
   const [message, setMessage] = useState('');
-
-  // Stateful chats list with localStorage persistence
-  const [chatsList, setChatsList] = useState<ChatItem[]>(() => {
-    try {
-      const cached = localStorage.getItem(CHATS_KEY);
-      if (cached) return JSON.parse(cached);
-    } catch {}
-    return [];
-  });
-
-  // Messages database keyed by chatId with localStorage persistence
-  const [messagesDB, setMessagesDB] = useState<Record<number, MessageItem[]>>(() => {
-    try {
-      const cached = localStorage.getItem(MESSAGES_KEY);
-      if (cached) return JSON.parse(cached);
-    } catch {}
-    return {};
-  });
-
-  // Sync chats to localStorage
-  useEffect(() => {
-    localStorage.setItem(CHATS_KEY, JSON.stringify(chatsList));
-  }, [chatsList, CHATS_KEY]);
-
-  // Sync messages to localStorage
-  useEffect(() => {
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messagesDB));
-  }, [messagesDB, MESSAGES_KEY]);
 
   // UI Interactive States
   const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false);
@@ -103,34 +64,15 @@ export default function WorkerMessages() {
   };
 
   // Mark active chat's unread count to 0
-  const handleChatSelect = (id: number) => {
-    setActiveChat(id);
-    setChatsList(prev => prev.map(chat => chat.id === id ? { ...chat, unread: 0 } : chat));
+  const handleChatSelect = (id: string) => {
+    openChat(id);
     setIsHeaderDropdownOpen(false);
   };
 
   // Send a real message
   const handleSendMessage = () => {
     if (!message.trim() || activeChat === null) return;
-
-    const newMsg: MessageItem = {
-      id: Date.now() + Math.random(),
-      text: message.trim(),
-      sent: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    // Update messages database
-    setMessagesDB(prev => ({
-      ...prev,
-      [activeChat]: [...(prev[activeChat] || []), newMsg]
-    }));
-
-    // Update last message in sidebar listing
-    setChatsList(prev => prev.map(chat => 
-      chat.id === activeChat ? { ...chat, lastMsg: message.trim(), time: t('just_now') } : chat
-    ));
-
+    send(activeChat, message.trim());
     setMessage('');
     addToast(t('toast_message_dispatched'), t('toast_message_routed'), 'success');
   };
@@ -176,7 +118,7 @@ export default function WorkerMessages() {
     if (activeChat === null) return;
     const targetChat = chatsList.find(c => c.id === activeChat);
     
-    setMessagesDB(prev => ({
+    setThreads(prev => ({
       ...prev,
       [activeChat]: []
     }));
@@ -208,7 +150,7 @@ export default function WorkerMessages() {
   };
 
   const currentChatObj = chatsList.find(c => c.id === activeChat);
-  const currentMessages = activeChat ? (messagesDB[activeChat] || []) : [];
+  const currentMessages = activeChat ? (threads[activeChat] || []) : [];
 
   return (
     <DashboardLayout>

@@ -236,6 +236,7 @@ export default function AdminDashboard() {
           title: t('verif_notif_approved_title'),
           body: t('verif_notif_approved_body', { name: u.displayName }),
           type: 'success',
+          linkTarget: 'verification',
         });
       } catch (e) { console.error('Failed to notify user of approval', e); }
       addAudit(t('audit_verification_approved', { name: u.displayName, id: u.id }), 'SECURITY');
@@ -311,6 +312,7 @@ export default function AdminDashboard() {
           title: t('verif_notif_approved_title'),
           body: t('verif_notif_approved_body', { name: v.displayName }),
           type: 'success',
+          linkTarget: 'verification',
         });
       } catch (e) { console.error('Failed to notify user of approval', e); }
       setVerificationQueue(prev => prev.filter(x => x.id !== v.id));
@@ -341,6 +343,7 @@ export default function AdminDashboard() {
           title: t('verif_notif_rejected_title'),
           body: t('verif_notif_rejected_body', { name: v.displayName, reason }),
           type: 'warning',
+          linkTarget: 'verification',
         });
       } catch (e) { console.error('Failed to notify user of rejection', e); }
       setVerificationQueue(prev => prev.filter(x => x.id !== v.id));

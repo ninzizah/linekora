@@ -170,6 +170,23 @@ app.post('/api/verification/:userId', async (req, res) => {
         verificationStatus: 'pending',
       },
     });
+
+    // Notify admins a new verification request has arrived for review
+    const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
+    await Promise.all(
+      admins.map(a =>
+        (prisma as any).notification.create({
+          data: {
+            userId: a.id,
+            title: 'New verification request received',
+            body: `${existing.displayName} (${existing.role}) submitted their verification documents — action required.`,
+            type: 'urgent',
+            link: '/admin',
+          },
+        })
+      )
+    );
+
     res.json({ success: true, user });
   } catch (error: any) {
     console.error('Failed to save verification docs:', error);
@@ -445,12 +462,42 @@ app.get('/api/notifications', async (req, res) => {
 
 app.post('/api/notifications', async (req, res) => {
   try {
-    const notification = await (prisma as any).notification.create({ data: req.body });
+    const { userId, title, body, type, link, linkTarget } = req.body;
+    const resolvedLink = link || (await resolveLinkForUser(userId, linkTarget));
+    const notification = await (prisma as any).notification.create({
+      data: { userId, title, body, type: type || 'info', link: resolvedLink },
+    });
     res.json(notification);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create notification' });
   }
 });
+
+// Resolve a semantic link target to an actual route based on the recipient's role.
+// Maps something like "applications" | "messages" | "verification" | "contracts" | "reviews" | "dashboard" | "admin"
+async function resolveLinkForUser(userId: string, target?: string): Promise<string | null> {
+  if (!target) return null;
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const role = user?.role || 'WORKER';
+  const base =
+    role === 'COMPANY' ? '/dashboard/company' :
+    role === 'EMPLOYER' ? '/dashboard/employer' :
+    role === 'ADMIN' ? '/admin' :
+    '/dashboard/worker';
+  switch (target) {
+    case 'dashboard': return base === '/admin' ? '/admin' : `${base}`;
+    case 'browse': return role === 'WORKER' ? '/dashboard/worker/browse' : role === 'COMPANY' ? '/dashboard/company/browse' : '/dashboard/employer/browse';
+    case 'applications': return role === 'WORKER' ? '/dashboard/worker/applications' : role === 'COMPANY' ? '/dashboard/company/applicants' : base;
+    case 'jobs': return role === 'WORKER' ? '/dashboard/worker/browse' : role === 'COMPANY' ? '/dashboard/company/jobs' : base;
+    case 'contracts': return role === 'WORKER' ? '/dashboard/worker/applications' : base;
+    case 'messages': return base === '/admin' ? '/admin' : `${base}/messages`;
+    case 'verification': return base === '/admin' ? '/admin' : `${base}/verify`;
+    case 'reviews': return role === 'WORKER' ? '/dashboard/worker/reviews' : role === 'COMPANY' ? `${base}` : base;
+    case 'wallet': return base === '/admin' ? '/admin' : `${base}/wallet`;
+    case 'admin': return '/admin';
+    default: return null;
+  }
+}
 
 app.patch('/api/notifications/read-all', async (req, res) => {
   try {
@@ -478,20 +525,40 @@ app.patch('/api/notifications/:id/read', async (req, res) => {
   }
 });
 
+app.delete('/api/notifications/:id', async (req, res) => {
+  try {
+    const existing = await (prisma as any).notification.findUnique({
+      where: { id: parseInt(req.params.id) },
+    });
+    if (!existing) return res.status(404).json({ error: 'Notification not found' });
+    await (prisma as any).notification.delete({ where: { id: existing.id } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete notification' });
+  }
+});
+
 // ─── MESSAGES ────────────────────────────────────────────────────────────────
 
+// Get all messages for a conversation (optionally filtered by peer) between two users
 app.get('/api/messages', async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId, peerId } = req.query;
     const where: any = userId
       ? { OR: [{ senderId: userId }, { receiverId: userId }] }
       : {};
+    if (userId && peerId) {
+      where.OR = [
+        { senderId: userId, receiverId: peerId },
+        { senderId: peerId, receiverId: userId },
+      ];
+    }
 
     const messages = await prisma.message.findMany({
       where,
       include: {
-        sender: { select: { id: true, displayName: true } },
-        receiver: { select: { id: true, displayName: true } },
+        sender: { select: { id: true, displayName: true, role: true, avatarUrl: true } },
+        receiver: { select: { id: true, displayName: true, role: true, avatarUrl: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -501,12 +568,97 @@ app.get('/api/messages', async (req, res) => {
   }
 });
 
+// Get a user's conversations (each with the other party + last message + unread count)
+app.get('/api/conversations/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+
+    const messages = await prisma.message.findMany({
+      where: {
+        OR: [{ senderId: userId }, { receiverId: userId }],
+      },
+      include: {
+        sender: { select: { id: true, displayName: true, role: true, avatarUrl: true } },
+        receiver: { select: { id: true, displayName: true, role: true, avatarUrl: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const peerMap = new Map<string, any>();
+    for (const m of messages) {
+      const peerId = m.senderId === userId ? m.receiverId : m.senderId;
+      const peer = m.senderId === userId ? m.receiver : m.sender;
+      if (!peer) continue;
+      const unreadDelta = m.receiverId === userId && !m.read ? 1 : 0;
+      const existing = peerMap.get(peerId);
+      if (!existing) {
+        peerMap.set(peerId, {
+          peer: { id: peer.id, displayName: peer.displayName, role: peer.role, avatarUrl: peer.avatarUrl },
+          lastMessage: m.content,
+          lastMessageAt: m.createdAt,
+          unread: unreadDelta,
+        });
+      } else {
+        existing.unread = (existing.unread || 0) + unreadDelta;
+      }
+    }
+
+    const conversations = Array.from(peerMap.values());
+    conversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+
+    res.json(conversations);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch conversations' });
+  }
+});
+
 app.post('/api/messages', async (req, res) => {
   try {
-    const message = await prisma.message.create({ data: req.body });
+    const { content, senderId, receiverId } = req.body;
+    if (!content || !senderId || !receiverId) {
+      return res.status(400).json({ error: 'content, senderId, and receiverId are required' });
+    }
+
+    const message = await prisma.message.create({
+      data: { content, senderId, receiverId },
+      include: {
+        sender: { select: { id: true, displayName: true, role: true, avatarUrl: true } },
+        receiver: { select: { id: true, displayName: true, role: true, avatarUrl: true } },
+      },
+    });
+
+    const receiverLink = resolveLinkForUser(receiverId, 'messages');
+
+    // Notify the receiver (in-app) that they have a new message
+    await (prisma as any).notification.create({
+      data: {
+        userId: receiverId,
+        title: `New message from ${message.sender?.displayName || 'User'}`,
+        body: content.length > 90 ? content.slice(0, 90) + '…' : content,
+        type: 'info',
+        link: receiverLink,
+      },
+    });
+
     res.json(message);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to send message' });
+  }
+});
+
+// Mark all messages in a conversation (between userId and peerId) as read
+app.patch('/api/messages/read', async (req, res) => {
+  try {
+    const { userId, peerId } = req.body;
+    if (!userId || !peerId) return res.status(400).json({ error: 'userId and peerId are required' });
+    await prisma.message.updateMany({
+      where: { senderId: peerId, receiverId: userId, read: false },
+      data: { read: true },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to mark messages as read' });
   }
 });
 

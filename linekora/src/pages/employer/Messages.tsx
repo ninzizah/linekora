@@ -1,89 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   MessageSquare, Search, Send, Plus, 
   MoreVertical, Shield, Users, CheckCheck, ArrowLeft
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useLanguage } from '../../lib/LanguageContext';
-
-interface ChatItem {
-  id: number;
-  name: string;
-  role: string;
-  lastMsg: string;
-  time: string;
-  unread: number;
-  online: boolean;
-  avatar: string;
-}
-
-interface MessageItem {
-  id: number;
-  text: string;
-  sent: boolean;
-  time: string;
-}
+import { useAuth } from '../../lib/AuthContext';
+import { useLiveChat } from '../../lib/useLiveChat';
 
 export default function EmployerMessages() {
   const { t } = useLanguage();
-  const [activeChat, setActiveChat] = useState<number | null>(null);
+  const { profile } = useAuth();
+  const uid = profile?.id || undefined;
   const [message, setMessage] = useState('');
 
-  const DEFAULT_CHATS: ChatItem[] = [];
-
-  const DEFAULT_MESSAGES: Record<number, MessageItem[]> = {};
-
-  const [chatsList, setChatsList] = useState<ChatItem[]>(() => {
-    const cached = localStorage.getItem('linekora_employer_chats');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) {}
-    }
-    return DEFAULT_CHATS;
-  });
-
-  const [messagesDB, setMessagesDB] = useState<Record<number, MessageItem[]>>(() => {
-    const cached = localStorage.getItem('linekora_employer_messages');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) {}
-    }
-    return DEFAULT_MESSAGES;
-  });
-
-  // Sync back to local storage
-  useEffect(() => {
-    localStorage.setItem('linekora_employer_chats', JSON.stringify(chatsList));
-  }, [chatsList]);
-
-  useEffect(() => {
-    localStorage.setItem('linekora_employer_messages', JSON.stringify(messagesDB));
-  }, [messagesDB]);
+  const {
+    chatsList,
+    threads,
+    activeChat,
+    setActiveChat,
+    send,
+    openChat,
+  } = useLiveChat(uid);
 
   const handleSendMessage = () => {
     if (!message.trim() || activeChat === null) return;
-
-    const newMsg: MessageItem = {
-      id: Date.now() + Math.random(),
-      text: message.trim(),
-      sent: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    // Update messages database
-    setMessagesDB(prev => ({
-      ...prev,
-      [activeChat]: [...(prev[activeChat] || []), newMsg]
-    }));
-
-    // Update last message in sidebar listing
-    setChatsList(prev => prev.map(chat => 
-      chat.id === activeChat ? { ...chat, lastMsg: message.trim(), time: t('just_now') } : chat
-    ));
-
+    send(activeChat, message.trim());
     setMessage('');
   };
 
   const currentChatObj = chatsList.find(c => c.id === activeChat);
-  const currentMessages = activeChat ? (messagesDB[activeChat] || []) : [];
+  const currentMessages = activeChat ? (threads[activeChat] || []) : [];
 
   return (
     <DashboardLayout>
@@ -106,10 +53,7 @@ export default function EmployerMessages() {
             {chatsList.map((chat) => (
               <button
                 key={chat.id}
-                onClick={() => {
-                  setActiveChat(chat.id);
-                  setChatsList(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c));
-                }}
+                onClick={() => openChat(chat.id)}
                 className={`w-full p-4 flex gap-4 hover:bg-gray-50 transition-colors relative ${activeChat === chat.id ? 'bg-blue-50/50' : ''}`}
               >
                 <div className="relative">

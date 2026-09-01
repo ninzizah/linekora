@@ -129,10 +129,10 @@ export default function WorkerApplications() {
   };
 
   // Dispatch a notification + system alert to the employer who owns the job
-  const notifyEmployer = async (employerId: string | undefined, title: string, body: string, type: 'success' | 'urgent') => {
+  const notifyEmployer = async (employerId: string | undefined, title: string, body: string, type: 'success' | 'urgent', linkTarget?: string) => {
     if (!employerId) return;
     try {
-      await createNotification({ userId: employerId, title, body, type });
+      await createNotification({ userId: employerId, title, body, type, linkTarget });
     } catch (err) {
       console.error('Failed to notify employer', err);
     }
@@ -175,7 +175,8 @@ export default function WorkerApplications() {
         declinedApp.employerId,
         t('job_offer_declined'),
         t('offer_declined_details', { name: profile?.displayName || t('worker'), title: declinedApp.jobTitle }),
-        'urgent'
+        'urgent',
+        'contracts'
       );
 
       // Push alert
@@ -274,7 +275,8 @@ export default function WorkerApplications() {
         employerId,
         t('notif_worker_accepted'),
         t('notif_worker_accepted_msg', { name: profile?.displayName || t('worker'), title: acceptedApp.jobTitle }),
-        'success'
+        'success',
+        'contracts'
       );
 
       // Worker's own contract store
@@ -360,7 +362,8 @@ export default function WorkerApplications() {
         target?.employerId,
         t('completion_requested_alert'),
         t('completion_requested_details', { name: profile?.displayName || t('worker'), title: target?.jobTitle || t('job') }),
-        'urgent'
+        'urgent',
+        'contracts'
       );
 
       // 5. Reload state
@@ -394,7 +397,8 @@ export default function WorkerApplications() {
         target?.employerId,
         t('job_approved_finished'),
         t('job_approved_finished_details', { name: profile?.displayName || t('worker'), title: target?.jobTitle || t('job') }),
-        'success'
+        'success',
+        'contracts'
       );
       const refreshedApps = apps.map(ap => 
         ap.id === id ? { ...ap, status: 'completion_requested', date: t('completion_pending') } : ap

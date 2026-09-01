@@ -132,19 +132,22 @@ export default function ActiveContractsResolver() {
         logSystemAlert(
           'urgent',
           t('untrusted_penalty_inflicted'),
-          t('untrusted_penalty_detail', { name: profile?.displayName || t('worker'), title: contract.jobTitle, strikes: currentStrikes + 1 })
+          t('untrusted_penalty_detail', { name: profile?.displayName || t('worker'), title: contract.jobTitle, strikes: currentStrikes + 1 }),
+          '/admin'
         );
       } else if (status === 'disputed') {
         logSystemAlert(
           'urgent',
           t('dispute_case_opened'),
-          t('dispute_case_detail', { title: contract.jobTitle })
+          t('dispute_case_detail', { title: contract.jobTitle }),
+          '/admin'
         );
       } else if (status === 'still_in_progress') {
         logSystemAlert(
           'info',
           t('milestone_returned'),
-          t('milestone_returned_detail', { title: contract.jobTitle })
+          t('milestone_returned_detail', { title: contract.jobTitle }),
+          getRoleLink()
         );
       }
 
@@ -156,7 +159,7 @@ export default function ActiveContractsResolver() {
     }, 1000);
   };
 
-  const logSystemAlert = (category: 'urgent' | 'success' | 'info', title: string, details: string) => {
+  const logSystemAlert = (category: 'urgent' | 'success' | 'info', title: string, details: string, link?: string) => {
     const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
     alertsArr.push({
       id: Date.now().toString(),
@@ -164,9 +167,18 @@ export default function ActiveContractsResolver() {
       title,
       details,
       time: t('just_now'),
-      read: false
+      read: false,
+      link: link || null
     });
     writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
+  };
+
+  // Where the current user should land to see the related contract
+  const getRoleLink = () => {
+    const role = (profile?.role || '').toUpperCase();
+    if (role === 'COMPANY') return '/dashboard/company';
+    if (role === 'WORKER') return '/dashboard/worker/applications';
+    return '/dashboard/employer';
   };
 
   const handleApproveAndSubmitReview = () => {
@@ -200,7 +212,8 @@ export default function ActiveContractsResolver() {
       logSystemAlert(
         'success',
         t('contract_finalized_released'),
-        t('released_escrow_payments', { title: selectedContract.jobTitle, rating })
+        t('released_escrow_payments', { title: selectedContract.jobTitle, rating }),
+        getRoleLink()
       );
 
       setIsSubmitingAction(false);

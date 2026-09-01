@@ -11,7 +11,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { useAuth } from '../../lib/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { getNotifications, markAllNotificationsRead } from '../../lib/api';
+import { getNotifications, markAllNotificationsRead, markNotificationRead, deleteNotification, getConversations } from '../../lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { applyThemePrefs } from '../../lib/theme';
 import { useLanguage, Language } from '../../lib/LanguageContext';
@@ -27,6 +27,8 @@ interface WebAlert {
   details: string;
   time: string;
   read: boolean;
+  link?: string | null;
+  isDb?: boolean;
 }
 
 interface ChatPreview {
@@ -106,6 +108,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           details: a.details,
           time: a.time || t('just_now'),
           read: a.read || false,
+          link: a.link || null,
+          isDb: false,
         }));
       } catch {
         return [];
@@ -126,6 +130,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             details: n.body,
             time: formatDistanceToNow(new Date(n.createdAt), { addSuffix: true }),
             read: n.read,
+            link: n.link || null,
+            isDb: true,
           }));
           // Merge: local alerts first (most recent events), then DB
           const merged = [...localAlerts, ...dbAlerts].reduce((acc: WebAlert[], cur) => {
@@ -150,27 +156,60 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return () => clearInterval(pollInterval);
   }, [user?.id, roleKey]);
 
-  // Load real chats from localStorage (set by the messaging pages)
+  // Load real chats (live from the API, with localStorage fallback)
   useEffect(() => {
     if (!user?.id) return;
-    try {
-      // Read from the correct role-based localStorage key
-      const role = (user?.role || '').toUpperCase();
-      let chatKey = '';
-      if (role === 'WORKER') chatKey = `linekora_worker_chats_${user.id}`;
-      else if (role === 'COMPANY') chatKey = `linekora_company_chats_${user.id}`;
-      else chatKey = `linekora_employer_chats_${user.id}`;
-      
-      const raw = localStorage.getItem(chatKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setChats(parsed);
-      } else {
-        setChats([]);
+    let cancelled = false;
+
+    const loadFromApi = async () => {
+      try {
+        const convs = await getConversations(user.id);
+        if (cancelled) return;
+        const previews: ChatPreview[] = convs.map(c => ({
+          id: c.peer.id,
+          sender: c.peer.displayName,
+          role: c.peer.role || 'User',
+          body: c.lastMessage,
+          time: new Date(c.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          unread: c.unread > 0,
+        }));
+        setChats(previews);
+      } catch {
+        // Fall back to localStorage (seeded by messaging pages)
+        if (cancelled) return;
+        try {
+          const role = (user?.role || '').toUpperCase();
+          let chatKey = '';
+          if (role === 'WORKER') chatKey = `linekora_worker_chats_${user.id}`;
+          else if (role === 'COMPANY') chatKey = `linekora_company_chats_${user.id}`;
+          else chatKey = `linekora_employer_chats_${user.id}`;
+
+          const raw = localStorage.getItem(chatKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            setChats(parsed.map((c: any) => ({
+              id: String(c.id),
+              sender: c.name,
+              role: c.role,
+              body: c.lastMsg,
+              time: c.time,
+              unread: c.unread > 0,
+            })));
+          } else {
+            setChats([]);
+          }
+        } catch {
+          setChats([]);
+        }
       }
-    } catch {
-      setChats([]);
-    }
+    };
+
+    loadFromApi();
+    const pollInterval = setInterval(loadFromApi, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(pollInterval);
+    };
   }, [user?.id, user?.role]);
 
 
@@ -259,6 +298,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleMarkAlertAsRead = (id: string) => {
     setAlerts(prev => prev.map(a => a.id === id ? { ...a, read: true } : a));
+    const found = alerts.find(a => a.id === id);
+    if (found?.isDb) {
+      markNotificationRead(Number(id)).catch(() => {});
+    }
+  };
+
+  const handleAlertClick = (alert: WebAlert) => {
+    handleMarkAlertAsRead(alert.id);
+    if (alert.link) {
+      setIsPanelOpen(false);
+      navigate(alert.link);
+    }
   };
 
   const handleMarkAllRead = () => {
@@ -269,6 +320,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleDeleteAlert = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setAlerts(prev => prev.filter(a => a.id !== id));
+    const found = alerts.find(a => a.id === id);
+    if (found?.isDb) {
+      deleteNotification(Number(id)).catch(() => {});
+    }
   };
 
   const handleChatClick = (id: string) => {
@@ -512,7 +567,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           alerts.map((alert) => (
                             <div 
                               key={alert.id}
-                              onClick={() => handleMarkAlertAsRead(alert.id)}
+                              onClick={() => handleAlertClick(alert)}
                               className={`p-4 hover:bg-gray-50/80 transition-colors cursor-pointer flex items-start gap-3 relative group ${!alert.read ? 'bg-blue-50/10' : ''}`}
                             >
                               {!alert.read && (
@@ -528,6 +583,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                               <div className="flex-1 min-w-0">
                                 <h5 className="font-sans font-black text-xs text-gray-900 leading-tight flex items-center gap-1">
                                   {alert.title}
+                                  {alert.link && <ChevronRight size={12} className="text-gray-300 shrink-0" />}
                                 </h5>
                                 <p className="text-[11px] text-gray-500 mt-0.5 leading-normal font-sans font-medium">{alert.details}</p>
                                 <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mt-1">{alert.time}</span>

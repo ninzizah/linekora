@@ -67,6 +67,7 @@ export default function WorkerDashboard() {
           title: t('hot_task_claimed'),
           body: t('claimed_task_notification', { name: profile.displayName, title: job.title }),
           type: 'success',
+          linkTarget: 'contracts',
         });
       }
 
@@ -161,6 +162,7 @@ export default function WorkerDashboard() {
           title: t('new_application_received'),
           body: t('applied_for_notification', { name: profile.displayName, title: job.title }),
           type: 'info',
+          linkTarget: 'applications',
         });
       }
       const newApplied = new Set(appliedIds);

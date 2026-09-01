@@ -95,6 +95,7 @@ export default function BrowseJobs() {
           title: t('new_application_received'),
           body: t('applied_for_job_notification', { name: profile.displayName, title: job.title }),
           type: 'info',
+          linkTarget: 'applications',
         });
       }
 

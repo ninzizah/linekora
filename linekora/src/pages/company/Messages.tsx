@@ -6,28 +6,10 @@ import {
   Pin, VolumeX, Flag, Trash, AlertTriangle, X, Users, ArrowLeft
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useLanguage } from '../../lib/LanguageContext';
-
-interface ChatItem {
-  id: number;
-  name: string;
-  role: string;
-  lastMsg: string;
-  time: string;
-  unread: number;
-  online: boolean;
-  avatar: string;
-  pinned?: boolean;
-  muted?: boolean;
-}
-
-interface MessageItem {
-  id: number;
-  text: string;
-  sent: boolean;
-  time: string;
-}
+import { useAuth } from '../../lib/AuthContext';
+import { useLiveChat } from '../../lib/useLiveChat';
 
 interface ToastAlert {
   id: string;
@@ -38,39 +20,20 @@ interface ToastAlert {
 
 export default function CompanyMessages() {
   const { t } = useLanguage();
-  const [activeChat, setActiveChat] = useState<number | null>(null);
+  const { profile } = useAuth();
+  const uid = profile?.id || undefined;
   const [message, setMessage] = useState('');
 
-  const DEFAULT_CHATS: ChatItem[] = [];
-
-  const DEFAULT_MESSAGES: Record<number, MessageItem[]> = {};
-
-  // Stateful chats list
-  const [chatsList, setChatsList] = useState<ChatItem[]>(() => {
-    const cached = localStorage.getItem('linekora_company_chats');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) {}
-    }
-    return DEFAULT_CHATS;
-  });
-
-  // Messages database keyed by chatId
-  const [messagesDB, setMessagesDB] = useState<Record<number, MessageItem[]>>(() => {
-    const cached = localStorage.getItem('linekora_company_messages');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) {}
-    }
-    return DEFAULT_MESSAGES;
-  });
-
-  // Sync to localStorage
-  React.useEffect(() => {
-    localStorage.setItem('linekora_company_chats', JSON.stringify(chatsList));
-  }, [chatsList]);
-
-  React.useEffect(() => {
-    localStorage.setItem('linekora_company_messages', JSON.stringify(messagesDB));
-  }, [messagesDB]);
+  const {
+    chatsList,
+    setChatsList,
+    threads,
+    setThreads,
+    activeChat,
+    setActiveChat,
+    send,
+    openChat,
+  } = useLiveChat(uid);
 
   // UI Interactive States
   const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false);
@@ -100,34 +63,15 @@ export default function CompanyMessages() {
   };
 
   // Mark active chat's unread count to 0
-  const handleChatSelect = (id: number) => {
-    setActiveChat(id);
-    setChatsList(prev => prev.map(chat => chat.id === id ? { ...chat, unread: 0 } : chat));
+  const handleChatSelect = (id: string) => {
+    openChat(id);
     setIsHeaderDropdownOpen(false);
   };
 
   // Send a real message to applicant
   const handleSendMessage = () => {
     if (!message.trim() || activeChat === null) return;
-
-    const newMsg: MessageItem = {
-      id: Date.now() + Math.random(),
-      text: message.trim(),
-      sent: true,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    // Update messages database
-    setMessagesDB(prev => ({
-      ...prev,
-      [activeChat]: [...(prev[activeChat] || []), newMsg]
-    }));
-
-    // Update last message in sidebar listing
-    setChatsList(prev => prev.map(chat => 
-      chat.id === activeChat ? { ...chat, lastMsg: message.trim(), time: t('just_now') } : chat
-    ));
-
+    send(activeChat, message.trim());
     setMessage('');
     addToast(t('toast_message_dispatched'), t('toast_message_routed_company'), 'success');
   };
@@ -173,7 +117,7 @@ export default function CompanyMessages() {
     if (activeChat === null) return;
     const targetChat = chatsList.find(c => c.id === activeChat);
     
-    setMessagesDB(prev => ({
+    setThreads(prev => ({
       ...prev,
       [activeChat]: []
     }));
@@ -205,7 +149,7 @@ export default function CompanyMessages() {
   };
 
   const currentChatObj = chatsList.find(c => c.id === activeChat);
-  const currentMessages = activeChat ? (messagesDB[activeChat] || []) : [];
+  const currentMessages = activeChat ? (threads[activeChat] || []) : [];
 
   return (
     <DashboardLayout>

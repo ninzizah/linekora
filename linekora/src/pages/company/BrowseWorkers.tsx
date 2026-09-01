@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
-import { getUsers } from '../../lib/api';
+import { getUsers, sendMessage } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import PublicProfileModal from '../../components/PublicProfileModal';
@@ -508,7 +508,7 @@ export default function BrowseWorkers() {
                   </button>
                   <button 
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       const key = profile?.role === 'EMPLOYER' ? 'linekora_employer_chats' : 'linekora_company_chats';
                       const msgKey = profile?.role === 'EMPLOYER' ? 'linekora_employer_messages' : 'linekora_company_messages';
                       
@@ -544,6 +544,20 @@ export default function BrowseWorkers() {
                           { id: Date.now(), text: t('hello_chat_job', { name: worker.name }), sent: true, time: t('just_now') }
                         ];
                         localStorage.setItem(msgKey, JSON.stringify(existingMsgs));
+                      }
+
+                      // Send a live, real message to the worker through the backend so it
+                      // appears instantly in the worker's inbox (live chat).
+                      if (profile?.id && worker.id) {
+                        try {
+                          await sendMessage({
+                            content: t('lets_discuss_job_details'),
+                            senderId: profile.id,
+                            receiverId: String(worker.id),
+                          });
+                        } catch (e) {
+                          console.error('Failed to send live chat message', e);
+                        }
                       }
                       
                       const dest = profile?.role === 'EMPLOYER' ? '/dashboard/employer/messages' : '/dashboard/company/messages';

@@ -158,6 +158,7 @@ model Notification {
   title     String
   body      String
   type      String   @default("info") // info, success, urgent, warning
+  link      String?  // client-side route to navigate to when clicked (e.g. "/dashboard/worker/applications")
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 }

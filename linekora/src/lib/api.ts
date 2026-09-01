@@ -163,6 +163,7 @@ export interface Notification {
   title: string;
   body: string;
   type: string;
+  link?: string | null;
   read: boolean;
   createdAt: string;
 }
@@ -170,7 +171,7 @@ export interface Notification {
 export const getNotifications = (userId: string) =>
   request<Notification[]>(`/notifications?userId=${userId}`);
 
-export const createNotification = (data: { userId: string; title: string; body: string; type?: string }) =>
+export const createNotification = (data: { userId: string; title: string; body: string; type?: string; link?: string; linkTarget?: string }) =>
   request<Notification>('/notifications', { method: 'POST', body: JSON.stringify(data) });
 
 export const markNotificationRead = (id: number) =>
@@ -178,6 +179,9 @@ export const markNotificationRead = (id: number) =>
 
 export const markAllNotificationsRead = (userId: string) =>
   request<{ success: boolean }>('/notifications/read-all', { method: 'PATCH', body: JSON.stringify({ userId }) });
+
+export const deleteNotification = (id: number) =>
+  request<{ success: boolean }>(`/notifications/${id}`, { method: 'DELETE' });
 
 // ─── MESSAGES ─────────────────────────────────────────────────────────────────
 
@@ -192,11 +196,27 @@ export interface Message {
   receiver?: { id: string; displayName: string };
 }
 
-export const getMessages = (userId: string) =>
-  request<Message[]>(`/messages?userId=${userId}`);
+export interface Conversation {
+  peer: { id: string; displayName: string; role: string; avatarUrl?: string | null };
+  lastMessage: string;
+  lastMessageAt: string;
+  unread: number;
+}
+
+export const getMessages = (userId: string, peerId?: string) => {
+  const qs = new URLSearchParams({ userId });
+  if (peerId) qs.set('peerId', peerId);
+  return request<Message[]>(`/messages?${qs.toString()}`);
+};
+
+export const getConversations = (userId: string) =>
+  request<Conversation[]>(`/conversations/${userId}`);
 
 export const sendMessage = (data: { content: string; senderId: string; receiverId: string }) =>
   request<Message>('/messages', { method: 'POST', body: JSON.stringify(data) });
+
+export const markMessagesRead = (userId: string, peerId: string) =>
+  request<{ success: boolean }>('/messages/read', { method: 'PATCH', body: JSON.stringify({ userId, peerId }) });
 
 // ─── REVIEWS ─────────────────────────────────────────────────────────────────
 
