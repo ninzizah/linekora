@@ -154,7 +154,7 @@ export default function WorkerMessages() {
 
   return (
     <DashboardLayout>
-      <div className="h-[calc(100vh-12rem)] flex bg-white rounded-[3rem] border border-gray-100 shadow-xl shadow-gray-200/50 overflow-hidden relative">
+      <div className="h-[calc(100vh-13rem)] md:h-[calc(100vh-12rem)] supports-[height:100dvh]:h-[calc(100dvh-12rem)] flex bg-white rounded-[3rem] border border-gray-100 shadow-xl shadow-gray-200/50 overflow-hidden relative">
         {/* Sidebar */}
         <div className={`w-full md:w-80 border-r border-gray-50 flex-col shrink-0 ${activeChat ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-6 border-b border-gray-50">
@@ -210,7 +210,7 @@ export default function WorkerMessages() {
           {activeChat && currentChatObj ? (
             <>
               {/* Header */}
-              <div className="h-20 px-8 bg-white border-b border-gray-50 flex items-center justify-between relative z-10">
+              <div className="h-20 px-4 md:px-8 bg-white border-b border-gray-50 flex items-center justify-between relative z-10">
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => setActiveChat(null)}
@@ -317,7 +317,7 @@ export default function WorkerMessages() {
               </div>
 
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
                 <div className="flex justify-center">
                   <div className="px-4 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-black text-gray-400 uppercase tracking-widest shadow-sm">
                     {t('today')}
@@ -327,7 +327,7 @@ export default function WorkerMessages() {
                 {currentMessages.length > 0 ? (
                   currentMessages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.sent ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[70%]">
+                      <div className="max-w-[85%] md:max-w-[70%]">
                         <div className={`
                           p-4 rounded-[1.65rem] font-sans text-sm font-medium leading-relaxed shadow-sm
                           ${msg.sent 
@@ -353,7 +353,7 @@ export default function WorkerMessages() {
               </div>
 
               {/* Input */}
-              <div className="p-6 bg-white border-t border-gray-50 flex items-center gap-4">
+              <div className="p-3 md:p-6 bg-white border-t border-gray-50 flex items-center gap-2 md:gap-4">
                 <button 
                   onClick={() => addToast(t('toast_feature_incoming'), t('toast_feature_msg'), 'info')}
                   className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"

@@ -1832,6 +1832,7 @@ const fr: Record<string, string> = {
     rating_label: 'Évaluation',
     reach_out: 'Contacter : {phone}',
     ready_for_cell_towers: 'Prêt pour les tours cellulaires entrantes...',
+    no_chats_yet: 'Aucune conversation pour le moment',
     real_time_updates: 'Mises à jour du système de mise en correspondance en temps réel',
     recent_activity: 'Activité récente',
     recent_messages: 'Messages récents',

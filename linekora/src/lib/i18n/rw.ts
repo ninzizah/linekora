@@ -1832,6 +1832,7 @@ const rw: Record<string, string> = {
     rating_label: 'Amanota',
     reach_out: 'Vugana Natwe: {phone}',
     ready_for_cell_towers: 'Twiteguye kwakira ibimenyetso bya cell towers...',
+    no_chats_yet: 'Nta butumwa bwashyizweho',
     real_time_updates: 'Ibyahindutse by\'ako kanya',
     recent_activity: 'Ibikorwa Biheruka',
     recent_messages: 'Ubutumwa Buheruka',

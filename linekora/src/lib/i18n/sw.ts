@@ -1832,6 +1832,7 @@ const sw: Record<string, string> = {
     rating_label: 'Tathmini',
     reach_out: 'Wasiliana: {phone}',
     ready_for_cell_towers: 'Tayari kwa minara ya seli inayoingia...',
+    no_chats_yet: 'Bado hakuna mazungumzo',
     real_time_updates: 'Sasisho za mfumo wa ulinganifu wa wakati halisi',
     recent_activity: 'Shughuli za Hivi Karibuni',
     recent_messages: 'Ujumbe wa Hivi Karibuni',

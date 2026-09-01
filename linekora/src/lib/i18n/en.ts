@@ -1832,6 +1832,7 @@ const en: Record<string, string> = {
     rating_label: 'Rating',
     reach_out: 'Reach Out: {phone}',
     ready_for_cell_towers: 'Ready for incoming cell towers...',
+    no_chats_yet: 'No chats yet',
     real_time_updates: 'Real-time matching system updates',
     recent_activity: 'Recent Activity',
     recent_messages: 'Recent Messages',

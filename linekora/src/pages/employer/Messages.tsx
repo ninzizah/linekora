@@ -34,7 +34,7 @@ export default function EmployerMessages() {
 
   return (
     <DashboardLayout>
-      <div className="h-[calc(100vh-12rem)] flex bg-white rounded-[3rem] border border-gray-100 shadow-xl shadow-gray-200/50 overflow-hidden">
+      <div className="h-[calc(100vh-13rem)] md:h-[calc(100vh-12rem)] supports-[height:100dvh]:h-[calc(100dvh-12rem)] flex bg-white rounded-[3rem] border border-gray-100 shadow-xl shadow-gray-200/50 overflow-hidden">
         {/* Sidebar */}
         <div className={`w-full md:w-80 border-r border-gray-50 flex-col shrink-0 ${activeChat ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-6 border-b border-gray-50">
@@ -85,7 +85,7 @@ export default function EmployerMessages() {
           {activeChat && currentChatObj ? (
             <>
               {/* Header */}
-              <div className="h-20 px-8 bg-white border-b border-gray-50 flex items-center justify-between">
+              <div className="h-20 px-4 md:px-8 bg-white border-b border-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => setActiveChat(null)}
@@ -115,10 +115,10 @@ export default function EmployerMessages() {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-8 space-y-6">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
                 {currentMessages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.sent ? 'justify-end' : 'justify-start'}`}>
-                    <div className="max-w-[70%]">
+                    <div className="max-w-[85%] md:max-w-[70%]">
                       <div className={`
                         p-4 rounded-3xl font-sans text-sm font-medium leading-relaxed shadow-sm
                         ${msg.sent 
@@ -137,7 +137,7 @@ export default function EmployerMessages() {
               </div>
 
               {/* Input */}
-              <div className="p-6 bg-white border-t border-gray-50 flex items-center gap-4">
+              <div className="p-3 md:p-6 bg-white border-t border-gray-50 flex items-center gap-2 md:gap-4">
                 <button className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all">
                   <Plus size={24} />
                 </button>

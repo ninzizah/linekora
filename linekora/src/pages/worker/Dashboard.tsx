@@ -12,6 +12,7 @@ import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStora
 import { getJobs, createApplication, createNotification, applyToJob, getApplications, Job } from '../../lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useLanguage } from '../../lib/LanguageContext';
+import { useLiveChat } from '../../lib/useLiveChat';
 
 function getRelativeTime(dateStr: string | undefined, t: (key: string) => string): string {
   if (!dateStr) return t('just_now');
@@ -26,6 +27,7 @@ export default function WorkerDashboard() {
   const { profile } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { chatsList, openChat } = useLiveChat(profile?.id);
   const [acceptedJobId, setAcceptedJobId] = useState<number | null>(null);
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -273,26 +275,26 @@ export default function WorkerDashboard() {
           </button>
         </header>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        {/* Stats Cards (kept compact + horizontal-scroll on phones) */}
+        <div className="flex gap-2.5 mb-10 overflow-x-auto md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-hidden snap-x snap-mandatory md:snap-none scrollbar-none">
           {stats.map((stat, i) => (
             <motion.div 
               key={i}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm"
+              transition={{ delay: i * 0.05 }}
+              className="min-w-[44vw] md:min-w-0 snap-center md:snap-none p-3.5 md:p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 bg-white transition-all shrink-0 md:shrink"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`h-12 w-12 ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-lg`}>
-                  <stat.icon size={24} />
-                </div>
-                <span className="text-xs font-black text-green-600 bg-green-50 px-2 py-1 rounded-lg uppercase font-sans">
-                  {stat.trend}
-                </span>
+              <div className={`h-10 w-10 md:h-11 md:w-11 ${stat.color} rounded-xl flex items-center justify-center text-white shadow-md shrink-0`}>
+                <stat.icon size={18} />
               </div>
-              <p className="text-gray-500 font-sans font-bold text-xs uppercase tracking-widest">{stat.label}</p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1 font-sans">{stat.value}</h3>
+              <div className="flex-1 min-w-0">
+                <p className="font-sans text-[9px] font-black text-gray-400 uppercase tracking-widest truncate">{stat.label}</p>
+                <h3 className="text-lg md:text-xl font-black text-gray-900 leading-none font-sans tracking-tight mt-1">{stat.value}</h3>
+              </div>
+              <span className="text-[8px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0">
+                {stat.trend}
+              </span>
             </motion.div>
           ))}
         </div>
@@ -524,7 +526,40 @@ export default function WorkerDashboard() {
                 </button>
               </div>
               <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-                {[]}
+                {chatsList.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <MessageSquare size={28} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-sans">{t('no_chats_yet')}</p>
+                  </div>
+                ) : (
+                  chatsList.slice(0, 4).map((chat) => (
+                    <button
+                      key={chat.id}
+                      onClick={() => {
+                        openChat(chat.id);
+                        navigate('/dashboard/worker/messages');
+                      }}
+                      className="w-full p-4 flex items-center gap-3 hover:bg-blue-50/40 transition-colors text-left border-b border-gray-50 last:border-b-0"
+                    >
+                      <div className="relative shrink-0">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 font-sans font-black text-xs flex items-center justify-center border border-blue-100">
+                          {chat.avatar}
+                        </div>
+                        {chat.online && <div className="absolute bottom-0 right-0 h-2.5 w-2.5 bg-green-500 rounded-full border-2 border-white" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-sans font-black text-gray-900 text-sm truncate">{chat.name}</p>
+                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest shrink-0">{chat.time}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 truncate font-sans font-medium">{chat.lastMsg}</p>
+                      </div>
+                      {chat.unread > 0 && (
+                        <span className="h-5 w-5 bg-blue-600 rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0">{chat.unread}</span>
+                      )}
+                    </button>
+                  ))
+                )}
               </div>
             </section>
           </div>
