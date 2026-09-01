@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   PlusSquare, Users, Briefcase, TrendingUp, 
   ChevronRight, CheckCircle2, Clock, ShieldCheck, Star, User,
-  X, Loader2, Sparkles, AlertCircle, Bookmark, Heart, MessageSquare, Plus, DollarSign, Wallet
+  X, Loader2, Sparkles, AlertCircle, Bookmark, Heart, MessageSquare, Plus, DollarSign, Wallet,
+  Building2, Home, Wrench, Truck, Palette, Cpu, UtensilsCrossed
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
@@ -249,6 +250,41 @@ export default function CompanyDashboard() {
           </Link>
         </header>
 
+        {/* Stats Cards (moved under the Post Job button) */}
+        <div className="flex gap-2.5 mb-10 overflow-x-auto md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-hidden snap-x snap-mandatory md:snap-none scrollbar-none">
+          {stats.map((stat, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => {
+                if (stat.key === 'expired_jobs') {
+                  setShowExpiredJobsModal(true);
+                } else if (stat.key === 'shortlisted_workers') {
+                  setShowShortlistModal(true);
+                } else if (stat.key === 'recommended_candidates') {
+                  addNotification('info', t('toast_recommending_match_makers'), t('toast_recommending_match_makers_msg'));
+                }
+              }}
+              className={`min-w-[44vw] md:min-w-0 snap-center md:snap-none p-3.5 md:p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 bg-white transition-all shrink-0 md:shrink ${
+                stat.key === 'expired_jobs' || stat.key === 'shortlisted_workers' ? 'hover:border-blue-300 hover:shadow-md cursor-pointer' : ''
+              }`}
+            >
+              <div className={`h-10 w-10 md:h-11 md:w-11 ${stat.color} rounded-xl flex items-center justify-center text-white shadow-md shrink-0`}>
+                <stat.icon size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-sans text-[9px] font-black text-gray-400 uppercase tracking-widest truncate">{stat.label}</p>
+                <h3 className="text-lg md:text-xl font-black text-gray-900 leading-none font-sans tracking-tight mt-1">{stat.value}</h3>
+              </div>
+              {(stat.key === 'expired_jobs' || stat.key === 'shortlisted_workers') && (
+                <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md uppercase tracking-wider">{t('configure')}</span>
+              )}
+            </motion.div>
+          ))}
+        </div>
+
         {/* View Switcher Tabs */}
         <div className="flex border-b border-gray-100 mb-8 overflow-x-auto gap-4 scrollbar-none font-sans scroll-smooth">
           <button
@@ -279,40 +315,38 @@ export default function CompanyDashboard() {
 
         {dashboardTab === 'hiring' ? (
           <>
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
-              {stats.map((stat, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  onClick={() => {
-                    if (stat.key === 'expired_jobs') {
-                      setShowExpiredJobsModal(true);
-                    } else if (stat.key === 'shortlisted_workers') {
-                      setShowShortlistModal(true);
-                    } else if (stat.key === 'recommended_candidates') {
-                      addNotification('info', t('toast_recommending_match_makers'), t('toast_recommending_match_makers_msg'));
-                    }
-                  }}
-                  className={`p-5 rounded-[2rem] border border-gray-100 shadow-sm flex items-center gap-4 bg-white transition-all ${
-                    stat.key === 'expired_jobs' || stat.key === 'shortlisted_workers' ? 'hover:border-blue-300 hover:shadow-md cursor-pointer' : ''
-                  }`}
-                >
-                  <div className={`h-12 w-12 ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0`}>
-                    <stat.icon size={22} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-sans text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{stat.label}</p>
-                    <h3 className="text-xl font-black text-gray-900 leading-none font-sans tracking-tight mt-1">{stat.value}</h3>
-                  </div>
-                  {(stat.key === 'expired_jobs' || stat.key === 'shortlisted_workers') && (
-                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md uppercase tracking-wider">{t('configure')}</span>
-                  )}
-                </motion.div>
-              ))}
-            </div>
+            {/* Job Categories */}
+            <section className="mb-12">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] font-sans">{t('browse_by_category')}</h3>
+              </div>
+              <div className="grid grid-flow-col auto-cols-max md:grid-flow-row md:auto-cols-auto grid-cols-2 md:grid-cols-4 gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory md:snap-none">
+                {[
+                  { key: 'category_construction', icon: Building2 },
+                  { key: 'category_domestic_help', icon: Home },
+                  { key: 'category_mechanical', icon: Wrench },
+                  { key: 'category_security', icon: ShieldCheck },
+                  { key: 'category_logistics', icon: Truck },
+                  { key: 'category_creative', icon: Palette },
+                  { key: 'category_it_tech', icon: Cpu },
+                  { key: 'category_hospitality', icon: UtensilsCrossed },
+                ].map((cat) => (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    onClick={() => navigate('/dashboard/company/jobs')}
+                    className="group min-w-[42vw] md:min-w-0 snap-center md:snap-none p-3 md:p-4 rounded-2xl border border-gray-100 shadow-sm bg-white flex items-center gap-2.5 hover:border-blue-300 hover:shadow-md transition-all text-left cursor-pointer"
+                  >
+                    <div className="h-8 w-8 md:h-9 md:w-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                      <cat.icon size={16} />
+                    </div>
+                    <span className="font-sans text-[10px] md:text-xs font-black text-gray-900 uppercase tracking-wide group-hover:text-blue-600 transition-colors">
+                      {t(cat.key)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <div className="lg:col-span-2 space-y-10">

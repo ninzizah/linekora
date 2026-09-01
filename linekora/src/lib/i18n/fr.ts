@@ -1344,6 +1344,7 @@ const fr: Record<string, string> = {
     alerts_inbox: 'Alertes et boîte de réception',
     all: 'Tout',
     all_categories: 'Toutes les catégories',
+    browse_by_category: 'Explorer par type d\'emploi',
     all_clear: 'Tout est clair',
     all_pending_processed: 'Tous les dossiers de validation utilisateur en attente ont été traités avec succès !',
     already_applied: 'Candidature déjà envoyée',

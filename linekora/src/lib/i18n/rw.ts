@@ -1344,6 +1344,7 @@ const rw: Record<string, string> = {
     alerts_inbox: 'Imenyesha & Agasanduku',
     all: 'Byose',
     all_categories: 'Ibyiciro Byose',
+    browse_by_category: 'Ubuze mu byiciro by\'imirimo',
     all_clear: 'Byose byiza',
     all_pending_processed: 'Ibyubiko byose biri gushyigikirwa byatunganyijwe neza!',
     already_applied: 'Wamaze Gusaba',

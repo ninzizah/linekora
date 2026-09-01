@@ -143,7 +143,8 @@ export default function WorkerApplications() {
       title,
       details: body,
       time: t('just_now'),
-      read: false
+      read: false,
+      link: '/dashboard/company/applicants'
     });
     writeScopedStorage(employerId, 'system_alerts', alerts);
   };
@@ -187,7 +188,8 @@ export default function WorkerApplications() {
         title: t('job_offer_declined'),
         details: t('offer_declined_details', { name: profile?.displayName || t('worker'), title: declinedApp.jobTitle }),
         time: t('just_now'),
-        read: false
+        read: false,
+        link: '/dashboard/worker/applications'
       });
       writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
     }
@@ -321,7 +323,8 @@ export default function WorkerApplications() {
         title: t('job_offer_approved'),
         details: t('offer_approved_details', { name: profile?.displayName || t('worker'), title: acceptedApp.jobTitle }),
         time: t('just_now'),
-        read: false
+        read: false,
+        link: '/dashboard/worker/applications'
       });
       writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
       }

@@ -1344,6 +1344,7 @@ const en: Record<string, string> = {
     alerts_inbox: 'Alerts & Inbox',
     all: 'All',
     all_categories: 'All Categories',
+    browse_by_category: 'Browse by Job Type',
     all_clear: 'All clear',
     all_pending_processed: 'All pending user validation folders successfully processed!',
     already_applied: 'Already Applied',

@@ -56,8 +56,6 @@ export default function Register() {
       role: selectedRole as any,
       phone: formData.phone || undefined,
       location: formData.location || undefined,
-      trustScore: 0,
-      verificationStatus: 'unverified',
     });
   };
 

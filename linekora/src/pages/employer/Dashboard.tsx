@@ -51,7 +51,8 @@ export default function EmployerDashboard() {
         title: t('toast_corporate_fee_received'),
         details: t('toast_corporate_fee_received_desc', { amount: unpaidCommission.toLocaleString() }),
         time: t('just_now'),
-        read: false
+        read: false,
+        link: '/dashboard/employer'
       });
       localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
     }, 1200);

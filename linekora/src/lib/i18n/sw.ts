@@ -1344,6 +1344,7 @@ const sw: Record<string, string> = {
     alerts_inbox: 'Taarifa na Kikasha',
     all: 'Zote',
     all_categories: 'Kategoria Zote',
+    browse_by_category: 'Vinjari kwa Aina ya Kazi',
     all_clear: 'Hakuna tatizo',
     all_pending_processed: 'Folda zote za uthibitishaji wa watumiaji zilizosubiri zimechakatwa kwa mafanikio!',
     already_applied: 'Tayari Umetuma Ombi',

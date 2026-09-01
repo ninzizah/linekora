@@ -78,11 +78,23 @@ app.get('/api/users/:firebaseUid', async (req, res) => {
 app.post('/api/users', async (req, res) => {
   try {
     const data = { ...req.body };
-    const user = await prisma.user.upsert({
+    const existing = await prisma.user.findUnique({
       where: { firebaseUid: req.body.firebaseUid },
-      update: data,
-      create: data,
     });
+    if (existing) {
+      // On an existing account, only update safe identity/profile fields.
+      // Never overwrite trustScore / verificationStatus / tier via upsert.
+      const safe: any = {};
+      if (data.displayName !== undefined) safe.displayName = data.displayName;
+      if (data.email !== undefined) safe.email = data.email;
+      if (data.phone !== undefined) safe.phone = data.phone;
+      if (data.location !== undefined) safe.location = data.location;
+      if (data.avatarUrl !== undefined) safe.avatarUrl = data.avatarUrl;
+      if (data.role !== undefined && data.role !== existing.role) safe.role = data.role;
+      const user = await prisma.user.update({ where: { id: existing.id }, data: safe });
+      return res.json(user);
+    }
+    const user = await prisma.user.create({ data });
     res.json(user);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create user' });

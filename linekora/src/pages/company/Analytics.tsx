@@ -101,20 +101,6 @@ export default function CompanyAnalytics() {
              </div>
           </section>
         </div>
-
-        <section className="bg-gray-900 p-10 rounded-[3.5rem] text-white">
-           <div className="flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-              <div className="flex-1">
-                 <h3 className="text-2xl font-black font-sans uppercase tracking-tight mb-2 italic">{t('ready_to_scale_team')}</h3>
-                 <p className="text-gray-400 font-sans font-medium text-sm">
-                    {t('ai_matchmaking_desc')}
-                 </p>
-              </div>
-              <button className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-sans font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all whitespace-nowrap">
-                 {t('unlock_ai_matchmaking')}
-              </button>
-           </div>
-        </section>
       </div>
     </DashboardLayout>
   );

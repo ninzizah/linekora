@@ -305,11 +305,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const handleAlertClick = (alert: WebAlert) => {
-    handleMarkAlertAsRead(alert.id);
-    if (alert.link) {
-      setIsPanelOpen(false);
-      navigate(alert.link);
+    let target = alert.link;
+    if (!target) {
+      const text = `${alert.title} ${alert.details}`.toLowerCase();
+      const roleRoutes: Record<string, string> = {
+        worker: '/dashboard/worker/applications',
+        company: '/dashboard/company/applicants',
+        individual: '/dashboard/employer',
+        admin: '/admin',
+      };
+      if (/applicat|applied|ubusabe|bwakiriwe|bwemewe|candidature|ombi/i.test(text)) {
+        target = roleRoutes[roleKey];
+      } else {
+        target = roleKey === 'admin' ? '/admin' : roleKey === 'worker' ? '/dashboard/worker' : roleKey === 'company' ? '/dashboard/company' : '/dashboard/employer';
+      }
     }
+    setIsPanelOpen(false);
+    navigate(target);
   };
 
   const handleMarkAllRead = () => {
