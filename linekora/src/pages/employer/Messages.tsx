@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  MessageSquare, Search, Send, Plus, 
+  MessageSquare, Search, Send, 
   MoreVertical, Shield, Users, CheckCheck, ArrowLeft
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useAuth } from '../../lib/AuthContext';
 import { useLiveChat } from '../../lib/useLiveChat';
+import ChatAttachmentBubble from '../../components/ChatAttachmentBubble';
 
 export default function EmployerMessages() {
   const { t } = useLanguage();
@@ -24,7 +25,8 @@ export default function EmployerMessages() {
   } = useLiveChat(uid);
 
   const handleSendMessage = () => {
-    if (!message.trim() || activeChat === null) return;
+    if (activeChat === null) return;
+    if (!message.trim()) return;
     send(activeChat, message.trim());
     setMessage('');
   };
@@ -125,7 +127,10 @@ export default function EmployerMessages() {
                           ? 'bg-blue-600 text-white rounded-tr-none' 
                           : 'bg-white text-gray-900 rounded-tl-none border border-gray-100'}
                       `}>
-                        {msg.text}
+                        {msg.text || ('📎 ' + t('attachment_count', { count: msg.attachments?.length || 1 }))}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <ChatAttachmentBubble attachments={msg.attachments} sent={msg.sent} />
+                        )}
                       </div>
                       <div className={`flex items-center gap-1.5 mt-2 px-1 ${msg.sent ? 'justify-end' : 'justify-start'}`}>
                         <span className="text-[10px] font-black text-gray-400 uppercase">{msg.time}</span>
@@ -137,25 +142,24 @@ export default function EmployerMessages() {
               </div>
 
               {/* Input */}
-              <div className="p-3 md:p-6 bg-white border-t border-gray-50 flex items-center gap-2 md:gap-4">
-                <button className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all">
-                  <Plus size={24} />
-                </button>
-                <div className="flex-1 relative">
-                  <input 
-                    type="text" 
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder={t('type_a_message')} 
-                    className="w-full pl-6 pr-12 py-4 rounded-[2rem] bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all border"
-                  />
-                  <button 
-                    onClick={handleSendMessage}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center cursor-pointer"
-                  >
-                    <Send size={18} />
-                  </button>
+              <div className="p-3 md:p-6 bg-white border-t border-gray-50">
+                <div className="flex items-center gap-2 md:gap-4">
+                  <div className="flex-1 relative">
+                    <input 
+                      type="text" 
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                      placeholder={t('type_a_message')} 
+                      className="w-full pl-6 pr-12 py-4 rounded-[2rem] bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all border"
+                    />
+                    <button 
+                      onClick={handleSendMessage}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center cursor-pointer"
+                    >
+                      <Send size={18} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getConversations, getMessages, sendMessage, markMessagesRead, Conversation, Message } from './api';
+import { getConversations, getMessages, sendMessage, markMessagesRead, updateConversationPref, Conversation, Message, ChatAttachment } from './api';
 
 export interface LiveChatItem {
   id: string;
@@ -20,6 +20,7 @@ export interface LiveChatMessage {
   sent: boolean;
   time: string;
   rawTime: string;
+  attachments?: ChatAttachment[];
 }
 
 function initials(name: string): string {
@@ -36,8 +37,22 @@ function formatTime(iso: string): string {
     }
     return d.toLocaleDateString([], { day: 'numeric', month: 'short' });
   } catch {
-    return '';
+      return '';
   }
+}
+
+function parseAttachments(value: unknown): ChatAttachment[] | undefined {
+  if (!value) return undefined;
+  if (Array.isArray(value)) return value as ChatAttachment[];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as ChatAttachment[]) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 }
 
 // Full, real-time messaging hook backed by the Linekora API.
@@ -63,6 +78,8 @@ export function useLiveChat(userId: string | undefined) {
       unread: c.unread,
       online: true,
       avatar: initials(c.peer.displayName),
+      pinned: c.pinned,
+      muted: c.muted,
     }));
     setChatsList(items);
   }, []);
@@ -74,10 +91,11 @@ export function useLiveChat(userId: string | undefined) {
       const msgs = await getMessages(userId, peerId);
       const formatted: LiveChatMessage[] = [...msgs].reverse().map((m: Message) => ({
         id: m.id,
-        text: m.content,
+        text: m.content || '',
         sent: m.senderId === userId,
         time: formatTime(m.createdAt),
         rawTime: m.createdAt,
+        attachments: parseAttachments(m.attachments),
       }));
       setThreads(prev => ({ ...prev, [peerId]: formatted }));
     } catch (err) {
@@ -128,9 +146,46 @@ export function useLiveChat(userId: string | undefined) {
     }
   }, [userId]);
 
+  // Toggle pin for a conversation and persist to the backend
+  const togglePin = useCallback(async (peerId: string) => {
+    if (!userId) return;
+    let next = false;
+    setChatsList(prev => prev.map(c => {
+      if (c.id === peerId) {
+        next = !c.pinned;
+        return { ...c, pinned: next };
+      }
+      return c;
+    }));
+    try {
+      await updateConversationPref({ userId, peerId, pinned: next });
+    } catch (err) {
+      console.error('Failed to persist pin', err);
+    }
+  }, [userId]);
+
+  // Toggle mute for a conversation and persist to the backend
+  const toggleMute = useCallback(async (peerId: string) => {
+    if (!userId) return;
+    let next = false;
+    setChatsList(prev => prev.map(c => {
+      if (c.id === peerId) {
+        next = !c.muted;
+        return { ...c, muted: next };
+      }
+      return c;
+    }));
+    try {
+      await updateConversationPref({ userId, peerId, muted: next });
+    } catch (err) {
+      console.error('Failed to persist mute', err);
+    }
+  }, [userId]);
+
   // Send a message; update state optimistically then re-pull thread
-  const send = useCallback(async (peerId: string, text: string) => {
-    if (!userId || !text.trim()) return;
+  const send = useCallback(async (peerId: string, text: string, attachments?: ChatAttachment[]) => {
+    if (!userId) return;
+    if (!text.trim() && (!attachments || attachments.length === 0)) return;
     setSending(true);
     const optimistic: LiveChatMessage = {
       id: Date.now(),
@@ -138,11 +193,17 @@ export function useLiveChat(userId: string | undefined) {
       sent: true,
       time: formatTime(new Date().toISOString()),
       rawTime: new Date().toISOString(),
+      attachments,
     };
     setThreads(prev => ({ ...prev, [peerId]: [...(prev[peerId] || []), optimistic] }));
-    setChatsList(prev => prev.map(c => c.id === peerId ? { ...c, lastMsg: text.trim(), time: 'now' } : c));
+    setChatsList(prev => prev.map(c => c.id === peerId ? { ...c, lastMsg: text.trim() || '📎 Attachment', time: 'now' } : c));
     try {
-      await sendMessage({ content: text.trim(), senderId: userId, receiverId: peerId });
+      await sendMessage({
+        content: text.trim(),
+        senderId: userId,
+        receiverId: peerId,
+        ...(attachments && attachments.length > 0 ? { attachments } : {}),
+      });
     } catch (err) {
       console.error('Failed to send message', err);
     }
@@ -172,6 +233,8 @@ export function useLiveChat(userId: string | undefined) {
     onlinePeers,
     openChat,
     markRead,
+    togglePin,
+    toggleMute,
     send,
     sendToActive,
     refreshConversations,

@@ -192,8 +192,15 @@ export interface Message {
   senderId: string;
   receiverId: string;
   createdAt: string;
+  attachments?: ChatAttachment[] | null;
   sender?: { id: string; displayName: string };
   receiver?: { id: string; displayName: string };
+}
+
+export interface ChatAttachment {
+  name: string;
+  type: string;
+  dataUrl: string;
 }
 
 export interface Conversation {
@@ -201,6 +208,8 @@ export interface Conversation {
   lastMessage: string;
   lastMessageAt: string;
   unread: number;
+  pinned?: boolean;
+  muted?: boolean;
 }
 
 export const getMessages = (userId: string, peerId?: string) => {
@@ -212,11 +221,14 @@ export const getMessages = (userId: string, peerId?: string) => {
 export const getConversations = (userId: string) =>
   request<Conversation[]>(`/conversations/${userId}`);
 
-export const sendMessage = (data: { content: string; senderId: string; receiverId: string }) =>
+export const sendMessage = (data: { content: string; senderId: string; receiverId: string; attachments?: ChatAttachment[] }) =>
   request<Message>('/messages', { method: 'POST', body: JSON.stringify(data) });
 
 export const markMessagesRead = (userId: string, peerId: string) =>
   request<{ success: boolean }>('/messages/read', { method: 'PATCH', body: JSON.stringify({ userId, peerId }) });
+
+export const updateConversationPref = (data: { userId: string; peerId: string; pinned?: boolean; muted?: boolean }) =>
+  request<{ pinned: boolean; muted: boolean }>('/conversations/prefs', { method: 'PATCH', body: JSON.stringify(data) });
 
 // ─── REVIEWS ─────────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  MessageSquare, Search, Send, Plus, 
-  MoreVertical, Phone, Video, Shield,
+  MessageSquare, Search, Send, 
+  MoreVertical,
   Check, CheckCheck, Clock, AlertCircle,
   Pin, VolumeX, Flag, Trash, AlertTriangle, X, CheckCircle, ArrowLeft
 } from 'lucide-react';
@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useLiveChat } from '../../lib/useLiveChat';
+import ChatAttachmentBubble from '../../components/ChatAttachmentBubble';
 
 interface ToastAlert {
   id: string;
@@ -25,12 +26,13 @@ export default function WorkerMessages() {
 
   const {
     chatsList,
-    setChatsList,
     threads,
     setThreads,
     activeChat,
     setActiveChat,
     openChat,
+    togglePin,
+    toggleMute,
     send,
   } = useLiveChat(uid);
 
@@ -71,45 +73,35 @@ export default function WorkerMessages() {
 
   // Send a real message
   const handleSendMessage = () => {
-    if (!message.trim() || activeChat === null) return;
+    if (activeChat === null) return;
+    if (!message.trim()) return;
     send(activeChat, message.trim());
     setMessage('');
-    addToast(t('toast_message_dispatched'), t('toast_message_routed'), 'success');
   };
 
-  // Action: Toggle Pin Chat
-  const handleTogglePin = () => {
+  // Action: Toggle Pin Chat (persisted)
+  const handleTogglePin = async () => {
     if (activeChat === null) return;
-    setChatsList(prev => prev.map(chat => {
-      if (chat.id === activeChat) {
-        const nextPin = !chat.pinned;
-        addToast(
-          nextPin ? t('toast_pinned') : t('toast_unpinned'),
-          nextPin ? t('toast_pinned_msg', { name: chat.name }) : t('toast_unpinned_msg', { name: chat.name }),
-          'success'
-        );
-        return { ...chat, pinned: nextPin };
-      }
-      return chat;
-    }));
+    const current = chatsList.find(c => c.id === activeChat);
+    await togglePin(activeChat);
+    addToast(
+      !current?.pinned ? t('toast_pinned') : t('toast_unpinned'),
+      (!current?.pinned ? t('toast_pinned_msg', { name: current?.name }) : t('toast_unpinned_msg', { name: current?.name })),
+      'success'
+    );
     setIsHeaderDropdownOpen(false);
   };
 
-  // Action: Toggle Mute Chat
-  const handleToggleMute = () => {
+  // Action: Toggle Mute Chat (persisted)
+  const handleToggleMute = async () => {
     if (activeChat === null) return;
-    setChatsList(prev => prev.map(chat => {
-      if (chat.id === activeChat) {
-        const nextMute = !chat.muted;
-        addToast(
-          nextMute ? t('toast_alerts_muted') : t('toast_alerts_restored'),
-          nextMute ? t('toast_muted_msg', { name: chat.name }) : t('toast_unmuted_msg', { name: chat.name }),
-          'info'
-        );
-        return { ...chat, muted: nextMute };
-      }
-      return chat;
-    }));
+    const current = chatsList.find(c => c.id === activeChat);
+    await toggleMute(activeChat);
+    addToast(
+      !current?.muted ? t('toast_alerts_muted') : t('toast_alerts_restored'),
+      (!current?.muted ? t('toast_muted_msg', { name: current?.name }) : t('toast_unmuted_msg', { name: current?.name })),
+      'info'
+    );
     setIsHeaderDropdownOpen(false);
   };
 
@@ -238,20 +230,6 @@ export default function WorkerMessages() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => addToast(t('toast_calling'), t('toast_calling_msg'), 'info')}
-                    className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                  >
-                    <Phone size={18} />
-                  </button>
-                  <button 
-                    onClick={() => addToast(t('toast_joining_lobby'), t('toast_lobby_msg'), 'info')}
-                    className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                  >
-                    <Video size={18} />
-                  </button>
-                  <div className="w-px h-6 bg-gray-100 mx-2" />
-                  
                   {/* THREE DOTS MENU POPPING OVER CLIENT HEADER */}
                   <div className="relative">
                     <button 
@@ -334,7 +312,10 @@ export default function WorkerMessages() {
                             ? 'bg-blue-600 text-white rounded-tr-none' 
                             : 'bg-white text-gray-900 rounded-tl-none border border-gray-100'}
                         `}>
-                          {msg.text}
+                          {msg.text || ('📎 ' + t('attachment_count', { count: msg.attachments?.length || 1 }))}
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <ChatAttachmentBubble attachments={msg.attachments} sent={msg.sent} />
+                          )}
                         </div>
                         <div className={`flex items-center gap-1.5 mt-2 px-1 ${msg.sent ? 'justify-end' : 'justify-start'}`}>
                           <span className="text-[9px] font-black text-gray-400 uppercase">{msg.time}</span>
@@ -353,28 +334,24 @@ export default function WorkerMessages() {
               </div>
 
               {/* Input */}
-              <div className="p-3 md:p-6 bg-white border-t border-gray-50 flex items-center gap-2 md:gap-4">
-                <button 
-                  onClick={() => addToast(t('toast_feature_incoming'), t('toast_feature_msg'), 'info')}
-                  className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
-                >
-                  <Plus size={24} />
-                </button>
-                <div className="flex-1 relative">
-                  <input 
-                    type="text" 
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder={t('type_message_placeholder')} 
-                    className="w-full pl-6 pr-14 py-4 rounded-[2.5rem] bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all border"
-                  />
-                  <button 
-                    onClick={handleSendMessage}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-105 hover:bg-blue-700 transition-all flex items-center justify-center cursor-pointer"
-                  >
-                    <Send size={16} />
-                  </button>
+              <div className="p-3 md:p-6 bg-white border-t border-gray-50">
+                <div className="flex items-center gap-2 md:gap-4">
+                  <div className="flex-1 relative">
+                    <input 
+                      type="text" 
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                      placeholder={t('type_message_placeholder')} 
+                      className="w-full pl-6 pr-14 py-4 rounded-[2.5rem] bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all border"
+                    />
+                    <button 
+                      onClick={handleSendMessage}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-105 hover:bg-blue-700 transition-all flex items-center justify-center cursor-pointer"
+                    >
+                      <Send size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </>
@@ -390,24 +367,6 @@ export default function WorkerMessages() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="mt-8 p-6 bg-blue-50 rounded-[2.5rem] border border-blue-100 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border border-blue-100/50">
-            <Shield size={24} />
-          </div>
-          <div>
-            <h4 className="font-sans font-black text-blue-900 text-sm">{t('escrow_secure_chat')}</h4>
-            <p className="font-sans text-xs text-blue-700/70 font-bold uppercase tracking-widest mt-0.5">{t('pay_in_app_safety')}</p>
-          </div>
-        </div>
-        <button 
-          onClick={() => addToast(t('toast_info_hub'), t('toast_info_msg'), 'info')}
-          className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
-        >
-          {t('learn_more')}
-        </button>
       </div>
 
       {/* DETAILED USER REPORT MODAL */}

@@ -101,16 +101,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         const raw = localStorage.getItem('system_alerts');
         if (!raw) return [];
         const parsed = JSON.parse(raw);
-        return parsed.map((a: any) => ({
-          id: `local_${a.id}`,
-          category: (a.category === 'urgent' ? 'urgent' : a.category === 'success' ? 'success' : 'general') as WebAlert['category'],
-          title: a.title,
-          details: a.details,
-          time: a.time || t('just_now'),
-          read: a.read || false,
-          link: a.link || null,
-          isDb: false,
-        }));
+        return parsed
+          .filter((a: any) => a.title !== t('test_notification_title'))
+          .map((a: any) => ({
+            id: `local_${a.id}`,
+            category: (a.category === 'urgent' ? 'urgent' : a.category === 'success' ? 'success' : 'general') as WebAlert['category'],
+            title: a.title,
+            details: a.details,
+            time: a.time || t('just_now'),
+            read: a.read || false,
+            link: a.link || null,
+            isDb: false,
+          }));
       } catch {
         return [];
       }

@@ -33,6 +33,8 @@ model User {
   messagesReceived Message[]    @relation("MessageReceiver")
   notifications   Notification[]
   teamMemberships TeamMembership[]
+  conversationPrefs UserConversation[] @relation("ConversationOwner")
+  conversationPrefsAsPeer UserConversation[] @relation("ConversationPeer")
 }
 
 model Team {
@@ -144,6 +146,7 @@ model Message {
   id         Int      @id @default(autoincrement())
   content    String
   read       Boolean  @default(false)
+  attachments String? @db.Text // JSON array: [{ name, type, dataUrl }]
   senderId   String
   sender     User     @relation("MessageSender", fields: [senderId], references: [id])
   receiverId String
@@ -161,6 +164,20 @@ model Notification {
   link      String?  // client-side route to navigate to when clicked (e.g. "/dashboard/worker/applications")
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// Per-user conversation preferences (pin/mute are personal to each user, not shared)
+model UserConversation {
+  id       String  @id @default(uuid())
+  userId   String
+  user     User    @relation("ConversationOwner", fields: [userId], references: [id], onDelete: Cascade)
+  peerId   String
+  peer     User    @relation("ConversationPeer", fields: [peerId], references: [id], onDelete: Cascade)
+  pinned   Boolean @default(false)
+  muted    Boolean @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, peerId])
 }
 
 enum Role {

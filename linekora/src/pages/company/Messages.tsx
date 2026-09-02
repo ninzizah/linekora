@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  MessageSquare, Search, Send, Plus, 
-  MoreVertical, Phone, Video, Shield,
+  MessageSquare, Search, Send, 
+  MoreVertical, Shield,
   Check, CheckCheck, Clock, AlertCircle,
   Pin, VolumeX, Flag, Trash, AlertTriangle, X, Users, ArrowLeft
 } from 'lucide-react';
@@ -10,6 +10,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useAuth } from '../../lib/AuthContext';
 import { useLiveChat } from '../../lib/useLiveChat';
+import ChatAttachmentBubble from '../../components/ChatAttachmentBubble';
 
 interface ToastAlert {
   id: string;
@@ -26,13 +27,14 @@ export default function CompanyMessages() {
 
   const {
     chatsList,
-    setChatsList,
     threads,
     setThreads,
     activeChat,
     setActiveChat,
     send,
     openChat,
+    togglePin,
+    toggleMute,
   } = useLiveChat(uid);
 
   // UI Interactive States
@@ -70,45 +72,35 @@ export default function CompanyMessages() {
 
   // Send a real message to applicant
   const handleSendMessage = () => {
-    if (!message.trim() || activeChat === null) return;
+    if (activeChat === null) return;
+    if (!message.trim()) return;
     send(activeChat, message.trim());
     setMessage('');
-    addToast(t('toast_message_dispatched'), t('toast_message_routed_company'), 'success');
   };
 
-  // Action: Toggle Pin Chat
-  const handleTogglePin = () => {
+  // Action: Toggle Pin Chat (persisted)
+  const handleTogglePin = async () => {
     if (activeChat === null) return;
-    setChatsList(prev => prev.map(chat => {
-      if (chat.id === activeChat) {
-        const nextPin = !chat.pinned;
-        addToast(
-          nextPin ? t('toast_pinned') : t('toast_unpinned'),
-          nextPin ? t('toast_pinned_msg_company', { name: chat.name }) : t('toast_unpinned_msg_company', { name: chat.name }),
-          'success'
-        );
-        return { ...chat, pinned: nextPin };
-      }
-      return chat;
-    }));
+    const current = chatsList.find(c => c.id === activeChat);
+    await togglePin(activeChat);
+    addToast(
+      !current?.pinned ? t('toast_pinned') : t('toast_unpinned'),
+      (!current?.pinned ? t('toast_pinned_msg_company', { name: current?.name }) : t('toast_unpinned_msg_company', { name: current?.name })),
+      'success'
+    );
     setIsHeaderDropdownOpen(false);
   };
 
-  // Action: Toggle Mute Chat
-  const handleToggleMute = () => {
+  // Action: Toggle Mute Chat (persisted)
+  const handleToggleMute = async () => {
     if (activeChat === null) return;
-    setChatsList(prev => prev.map(chat => {
-      if (chat.id === activeChat) {
-        const nextMute = !chat.muted;
-        addToast(
-          nextMute ? t('toast_alerts_muted') : t('toast_alerts_restored'),
-          nextMute ? t('toast_muted_msg_company', { name: chat.name }) : t('toast_unmuted_msg_company', { name: chat.name }),
-          'info'
-        );
-        return { ...chat, muted: nextMute };
-      }
-      return chat;
-    }));
+    const current = chatsList.find(c => c.id === activeChat);
+    await toggleMute(activeChat);
+    addToast(
+      !current?.muted ? t('toast_alerts_muted') : t('toast_alerts_restored'),
+      (!current?.muted ? t('toast_muted_msg_company', { name: current?.name }) : t('toast_unmuted_msg_company', { name: current?.name })),
+      'info'
+    );
     setIsHeaderDropdownOpen(false);
   };
 
@@ -236,20 +228,6 @@ export default function CompanyMessages() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => addToast(t('toast_hiring_call_node'), t('toast_hiring_call_msg'), 'info')}
-                    className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                  >
-                    <Phone size={18} />
-                  </button>
-                  <button 
-                    onClick={() => addToast(t('toast_joining_video_portal'), t('toast_joining_video_msg'), 'info')}
-                    className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                  >
-                    <Video size={18} />
-                  </button>
-                  <div className="w-px h-6 bg-gray-100 mx-2" />
-                  
                   {/* THREE DOTS MENU POPPING OVER TALENT HEADER */}
                   <div className="relative">
                     <button 
@@ -332,7 +310,10 @@ export default function CompanyMessages() {
                             ? 'bg-blue-600 text-white rounded-tr-none' 
                             : 'bg-white text-gray-900 rounded-tl-none border border-gray-100'}
                         `}>
-                          {msg.text}
+                          {msg.text || ('📎 ' + t('attachment_count', { count: msg.attachments?.length || 1 }))}
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <ChatAttachmentBubble attachments={msg.attachments} sent={msg.sent} />
+                          )}
                         </div>
                         <div className={`flex items-center gap-1.5 mt-2 px-1 ${msg.sent ? 'justify-end' : 'justify-start'}`}>
                           <span className="text-[10px] font-black text-gray-400 uppercase">{msg.time}</span>
@@ -351,28 +332,24 @@ export default function CompanyMessages() {
               </div>
 
               {/* Input */}
-              <div className="p-3 md:p-6 bg-white border-t border-gray-50 flex items-center gap-2 md:gap-4">
-                <button 
-                  onClick={() => addToast(t('toast_corporate_node_extra'), t('toast_corporate_node_msg'), 'info')}
-                  className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
-                >
-                  <Plus size={24} />
-                </button>
-                <div className="flex-1 relative">
-                  <input 
-                    type="text" 
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder={t('placeholder_send_message_talent')} 
-                    className="w-full pl-6 pr-14 py-4 rounded-[2.5rem] bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all border"
-                  />
-                  <button 
-                    onClick={handleSendMessage}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-105 hover:bg-blue-700 transition-all flex items-center justify-center cursor-pointer"
-                  >
-                    <Send size={16} />
-                  </button>
+              <div className="p-3 md:p-6 bg-white border-t border-gray-50">
+                <div className="flex items-center gap-2 md:gap-4">
+                  <div className="flex-1 relative">
+                    <input 
+                      type="text" 
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                      placeholder={t('placeholder_send_message_talent')} 
+                      className="w-full pl-6 pr-14 py-4 rounded-[2.5rem] bg-gray-50 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans text-sm font-bold transition-all border"
+                    />
+                    <button 
+                      onClick={handleSendMessage}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-105 hover:bg-blue-700 transition-all flex items-center justify-center cursor-pointer"
+                    >
+                      <Send size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </>

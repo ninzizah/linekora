@@ -7,9 +7,10 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
-import { getApplications, updateApplication, createNotification } from '../../lib/api';
+import { getApplications, updateApplication, createNotification, sendMessage } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
+import { useNavigate } from 'react-router-dom';
 
 interface Applicant {
   id: number;
@@ -30,6 +31,7 @@ interface Applicant {
 export default function CompanyApplicants() {
   const { profile } = useAuth();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected' | 'shortlisted'>('all');
   const [selectedApplicant, setSelectedApplicant] = useState<any | null>(null);
@@ -112,6 +114,25 @@ export default function CompanyApplicants() {
       showToast(t('toast_update_status_failed'));
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  // Start a live chat with the applicant (worker) from the backend
+  const handleMessageApplicant = async (applicant: any) => {
+    if (!profile?.id || !applicant.workerId) {
+      showToast(t('toast_cannot_message'));
+      return;
+    }
+    const workerName = applicant.worker?.displayName || applicant.name || 'Worker';
+    try {
+      await sendMessage({
+        content: t('lets_discuss_job_details'),
+        senderId: profile.id,
+        receiverId: String(applicant.workerId),
+      });
+      navigate('/dashboard/company/messages');
+    } catch (err) {
+      showToast(t('toast_cannot_message'));
     }
   };
 
@@ -247,6 +268,14 @@ export default function CompanyApplicants() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
+                    <button 
+                      onClick={() => handleMessageApplicant(applicant)}
+                      disabled={!applicant.workerId}
+                      className="px-5 py-3 bg-blue-50 hover:bg-blue-105 text-blue-600 rounded-xl font-sans font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <MessageSquare size={16} />
+                      {t('send_message')}
+                    </button>
                     <button 
                       onClick={() => setSelectedApplicant(applicant)}
                       className="px-5 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-sans font-black text-xs uppercase tracking-widest transition-all"

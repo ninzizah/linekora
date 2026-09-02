@@ -605,9 +605,12 @@ app.get('/api/conversations/:userId', async (req, res) => {
       const unreadDelta = m.receiverId === userId && !m.read ? 1 : 0;
       const existing = peerMap.get(peerId);
       if (!existing) {
+        const preview = m.content?.trim()
+          ? m.content
+          : (m.attachments && JSON.parse(m.attachments).length > 0 ? '📎 Attachment' : m.content);
         peerMap.set(peerId, {
           peer: { id: peer.id, displayName: peer.displayName, role: peer.role, avatarUrl: peer.avatarUrl },
-          lastMessage: m.content,
+          lastMessage: preview,
           lastMessageAt: m.createdAt,
           unread: unreadDelta,
         });
@@ -616,8 +619,21 @@ app.get('/api/conversations/:userId', async (req, res) => {
       }
     }
 
-    const conversations = Array.from(peerMap.values());
-    conversations.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+    // Load per-user preferences (pin/mute) and merge into conversations
+    const prefs = await prisma.userConversation.findMany({
+      where: { userId },
+    });
+    const prefMap = new Map(prefs.map((p) => [p.peerId, p]));
+
+    const conversations = Array.from(peerMap.values()).map((c) => {
+      const pref = prefMap.get(c.peer.id);
+      return { ...c, pinned: pref?.pinned ?? false, muted: pref?.muted ?? false };
+    });
+    conversations.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+    });
 
     res.json(conversations);
   } catch (error: any) {
@@ -627,27 +643,59 @@ app.get('/api/conversations/:userId', async (req, res) => {
 
 app.post('/api/messages', async (req, res) => {
   try {
-    const { content, senderId, receiverId } = req.body;
-    if (!content || !senderId || !receiverId) {
-      return res.status(400).json({ error: 'content, senderId, and receiverId are required' });
+    const { content, senderId, receiverId, attachments } = req.body;
+    if (!senderId || !receiverId || (content === undefined && !attachments)) {
+      return res.status(400).json({ error: 'content (or attachments), senderId, and receiverId are required' });
+    }
+
+    // Validate attachments: max 2 files, max 5MB each, image or pdf/doc/docx only
+    const MAX_ATTACHMENTS = 2;
+    const MAX_BYTES = 5 * 1024 * 1024;
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+    if (attachments && attachments.length > 0) {
+      if (attachments.length > MAX_ATTACHMENTS) {
+        return res.status(400).json({ error: `You can attach at most ${MAX_ATTACHMENTS} files per message` });
+      }
+      for (const att of attachments) {
+        if (!att || !att.name || !att.dataUrl) {
+          return res.status(400).json({ error: 'Each attachment needs a name and dataUrl' });
+        }
+        if (!ALLOWED_TYPES.includes(att.type)) {
+          return res.status(400).json({ error: `File type "${att.type}" is not supported` });
+        }
+        const base64 = att.dataUrl.split(',')[1] || '';
+        const byteLen = Math.floor(base64.length * 3 / 4);
+        if (byteLen > MAX_BYTES) {
+          return res.status(400).json({ error: `"${att.name}" exceeds the 5MB limit` });
+        }
+      }
     }
 
     const message = await prisma.message.create({
-      data: { content, senderId, receiverId },
+      data: {
+        content: content || '',
+        senderId,
+        receiverId,
+        attachments: attachments && attachments.length > 0 ? JSON.stringify(attachments) : null,
+      },
       include: {
         sender: { select: { id: true, displayName: true, role: true, avatarUrl: true } },
         receiver: { select: { id: true, displayName: true, role: true, avatarUrl: true } },
       },
     });
 
-    const receiverLink = resolveLinkForUser(receiverId, 'messages');
+    const receiverLink = await resolveLinkForUser(receiverId, 'messages');
+
+    const bodyText = (content || '').trim() || (attachments && attachments.length > 0 ? `📎 ${attachments.length} attachment(s)` : '');
 
     // Notify the receiver (in-app) that they have a new message
     await (prisma as any).notification.create({
       data: {
         userId: receiverId,
         title: `New message from ${message.sender?.displayName || 'User'}`,
-        body: content.length > 90 ? content.slice(0, 90) + '…' : content,
+        body: bodyText.length > 90 ? bodyText.slice(0, 90) + '…' : bodyText,
         type: 'info',
         link: receiverLink,
       },
@@ -671,6 +719,31 @@ app.patch('/api/messages/read', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to mark messages as read' });
+  }
+});
+
+// Update per-user conversation preferences (pin/mute a chat)
+app.patch('/api/conversations/prefs', async (req, res) => {
+  try {
+    const { userId, peerId, pinned, muted } = req.body;
+    if (!userId || !peerId) return res.status(400).json({ error: 'userId and peerId are required' });
+
+    const upserted = await prisma.userConversation.upsert({
+      where: { userId_peerId: { userId, peerId } },
+      create: {
+        userId,
+        peerId,
+        pinned: pinned ?? false,
+        muted: muted ?? false,
+      },
+      update: {
+        ...(typeof pinned === 'boolean' ? { pinned } : {}),
+        ...(typeof muted === 'boolean' ? { muted } : {}),
+      },
+    });
+    res.json(upserted);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to update conversation preferences' });
   }
 });
 
