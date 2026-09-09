@@ -56,6 +56,11 @@ export default function Register() {
       role: selectedRole as any,
       phone: formData.phone || undefined,
       location: formData.location || undefined,
+      skills: selectedRole === 'WORKER' ? formData.skills || undefined : undefined,
+      experience: selectedRole === 'WORKER' ? formData.experience || undefined : undefined,
+      education: selectedRole === 'WORKER' ? formData.education || undefined : undefined,
+      registrationNumber: selectedRole === 'COMPANY' ? formData.registrationNumber || undefined : undefined,
+      taxId: selectedRole === 'COMPANY' ? formData.taxId || undefined : undefined,
     });
   };
 

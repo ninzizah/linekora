@@ -41,7 +41,6 @@ export default function Login() {
     try {
       const profile = await getUser(uid);
       if (profile?.role) {
-        localStorage.setItem('lastAuthMethod', 'google');
         navigate(roleRoutes[profile.role] || '/dashboard');
         return;
       }
@@ -83,11 +82,13 @@ export default function Login() {
         result = await signInWithPopup(auth, provider);
       } catch (popupErr: any) {
         if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request') {
+          localStorage.setItem('lastAuthMethod', 'google');
           await signInWithRedirect(auth, provider);
           return;
         }
         throw popupErr;
       }
+      localStorage.setItem('lastAuthMethod', 'google');
       await handleAfterAuth(result.user.uid, result.user.email || undefined);
     } catch (err: any) {
       if (err.code === 'auth/operation-not-allowed') {

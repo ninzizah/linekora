@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
-import { getUsers, sendMessage } from '../../lib/api';
+import { getWorkers, sendMessage } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import PublicProfileModal from '../../components/PublicProfileModal';
@@ -56,7 +56,7 @@ export default function BrowseWorkers() {
   useEffect(() => {
     async function loadWorkers() {
       try {
-        const users = await getUsers();
+        const users = await getWorkers();
         const realWorkers: WorkerItem[] = users
           .filter(u => u.role === 'WORKER')
           .map((u) => ({

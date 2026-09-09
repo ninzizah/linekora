@@ -16,6 +16,12 @@ model User {
   phone              String?
   location           String?
   avatarUrl          String?  @db.Text
+  bio                String?  @db.Text
+  skills             String?
+  experience         String?
+  education          String?
+  registrationNumber String?
+  taxId              String?
   trustScore         Int      @default(50)
   tier               String   @default("Free Account")
   verificationStatus String   @default("unverified")

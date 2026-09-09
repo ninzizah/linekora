@@ -3,6 +3,9 @@
  * Central place for all HTTP calls to our Express/PostgreSQL backend.
  */
 
+import { auth } from './firebase';
+import { getIdToken } from 'firebase/auth';
+
 const getApiBase = () => {
   const envUrl = (import.meta as any).env?.VITE_API_URL;
   if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
@@ -18,12 +21,29 @@ const getApiBase = () => {
 const API_BASE = getApiBase();
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  // Attach the current user's Firebase ID token so the backend can verify it.
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      const token = await getIdToken(user);
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch {
+      // No valid token available — the backend will reject protected routes with 401.
+    }
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options,
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
+    // Treat 401 as "not logged in" so callers can redirect to sign-in.
+    if (res.status === 401) {
+      throw new Error('Unauthorized: please sign in again');
+    }
     throw new Error(errorData.error || `API error: ${res.status}`);
   }
   return res.json();
@@ -52,6 +72,12 @@ export interface UserProfile {
   role: 'WORKER' | 'COMPANY' | 'EMPLOYER' | 'ADMIN';
   phone?: string;
   location?: string;
+  bio?: string;
+  skills?: string;
+  experience?: string;
+  education?: string;
+  registrationNumber?: string;
+  taxId?: string;
   trustScore: number;
   tier: string;
   verificationStatus: string;
@@ -81,6 +107,10 @@ export const deleteUserRecord = (id: string) =>
   });
 
 export const getUsers = () => request<UserProfile[]>('/users');
+
+// Scoped worker directory (minimal public fields, no email/phone)
+export const getWorkers = () =>
+  request<Partial<UserProfile>[]>('/users/workers');
 
 // ─── JOBS ─────────────────────────────────────────────────────────────────────
 

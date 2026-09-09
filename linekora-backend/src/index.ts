@@ -6,6 +6,8 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
+import { requireAuth } from './middleware/auth';
+
 dotenv.config();
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -18,12 +20,12 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Health check
+// Health check (public)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'Linekora API is running 🚀' });
 });
 
-// ─── STATS ──────────────────────────────────────────────────────────────────
+// ─── STATS (public — aggregate counts only, no PII) ─────────────────────────
 
 app.get('/api/stats', async (_req, res) => {
   try {
@@ -49,9 +51,33 @@ app.get('/api/stats', async (_req, res) => {
   }
 });
 
+// ─── AUTH ──────────────────────────────────────────────────────────────────
+// Every route defined below this point requires a valid Firebase ID token.
+app.use('/api', requireAuth);
+
+// Attach the caller's DB record so handlers can authorise by role / ownership.
+app.use('/api', async (req, _res, next) => {
+  try {
+    req.dbUser = await prisma.user.findUnique({
+      where: { firebaseUid: req.user!.uid },
+      select: { id: true, role: true, firebaseUid: true, displayName: true },
+    });
+  } catch {
+    req.dbUser = null;
+  }
+  next();
+});
+
+const requireAdmin: express.RequestHandler = (req, res, next) => {
+  if (req.dbUser?.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Forbidden: admin access required' });
+  }
+  next();
+};
+
 // ─── USERS ──────────────────────────────────────────────────────────────────
 
-app.get('/api/users', async (_req, res) => {
+app.get('/api/users', requireAdmin, async (_req, res) => {
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
@@ -63,8 +89,39 @@ app.get('/api/users', async (_req, res) => {
   }
 });
 
+// Public-facing worker directory — minimal fields, no email/phone/validation data.
+app.get('/api/users/workers', async (_req, res) => {
+  try {
+    const workers = await prisma.user.findMany({
+      where: { role: 'WORKER' },
+      select: {
+        id: true,
+        firebaseUid: true,
+        displayName: true,
+        role: true,
+        location: true,
+        avatarUrl: true,
+        bio: true,
+        skills: true,
+        experience: true,
+        education: true,
+        trustScore: true,
+        verificationStatus: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(workers);
+  } catch (error: any) {
+    console.error('Failed to fetch workers:', error);
+    res.status(500).json({ error: 'Failed to fetch workers' });
+  }
+});
+
 app.get('/api/users/:firebaseUid', async (req, res) => {
   try {
+    if (req.params.firebaseUid !== req.user?.uid) {
+      return res.status(403).json({ error: 'Forbidden: cannot read another user\'s profile' });
+    }
     const user = await prisma.user.findUnique({
       where: { firebaseUid: req.params.firebaseUid },
     });
@@ -77,22 +134,34 @@ app.get('/api/users/:firebaseUid', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
   try {
+    if (req.body.firebaseUid !== req.user?.uid) {
+      return res.status(403).json({ error: 'Forbidden: firebaseUid does not match authenticated user' });
+    }
     const data = { ...req.body };
     const existing = await prisma.user.findUnique({
       where: { firebaseUid: req.body.firebaseUid },
     });
     if (existing) {
       // On an existing account, only update safe identity/profile fields.
-      // Never overwrite trustScore / verificationStatus / tier via upsert.
+      // Never overwrite trustScore / verificationStatus / tier / role via upsert.
       const safe: any = {};
       if (data.displayName !== undefined) safe.displayName = data.displayName;
       if (data.email !== undefined) safe.email = data.email;
       if (data.phone !== undefined) safe.phone = data.phone;
       if (data.location !== undefined) safe.location = data.location;
       if (data.avatarUrl !== undefined) safe.avatarUrl = data.avatarUrl;
-      if (data.role !== undefined && data.role !== existing.role) safe.role = data.role;
+      if (data.bio !== undefined) safe.bio = data.bio;
+      if (data.skills !== undefined) safe.skills = data.skills;
+      if (data.experience !== undefined) safe.experience = data.experience;
+      if (data.education !== undefined) safe.education = data.education;
+      if (data.registrationNumber !== undefined) safe.registrationNumber = data.registrationNumber;
+      if (data.taxId !== undefined) safe.taxId = data.taxId;
       const user = await prisma.user.update({ where: { id: existing.id }, data: safe });
       return res.json(user);
+    }
+    // New account: allow role but never ADMIN (unless the caller is an admin).
+    if (data.role !== undefined && !['WORKER', 'COMPANY', 'EMPLOYER'].includes(data.role)) {
+      delete data.role;
     }
     const user = await prisma.user.create({ data });
     res.json(user);
@@ -110,9 +179,47 @@ app.patch('/api/users/:id', async (req, res) => {
     if (!existing) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // Caller identity derived from the verified Firebase token.
+    const actor = await prisma.user.findUnique({ where: { firebaseUid: req.user!.uid } });
+    const isSelf = existing.firebaseUid === req.user?.uid;
+    const isAdmin = actor?.role === 'ADMIN';
+
+    const body = req.body;
+    const safe: any = {};
+
+    // Identity/profile fields — editable only for your own account.
+    if (isSelf || isAdmin) {
+      for (const f of ['displayName', 'phone', 'location', 'avatarUrl', 'bio', 'skills', 'experience', 'education', 'registrationNumber', 'taxId']) {
+        if (body[f] !== undefined) safe[f] = body[f];
+      }
+    }
+
+    // Verification & reputation fields.
+    if (isSelf && body.verificationStatus !== undefined) {
+      const status = String(body.verificationStatus);
+      if (status === 'pending' || status === 'unverified') {
+        safe.verificationStatus = status;
+        if (body.tier !== undefined) safe.tier = body.tier;
+        if (body.trustScore !== undefined) safe.trustScore = body.trustScore;
+      }
+    }
+    if (isAdmin) {
+      if (body.verificationStatus !== undefined) safe.verificationStatus = body.verificationStatus;
+      if (body.tier !== undefined) safe.tier = body.tier;
+      if (body.trustScore !== undefined) safe.trustScore = body.trustScore;
+      if (body.verificationData !== undefined) safe.verificationData = body.verificationData;
+    }
+
+    // role / email / firebaseUid / id are NEVER editable via PATCH.
+
+    if (Object.keys(safe).length === 0) {
+      return res.status(400).json({ error: 'Nothing to update: no editable fields provided' });
+    }
+
     const user = await prisma.user.update({
       where: { id: existing.id },
-      data: req.body,
+      data: safe,
     });
     res.json(user);
   } catch (error: any) {
@@ -129,6 +236,11 @@ app.delete('/api/users/:id', async (req, res) => {
     });
     if (!existing) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Admins may delete anyone; users may only delete their own account.
+    if (req.dbUser?.role !== 'ADMIN' && existing.id !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot delete another user' });
     }
 
     const userId = existing.id;
@@ -175,6 +287,11 @@ app.post('/api/verification/:userId', async (req, res) => {
     if (!existing) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // Users may only submit their own verification documents; admins act on any.
+    if (req.dbUser?.role !== 'ADMIN' && existing.id !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot submit verification for another user' });
+    }
     const user = await prisma.user.update({
       where: { id: existing.id },
       data: {
@@ -206,12 +323,13 @@ app.post('/api/verification/:userId', async (req, res) => {
   }
 });
 
-// Get verification documents for a user (called by admin dashboard)
-app.get('/api/verification/:userId', async (req, res) => {
+// Get verification documents for a user (admin review — contains sensitive ID docs)
+app.get('/api/verification/:userId', requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
+    const uid = String(userId);
     const user = await prisma.user.findFirst({
-      where: { OR: [{ id: userId }, { firebaseUid: userId }] },
+      where: { OR: [{ id: uid }, { firebaseUid: uid }] },
       select: {
         id: true,
         firebaseUid: true,
@@ -236,8 +354,8 @@ app.get('/api/verification/:userId', async (req, res) => {
   }
 });
 
-// Get all pending verifications (called by admin dashboard)
-app.get('/api/verification', async (_req, res) => {
+// Get all pending verifications (admin dashboard)
+app.get('/api/verification', requireAdmin, async (_req, res) => {
   try {
     const users = await prisma.user.findMany({
       where: { verificationStatus: 'pending' },
@@ -299,6 +417,14 @@ app.get('/api/jobs', async (req, res) => {
 app.post('/api/jobs', async (req, res) => {
   try {
     const data = { ...req.body };
+    // A company may only create jobs for itself (admins may create for any).
+    if (
+      data.employerId &&
+      req.dbUser?.role !== 'ADMIN' &&
+      String(data.employerId) !== req.dbUser?.id
+    ) {
+      return res.status(403).json({ error: 'Forbidden: cannot post a job for another account' });
+    }
     if (data.deadline && typeof data.deadline === 'string') {
       data.deadline = new Date(data.deadline).toISOString();
     }
@@ -311,8 +437,17 @@ app.post('/api/jobs', async (req, res) => {
 
 app.patch('/api/jobs/:id', async (req, res) => {
   try {
+    const jobId = parseInt(req.params.id);
+    const existing = await prisma.job.findUnique({ where: { id: jobId } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    // Company that posted the job, or an admin, may edit it.
+    if (req.dbUser?.role !== 'ADMIN' && existing.employerId !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: not the job owner' });
+    }
     const job = await prisma.job.update({
-      where: { id: parseInt(req.params.id) },
+      where: { id: jobId },
       data: req.body,
     });
     res.json(job);
@@ -324,6 +459,14 @@ app.patch('/api/jobs/:id', async (req, res) => {
 app.delete('/api/jobs/:id', async (req, res) => {
   try {
     const jobId = parseInt(req.params.id);
+    const existing = await prisma.job.findUnique({ where: { id: jobId } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    // Company that posted the job, or an admin, may delete it.
+    if (req.dbUser?.role !== 'ADMIN' && existing.employerId !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: not the job owner' });
+    }
 
     // Remove related applications first to satisfy the foreign key constraint
     await prisma.application.deleteMany({ where: { jobId } });
@@ -341,6 +484,11 @@ app.post('/api/jobs/:id/apply', async (req, res) => {
     const jobId = parseInt(req.params.id);
     const { workerId } = req.body;
     if (!workerId) return res.status(400).json({ error: 'workerId is required' });
+
+    // A worker may only apply on their own behalf (admins may act for any).
+    if (req.dbUser?.role !== 'ADMIN' && String(workerId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot apply as another user' });
+    }
 
     // Check if already applied
     const existing = await prisma.application.findFirst({
