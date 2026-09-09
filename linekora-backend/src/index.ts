@@ -75,6 +75,31 @@ const requireAdmin: express.RequestHandler = (req, res, next) => {
   next();
 };
 
+// ─── ADMIN UNLOCK (operator passkey) ───────────────────────────────────────
+// Grants ADMIN role to the authenticated Firebase account when the operator
+// passkey matches. Recreates the legacy "admin portal shortcut" behaviour.
+app.post('/api/admin/unlock', async (req, res) => {
+  try {
+    const passkey = String(req.body?.passkey || '');
+    const expected = process.env.ADMIN_PASSKEY || 'linekora_SafeOps_2026!';
+    if (passkey !== expected) {
+      return res.status(401).json({ error: 'Invalid admin passkey' });
+    }
+    const actor = await prisma.user.findUnique({ where: { firebaseUid: req.user!.uid } });
+    if (!actor) {
+      return res.status(404).json({ error: 'User record not found' });
+    }
+    const updated = await prisma.user.update({
+      where: { id: actor.id },
+      data: { role: 'ADMIN' },
+    });
+    res.json({ success: true, id: updated.id, role: updated.role });
+  } catch (error: any) {
+    console.error('Failed to unlock admin:', error);
+    res.status(500).json({ error: 'Failed to authorize admin' });
+  }
+});
+
 // ─── USERS ──────────────────────────────────────────────────────────────────
 
 app.get('/api/users', requireAdmin, async (_req, res) => {

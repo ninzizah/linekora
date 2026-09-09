@@ -11,11 +11,12 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import {
   getUsers, updateUser, getPendingVerifications, getJobs, updateJob,
-  deleteJob, getApplications, createNotification, getStats,
+  deleteJob, getApplications, createNotification, getStats, unlockAdmin,
   type UserProfile, type Job, type Application, type VerificationSubmission, type PlatformStats,
 } from '../../lib/api';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
+import AdminUnlockModal from '../../components/AdminUnlockModal';
 
 type TabId = 'dashboard' | 'users' | 'jobs' | 'verification' | 'notifications' | 'settings' | 'activity';
 
@@ -36,6 +37,23 @@ export default function AdminDashboard() {
   const [notification, setNotification] = useState<{ id: number; message: string; type: 'success' | 'info' | 'error' } | null>(null);
   const [idleTime, setIdleTime] = useState(0);
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+
+  // ─── ADMIN UNLOCK (legacy shortcut gate) ──────────────────────────────────
+  const [unlockOpen, setUnlockOpen] = useState(() => sessionStorage.getItem('admin_unlocked') !== '1');
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('admin_unlocked') === '1');
+
+  const handleUnlock = async (passkey: string) => {
+    try {
+      await unlockAdmin(passkey);
+      sessionStorage.setItem('admin_unlocked', '1');
+      setUnlocked(true);
+      setUnlockOpen(false);
+      fetchAll();
+    } catch (err: any) {
+      setNotification({ id: Date.now(), message: err.message || 'Failed to unlock admin', type: 'error' });
+      setUnlockOpen(false);
+    }
+  };
 
   // ─── REAL DATA ────────────────────────────────────────────────────────────
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -103,10 +121,11 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    if (!unlocked) return;
     fetchAll();
     const interval = setInterval(fetchAll, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [unlocked]);
 
   // ─── TOAST ────────────────────────────────────────────────────────────────
   const triggerNotification = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
@@ -1888,6 +1907,13 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ADMIN UNLOCK (legacy shortcut) */}
+      <AdminUnlockModal
+        isOpen={unlockOpen}
+        onClose={() => setUnlockOpen(false)}
+        onSuccess={handleUnlock}
+      />
 
     </div>
   );

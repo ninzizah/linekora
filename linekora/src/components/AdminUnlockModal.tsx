@@ -6,7 +6,7 @@ import { useLanguage } from '../lib/LanguageContext';
 interface AdminUnlockModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (passkey: string) => void;
 }
 
 export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUnlockModalProps) {
@@ -44,7 +44,7 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
       const CORRECT_PASSWORD = 'linekora_SafeOps_2026!';
 
       if (username === CORRECT_USERNAME && password === CORRECT_PASSWORD) {
-        onSuccess();
+        onSuccess(password);
       } else {
         setError(t('unauthorized_credentials'));
         setLoading(false);
