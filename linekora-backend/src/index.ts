@@ -80,10 +80,12 @@ const requireAdmin: express.RequestHandler = (req, res, next) => {
 // passkey matches. Recreates the legacy "admin portal shortcut" behaviour.
 app.post('/api/admin/unlock', async (req, res) => {
   try {
+    const username = String(req.body?.username || '');
     const passkey = String(req.body?.passkey || '');
-    const expected = process.env.ADMIN_PASSKEY || 'linekora_SafeOps_2026!';
-    if (passkey !== expected) {
-      return res.status(401).json({ error: 'Invalid admin passkey' });
+    const expectedUser = process.env.ADMIN_USERNAME || 'Ndive Labs';
+    const expectedPass = process.env.ADMIN_PASSKEY || 'Ndive-admin@12345';
+    if (username !== expectedUser || passkey !== expectedPass) {
+      return res.status(401).json({ error: 'Invalid admin credentials' });
     }
     const actor = await prisma.user.findUnique({ where: { firebaseUid: req.user!.uid } });
     if (!actor) {

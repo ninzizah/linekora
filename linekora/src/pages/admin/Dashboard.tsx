@@ -42,9 +42,9 @@ export default function AdminDashboard() {
   const [unlockOpen, setUnlockOpen] = useState(() => sessionStorage.getItem('admin_unlocked') !== '1');
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('admin_unlocked') === '1');
 
-  const handleUnlock = async (passkey: string) => {
+  const handleUnlock = async (username: string, passkey: string) => {
     try {
-      await unlockAdmin(passkey);
+      await unlockAdmin(username, passkey);
       sessionStorage.setItem('admin_unlocked', '1');
       setUnlocked(true);
       setUnlockOpen(false);

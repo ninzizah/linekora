@@ -6,7 +6,7 @@ import { useLanguage } from '../lib/LanguageContext';
 interface AdminUnlockModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (passkey: string) => void;
+  onSuccess: (username: string, passkey: string) => void;
 }
 
 export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUnlockModalProps) {
@@ -40,11 +40,11 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
     // Simulated secure latency for operational verification
     setTimeout(() => {
       // SECURE ADMINISTRATIVE CREDENTIALS
-      const CORRECT_USERNAME = 'linekora_admin';
-      const CORRECT_PASSWORD = 'linekora_SafeOps_2026!';
+      const CORRECT_USERNAME = 'Ndive Labs';
+      const CORRECT_PASSWORD = 'Ndive-admin@12345';
 
       if (username === CORRECT_USERNAME && password === CORRECT_PASSWORD) {
-        onSuccess(password);
+        onSuccess(username, password);
       } else {
         setError(t('unauthorized_credentials'));
         setLoading(false);

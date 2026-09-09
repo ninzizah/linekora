@@ -108,11 +108,11 @@ export const deleteUserRecord = (id: string) =>
 
 export const getUsers = () => request<UserProfile[]>('/users');
 
-// Authenticate the current Firebase account as admin with the operator passkey.
-export const unlockAdmin = (passkey: string) =>
+// Authenticate the current Firebase account as admin with the operator credentials.
+export const unlockAdmin = (username: string, passkey: string) =>
   request<{ success: boolean; role: string }>('/admin/unlock', {
     method: 'POST',
-    body: JSON.stringify({ passkey }),
+    body: JSON.stringify({ username, passkey }),
   });
 
 // Scoped worker directory (minimal public fields, no email/phone)
