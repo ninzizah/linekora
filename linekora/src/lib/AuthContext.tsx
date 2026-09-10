@@ -37,10 +37,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const userRef = useRef<User | null>(null);
+  // Monotonic request id: stale profile responses (e.g. from a previous login/user)
+  // must never overwrite a newer auth state.
+  const profileReqId = useRef(0);
 
   const fetchProfile = async (firebaseUser: User) => {
+    const reqId = ++profileReqId.current;
     const data = await fetchProfileWithRetry(firebaseUser);
-    setProfile(data);
+    if (profileReqId.current === reqId) {
+      setProfile(data);
+    }
   };
 
   const refreshProfile = async () => {
@@ -58,9 +64,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     handleRedirect();
 
     const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Invalidate any in-flight profile fetch for a previous session/user.
+      profileReqId.current += 1;
       userRef.current = firebaseUser;
       setUser(firebaseUser);
       if (firebaseUser) {
+        // Keep loading=true until the profile resolves so routes never render
+        // with a null profile right after login (avoids false /select-role redirects).
         await fetchProfile(firebaseUser);
       } else {
         setProfile(null);

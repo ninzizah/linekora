@@ -5,7 +5,7 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Public Pages
@@ -57,31 +57,52 @@ import RoleSelection from './pages/auth/RoleSelection';
 
 
 // Dashboard Layouts
+const LoadingSpinner = () => (
+  <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gray-50 font-sans">
+    <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    <p className="font-bold text-gray-400 uppercase tracking-widest text-xs">Securing session...</p>
+  </div>
+);
+
+/** Blocks access until profile is fully loaded, then enforces role-based routing. */
 const DashboardRedirect = () => {
   const { user, profile, loading } = useAuth();
   
-  if (loading) return (
-    <div className="flex h-screen flex-col items-center justify-center gap-4 bg-gray-50 font-sans">
-      <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      <p className="font-bold text-gray-400 uppercase tracking-widest text-xs">Securing session...</p>
-    </div>
-  );
+  if (loading || (user && !profile)) return <LoadingSpinner />;
   
   if (!user) return <Navigate to="/login" />;
   
-  if (!profile) {
-    return <Navigate to="/select-role" />;
-  }
+  if (!profile) return <Navigate to="/select-role" />;
 
-  if (profile?.role === 'WORKER') return <Navigate to="/dashboard/worker" />;
-  if (profile?.role === 'COMPANY') return <Navigate to="/dashboard/company" />;
-  if (profile?.role === 'EMPLOYER') return <Navigate to="/dashboard/employer" />;
-  if (profile?.role === 'ADMIN') return <Navigate to="/admin" />;
+  if (profile.role === 'WORKER') return <Navigate to="/dashboard/worker" />;
+  if (profile.role === 'COMPANY') return <Navigate to="/dashboard/company" />;
+  if (profile.role === 'EMPLOYER') return <Navigate to="/dashboard/employer" />;
+  if (profile.role === 'ADMIN') return <Navigate to="/admin" />;
   
-  // Profile exists but no recognized role — back to register
   if (profile && !profile.role) return <Navigate to="/register" />;
   
   return null;
+};
+
+/** Route guard: only renders children if the user's role is in allowedRoles. */
+const RoleRoute = ({ allowedRoles, children }: { allowedRoles: string[]; children: ReactNode }) => {
+  const { user, profile, loading } = useAuth();
+
+  if (loading || (user && !profile)) return <LoadingSpinner />;
+
+  if (!user) return <Navigate to="/login" replace />;
+  if (!profile) return <Navigate to="/select-role" replace />;
+
+  if (!allowedRoles.includes(profile.role)) {
+    // Redirect to the correct dashboard for their actual role
+    if (profile.role === 'WORKER') return <Navigate to="/dashboard/worker" replace />;
+    if (profile.role === 'COMPANY') return <Navigate to="/dashboard/company" replace />;
+    if (profile.role === 'EMPLOYER') return <Navigate to="/dashboard/employer" replace />;
+    if (profile.role === 'ADMIN') return <Navigate to="/admin" replace />;
+    return <Navigate to="/select-role" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 import { LanguageProvider } from './lib/LanguageContext';
@@ -129,40 +150,40 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardRedirect />} />
           
           {/* Dashboard Routes */}
-          <Route path="/dashboard/worker" element={<WorkerDashboard />} />
-          <Route path="/dashboard/worker/verify" element={<WorkerVerification />} />
-          <Route path="/dashboard/worker/browse" element={<BrowseJobs />} />
-          <Route path="/dashboard/worker/wallet" element={<WorkerWallet />} />
-          <Route path="/dashboard/worker/reviews" element={<WorkerReviews />} />
-          <Route path="/dashboard/worker/applications" element={<WorkerApplications />} />
-          <Route path="/dashboard/worker/messages" element={<WorkerMessages />} />
-          <Route path="/dashboard/worker/settings" element={<WorkerSettings />} />
-          <Route path="/dashboard/worker/profile" element={<WorkerProfile />} />
-          <Route path="/dashboard/worker/*" element={<WorkerDashboard />} />
+          <Route path="/dashboard/worker" element={<RoleRoute allowedRoles={['WORKER']}><WorkerDashboard /></RoleRoute>} />
+          <Route path="/dashboard/worker/verify" element={<RoleRoute allowedRoles={['WORKER']}><WorkerVerification /></RoleRoute>} />
+          <Route path="/dashboard/worker/browse" element={<RoleRoute allowedRoles={['WORKER']}><BrowseJobs /></RoleRoute>} />
+          <Route path="/dashboard/worker/wallet" element={<RoleRoute allowedRoles={['WORKER']}><WorkerWallet /></RoleRoute>} />
+          <Route path="/dashboard/worker/reviews" element={<RoleRoute allowedRoles={['WORKER']}><WorkerReviews /></RoleRoute>} />
+          <Route path="/dashboard/worker/applications" element={<RoleRoute allowedRoles={['WORKER']}><WorkerApplications /></RoleRoute>} />
+          <Route path="/dashboard/worker/messages" element={<RoleRoute allowedRoles={['WORKER']}><WorkerMessages /></RoleRoute>} />
+          <Route path="/dashboard/worker/settings" element={<RoleRoute allowedRoles={['WORKER']}><WorkerSettings /></RoleRoute>} />
+          <Route path="/dashboard/worker/profile" element={<RoleRoute allowedRoles={['WORKER']}><WorkerProfile /></RoleRoute>} />
+          <Route path="/dashboard/worker/*" element={<RoleRoute allowedRoles={['WORKER']}><WorkerDashboard /></RoleRoute>} />
           
-          <Route path="/dashboard/company" element={<CompanyDashboard />} />
-          <Route path="/dashboard/company/post" element={<PostJob />} />
-          <Route path="/dashboard/company/jobs" element={<CompanyManageJobs />} />
-          <Route path="/dashboard/company/applicants" element={<CompanyApplicants />} />
-          <Route path="/dashboard/company/messages" element={<CompanyMessages />} />
-          <Route path="/dashboard/company/verify" element={<CompanyVerification />} />
-          <Route path="/dashboard/company/payments" element={<CompanyWallet />} />
-          <Route path="/dashboard/company/analytics" element={<CompanyAnalytics />} />
-          <Route path="/dashboard/company/settings" element={<CompanySettings />} />
-          <Route path="/dashboard/company/browse" element={<BrowseWorkers />} />
-          <Route path="/dashboard/company/*" element={<CompanyDashboard />} />
+          <Route path="/dashboard/company" element={<RoleRoute allowedRoles={['COMPANY']}><CompanyDashboard /></RoleRoute>} />
+          <Route path="/dashboard/company/post" element={<RoleRoute allowedRoles={['COMPANY']}><PostJob /></RoleRoute>} />
+          <Route path="/dashboard/company/jobs" element={<RoleRoute allowedRoles={['COMPANY']}><CompanyManageJobs /></RoleRoute>} />
+          <Route path="/dashboard/company/applicants" element={<RoleRoute allowedRoles={['COMPANY']}><CompanyApplicants /></RoleRoute>} />
+          <Route path="/dashboard/company/messages" element={<RoleRoute allowedRoles={['COMPANY']}><CompanyMessages /></RoleRoute>} />
+          <Route path="/dashboard/company/verify" element={<RoleRoute allowedRoles={['COMPANY']}><CompanyVerification /></RoleRoute>} />
+          <Route path="/dashboard/company/payments" element={<RoleRoute allowedRoles={['COMPANY']}><CompanyWallet /></RoleRoute>} />
+          <Route path="/dashboard/company/analytics" element={<RoleRoute allowedRoles={['COMPANY']}><CompanyAnalytics /></RoleRoute>} />
+          <Route path="/dashboard/company/settings" element={<RoleRoute allowedRoles={['COMPANY']}><CompanySettings /></RoleRoute>} />
+          <Route path="/dashboard/company/browse" element={<RoleRoute allowedRoles={['COMPANY']}><BrowseWorkers /></RoleRoute>} />
+          <Route path="/dashboard/company/*" element={<RoleRoute allowedRoles={['COMPANY']}><CompanyDashboard /></RoleRoute>} />
           
-          <Route path="/dashboard/employer" element={<EmployerDashboard />} />
-          <Route path="/dashboard/employer/post" element={<EmployerPostTask />} />
-          <Route path="/dashboard/employer/browse" element={<BrowseWorkers />} />
-          <Route path="/dashboard/employer/messages" element={<EmployerMessages />} />
-          <Route path="/dashboard/employer/verify" element={<EmployerVerification />} />
-          <Route path="/dashboard/employer/wallet" element={<EmployerWallet />} />
-          <Route path="/dashboard/employer/settings" element={<EmployerSettings />} />
-          <Route path="/dashboard/employer/*" element={<EmployerDashboard />} />
+          <Route path="/dashboard/employer" element={<RoleRoute allowedRoles={['EMPLOYER']}><EmployerDashboard /></RoleRoute>} />
+          <Route path="/dashboard/employer/post" element={<RoleRoute allowedRoles={['EMPLOYER']}><EmployerPostTask /></RoleRoute>} />
+          <Route path="/dashboard/employer/browse" element={<RoleRoute allowedRoles={['EMPLOYER']}><BrowseWorkers /></RoleRoute>} />
+          <Route path="/dashboard/employer/messages" element={<RoleRoute allowedRoles={['EMPLOYER']}><EmployerMessages /></RoleRoute>} />
+          <Route path="/dashboard/employer/verify" element={<RoleRoute allowedRoles={['EMPLOYER']}><EmployerVerification /></RoleRoute>} />
+          <Route path="/dashboard/employer/wallet" element={<RoleRoute allowedRoles={['EMPLOYER']}><EmployerWallet /></RoleRoute>} />
+          <Route path="/dashboard/employer/settings" element={<RoleRoute allowedRoles={['EMPLOYER']}><EmployerSettings /></RoleRoute>} />
+          <Route path="/dashboard/employer/*" element={<RoleRoute allowedRoles={['EMPLOYER']}><EmployerDashboard /></RoleRoute>} />
           {/* Admin Routes */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/*" element={<AdminDashboard />} />
+          <Route path="/admin" element={<RoleRoute allowedRoles={['ADMIN']}><AdminDashboard /></RoleRoute>} />
+          <Route path="/admin/*" element={<RoleRoute allowedRoles={['ADMIN']}><AdminDashboard /></RoleRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

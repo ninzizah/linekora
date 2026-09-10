@@ -416,11 +416,21 @@ app.get('/api/verification', requireAdmin, async (_req, res) => {
 app.get('/api/jobs', async (req, res) => {
   try {
     const { urgent, category, status, employerId, includeExpired } = req.query;
+    const role = req.dbUser?.role;
+    const uid = req.dbUser?.id;
+
     const where: any = {};
+
+    // Companies/employers may only see their own jobs; workers & admins browse all.
+    if (role === 'COMPANY' || role === 'EMPLOYER') {
+      where.employerId = uid;
+    } else if (employerId) {
+      where.employerId = String(employerId);
+    }
+
     if (urgent !== undefined) where.urgent = urgent === 'true';
     if (category) where.category = category;
     if (status) where.status = status;
-    if (employerId) where.employerId = String(employerId);
 
     // Filter out expired jobs (deadline has passed) unless the manager view asks for them
     if (includeExpired !== 'true') {
@@ -430,9 +440,16 @@ app.get('/api/jobs', async (req, res) => {
       ];
     }
 
+    // Only admins see the employer's contact details (worker marketplace keeps names only).
+    const employerSelect: any = { id: true, displayName: true };
+    if (role === 'ADMIN') {
+      employerSelect.email = true;
+      employerSelect.phone = true;
+    }
+
     const jobs = await prisma.job.findMany({
       where,
-      include: { employer: { select: { id: true, displayName: true, email: true, phone: true } } },
+      include: { employer: { select: employerSelect } },
       orderBy: { createdAt: 'desc' },
     });
     res.json(jobs);
@@ -549,10 +566,21 @@ app.post('/api/jobs/:id/apply', async (req, res) => {
 app.get('/api/applications', async (req, res) => {
   try {
     const { workerId, jobId, employerId } = req.query;
+    const role = req.dbUser?.role;
+    const uid = req.dbUser?.id;
+
     const where: any = {};
     if (workerId) where.workerId = workerId;
     if (jobId) where.jobId = parseInt(jobId as string);
     if (employerId) where.job = { employerId: employerId as string };
+
+    // Workers may only see their own applications; companies/employers see only their jobs' applications.
+    if (role === 'WORKER') {
+      where.workerId = uid;
+    } else if (role === 'COMPANY' || role === 'EMPLOYER') {
+      where.job = { employerId: uid };
+    }
+    // ADMIN sees everything (no extra filter)
 
     const applications = await prisma.application.findMany({
       where,
@@ -574,6 +602,11 @@ app.post('/api/applications', async (req, res) => {
     const { jobId, workerId, teamId, applyType } = req.body;
     if (!jobId || !workerId) {
       return res.status(400).json({ error: 'jobId and workerId are required' });
+    }
+
+    // A worker may only apply on their own behalf (admins may act for any).
+    if (req.dbUser?.role !== 'ADMIN' && String(workerId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot apply as another user' });
     }
 
     const existing = await prisma.application.findUnique({
@@ -607,15 +640,28 @@ app.post('/api/applications', async (req, res) => {
 
 app.patch('/api/applications/:id', async (req, res) => {
   try {
-    const application = await prisma.application.update({
+    const application = await prisma.application.findUnique({
       where: { id: parseInt(req.params.id) },
+      include: { job: true },
+    });
+    if (!application) return res.status(404).json({ error: 'Application not found' });
+
+    // Only the job owner, the applying worker, or an admin may update an application.
+    const isJobOwner = application.job?.employerId === req.dbUser?.id;
+    const isWorker = application.workerId === req.dbUser?.id;
+    if (req.dbUser?.role !== 'ADMIN' && !isJobOwner && !isWorker) {
+      return res.status(403).json({ error: 'Forbidden: cannot update this application' });
+    }
+
+    const updated = await prisma.application.update({
+      where: { id: application.id },
       data: req.body,
       include: {
         job: { include: { employer: { select: { id: true, displayName: true } } } },
         worker: { select: { id: true, displayName: true } },
       },
     });
-    res.json(application);
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update application' });
   }
@@ -623,7 +669,20 @@ app.patch('/api/applications/:id', async (req, res) => {
 
 app.delete('/api/applications/:id', async (req, res) => {
   try {
-    await prisma.application.delete({ where: { id: parseInt(req.params.id) } });
+    const application = await prisma.application.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { job: true },
+    });
+    if (!application) return res.status(404).json({ error: 'Application not found' });
+
+    // The applying worker, the job owner, or an admin may delete it.
+    const isJobOwner = application.job?.employerId === req.dbUser?.id;
+    const isWorker = application.workerId === req.dbUser?.id;
+    if (req.dbUser?.role !== 'ADMIN' && !isJobOwner && !isWorker) {
+      return res.status(403).json({ error: 'Forbidden: cannot delete this application' });
+    }
+
+    await prisma.application.delete({ where: { id: application.id } });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete application' });
@@ -636,6 +695,10 @@ app.get('/api/notifications', async (req, res) => {
   try {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId is required' });
+    // Users may only read their own notifications (admins may read any).
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot read another user\'s notifications' });
+    }
     const notifications = await (prisma as any).notification.findMany({
       where: { userId: userId as string },
       orderBy: { createdAt: 'desc' },
@@ -650,6 +713,7 @@ app.get('/api/notifications', async (req, res) => {
 app.post('/api/notifications', async (req, res) => {
   try {
     const { userId, title, body, type, link, linkTarget } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
     const resolvedLink = link || (await resolveLinkForUser(userId, linkTarget));
     const notification = await (prisma as any).notification.create({
       data: { userId, title, body, type: type || 'info', link: resolvedLink },
@@ -690,6 +754,10 @@ app.patch('/api/notifications/read-all', async (req, res) => {
   try {
     const { userId } = req.body;
     if (!userId) return res.status(400).json({ error: 'userId is required' });
+    // Users may only mark their own notifications as read.
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot update another user\'s notifications' });
+    }
     await (prisma as any).notification.updateMany({
       where: { userId, read: false },
       data: { read: true },
@@ -702,8 +770,16 @@ app.patch('/api/notifications/read-all', async (req, res) => {
 
 app.patch('/api/notifications/:id/read', async (req, res) => {
   try {
-    const notification = await (prisma as any).notification.update({
+    const existing = await (prisma as any).notification.findUnique({
       where: { id: parseInt(req.params.id) },
+    });
+    if (!existing) return res.status(404).json({ error: 'Notification not found' });
+    // Users may only mark their own notifications as read.
+    if (req.dbUser?.role !== 'ADMIN' && existing.userId !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot update another user\'s notification' });
+    }
+    const notification = await (prisma as any).notification.update({
+      where: { id: existing.id },
       data: { read: true },
     });
     res.json(notification);
@@ -718,6 +794,10 @@ app.delete('/api/notifications/:id', async (req, res) => {
       where: { id: parseInt(req.params.id) },
     });
     if (!existing) return res.status(404).json({ error: 'Notification not found' });
+    // Users may only delete their own notifications.
+    if (req.dbUser?.role !== 'ADMIN' && existing.userId !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot delete another user\'s notification' });
+    }
     await (prisma as any).notification.delete({ where: { id: existing.id } });
     res.json({ success: true });
   } catch (error) {
@@ -731,6 +811,10 @@ app.delete('/api/notifications/:id', async (req, res) => {
 app.get('/api/messages', async (req, res) => {
   try {
     const { userId, peerId } = req.query;
+    // Users may only read their own messages.
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot read another user\'s messages' });
+    }
     const where: any = userId
       ? { OR: [{ senderId: userId }, { receiverId: userId }] }
       : {};
@@ -760,6 +844,10 @@ app.get('/api/conversations/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     if (!userId) return res.status(400).json({ error: 'userId is required' });
+    // Users may only fetch their own conversations.
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot read another user\'s conversations' });
+    }
 
     const messages = await prisma.message.findMany({
       where: {
@@ -821,6 +909,11 @@ app.post('/api/messages', async (req, res) => {
     const { content, senderId, receiverId, attachments } = req.body;
     if (!senderId || !receiverId || (content === undefined && !attachments)) {
       return res.status(400).json({ error: 'content (or attachments), senderId, and receiverId are required' });
+    }
+
+    // A user may only send messages as themselves (admins may send for any).
+    if (req.dbUser?.role !== 'ADMIN' && String(senderId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot send a message as another user' });
     }
 
     // Validate attachments: max 2 files, max 5MB each, image or pdf/doc/docx only
@@ -887,6 +980,10 @@ app.patch('/api/messages/read', async (req, res) => {
   try {
     const { userId, peerId } = req.body;
     if (!userId || !peerId) return res.status(400).json({ error: 'userId and peerId are required' });
+    // Users may only mark their own messages as read.
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot update another user\'s messages' });
+    }
     await prisma.message.updateMany({
       where: { senderId: peerId, receiverId: userId, read: false },
       data: { read: true },
@@ -902,6 +999,10 @@ app.patch('/api/conversations/prefs', async (req, res) => {
   try {
     const { userId, peerId, pinned, muted } = req.body;
     if (!userId || !peerId) return res.status(400).json({ error: 'userId and peerId are required' });
+    // Users may only update their own conversation preferences.
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot update another user\'s preferences' });
+    }
 
     const upserted = await prisma.userConversation.upsert({
       where: { userId_peerId: { userId, peerId } },
@@ -929,6 +1030,11 @@ app.post('/api/teams', async (req, res) => {
   try {
     const { name, userId, email, phone, mainSkill, location, description, logoUrl } = req.body;
     if (!name || !userId) return res.status(400).json({ error: 'name and userId are required' });
+
+    // A user may only create a team for themselves (admins may create for any).
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot create a team for another user' });
+    }
 
     const teamCode = 'TEAM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -963,6 +1069,15 @@ app.post('/api/teams', async (req, res) => {
 // Get team by ID with memberships
 app.get('/api/teams/:teamId', async (req, res) => {
   try {
+    // Only team members or admins may read the full team (includes member email/phone).
+    if (req.dbUser?.role !== 'ADMIN') {
+      const membership = await prisma.teamMembership.findFirst({
+        where: { teamId: req.params.teamId, userId: req.dbUser?.id },
+      });
+      if (!membership) {
+        return res.status(403).json({ error: 'Forbidden: not a member of this team' });
+      }
+    }
     const team = await prisma.team.findUnique({
       where: { id: req.params.teamId },
       include: {
@@ -983,6 +1098,10 @@ app.get('/api/teams/:teamId', async (req, res) => {
 // Get team membership for a user
 app.get('/api/teams/user/:userId', async (req, res) => {
   try {
+    // Users may only read their own membership (admins may read any).
+    if (req.dbUser?.role !== 'ADMIN' && String(req.params.userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot read another user\'s team membership' });
+    }
     const membership = await prisma.teamMembership.findFirst({
       where: { userId: req.params.userId },
       include: {
@@ -1001,6 +1120,11 @@ app.post('/api/teams/join', async (req, res) => {
   try {
     const { userId, teamCode, role } = req.body;
     if (!userId || !teamCode) return res.status(400).json({ error: 'userId and teamCode are required' });
+
+    // A user may only join a team for themselves (admins may join for any).
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot join a team as another user' });
+    }
 
     const team = await prisma.team.findUnique({ where: { teamCode } });
     if (!team) return res.status(404).json({ error: 'Team not found. Check the team code.' });
@@ -1029,6 +1153,17 @@ app.post('/api/teams/join', async (req, res) => {
 app.delete('/api/teams/:teamId/members/:userId', async (req, res) => {
   try {
     const { teamId, userId } = req.params;
+    // Users may only remove themselves; team super_leaders/admins may remove others.
+    if (req.dbUser?.role === 'ADMIN' || String(userId) === req.dbUser?.id) {
+      // allowed — self-removal or admin
+    } else {
+      const membership = await prisma.teamMembership.findFirst({
+        where: { teamId, userId: req.dbUser?.id },
+      });
+      if (membership?.role !== 'super_leader') {
+        return res.status(403).json({ error: 'Forbidden: only the team leader or the member themselves can remove membership' });
+      }
+    }
     await prisma.teamMembership.delete({
       where: { userId_teamId: { userId, teamId } },
     });
@@ -1043,6 +1178,11 @@ app.post('/api/teams/invite', async (req, res) => {
   try {
     const { teamId, email, phone, role, invitedBy } = req.body;
     if (!teamId || !email || !invitedBy) return res.status(400).json({ error: 'teamId, email, and invitedBy are required' });
+
+    // Invitations may only be sent by the inviting user themselves (admins may invite for any).
+    if (req.dbUser?.role !== 'ADMIN' && String(invitedBy) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot invite as another user' });
+    }
 
     const invitation = await prisma.teamInvitation.create({
       data: {
@@ -1064,6 +1204,15 @@ app.post('/api/teams/invite', async (req, res) => {
 // Get team invitations
 app.get('/api/teams/:teamId/invitations', async (req, res) => {
   try {
+    // Only team members or admins may view invitations.
+    if (req.dbUser?.role !== 'ADMIN') {
+      const membership = await prisma.teamMembership.findFirst({
+        where: { teamId: req.params.teamId, userId: req.dbUser?.id },
+      });
+      if (!membership) {
+        return res.status(403).json({ error: 'Forbidden: not a member of this team' });
+      }
+    }
     const invitations = await prisma.teamInvitation.findMany({
       where: { teamId: req.params.teamId },
       orderBy: { createdAt: 'desc' },
@@ -1111,6 +1260,11 @@ app.post('/api/teams/announcements', async (req, res) => {
     const { teamId, title, body, authorId } = req.body;
     if (!teamId || !title || !body || !authorId) return res.status(400).json({ error: 'teamId, title, body, and authorId are required' });
 
+    // Announcements may only be authored by the caller (admins may author for any).
+    if (req.dbUser?.role !== 'ADMIN' && String(authorId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot post an announcement as another user' });
+    }
+
     const announcement = await prisma.teamAnnouncement.create({
       data: { teamId, title, body, authorId },
     });
@@ -1123,6 +1277,15 @@ app.post('/api/teams/announcements', async (req, res) => {
 // Get team announcements
 app.get('/api/teams/:teamId/announcements', async (req, res) => {
   try {
+    // Only team members or admins may view announcements.
+    if (req.dbUser?.role !== 'ADMIN') {
+      const membership = await prisma.teamMembership.findFirst({
+        where: { teamId: req.params.teamId, userId: req.dbUser?.id },
+      });
+      if (!membership) {
+        return res.status(403).json({ error: 'Forbidden: not a member of this team' });
+      }
+    }
     const announcements = await prisma.teamAnnouncement.findMany({
       where: { teamId: req.params.teamId },
       orderBy: { createdAt: 'desc' },
@@ -1136,6 +1299,15 @@ app.get('/api/teams/:teamId/announcements', async (req, res) => {
 // Get team stats (member count, active jobs, announcements)
 app.get('/api/teams/:teamId/stats', async (req, res) => {
   try {
+    // Only team members or admins may view team stats.
+    if (req.dbUser?.role !== 'ADMIN') {
+      const membership = await prisma.teamMembership.findFirst({
+        where: { teamId: req.params.teamId, userId: req.dbUser?.id },
+      });
+      if (!membership) {
+        return res.status(403).json({ error: 'Forbidden: not a member of this team' });
+      }
+    }
     const { teamId } = req.params;
     const [memberCount, activeJobs, announcementCount] = await Promise.all([
       prisma.teamMembership.count({ where: { teamId } }),
@@ -1152,11 +1324,27 @@ app.get('/api/teams/:teamId/stats', async (req, res) => {
 app.patch('/api/applications/:id/assign', async (req, res) => {
   try {
     const { assignedMembers } = req.body;
-    const app_ = await prisma.application.update({
+
+    const app_ = await prisma.application.findUnique({
       where: { id: Number(req.params.id) },
+    });
+    if (!app_) return res.status(404).json({ error: 'Application not found' });
+
+    // Only admins or the team leader of the applicant team may assign members.
+    if (req.dbUser?.role !== 'ADMIN' && app_.teamId) {
+      const membership = await prisma.teamMembership.findFirst({
+        where: { teamId: app_.teamId, userId: req.dbUser?.id, role: 'super_leader' },
+      });
+      if (!membership) {
+        return res.status(403).json({ error: 'Forbidden: only the team leader or an admin may assign members' });
+      }
+    }
+
+    const updated = await prisma.application.update({
+      where: { id: app_.id },
       data: { assignedMembers: JSON.stringify(assignedMembers || []) },
     });
-    res.json(app_);
+    res.json(updated);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to assign members' });
   }
@@ -1179,6 +1367,12 @@ app.get('/api/reviews/:targetId', async (req, res) => {
 
 app.post('/api/reviews', async (req, res) => {
   try {
+    const { reviewerId } = req.body;
+    if (!reviewerId) return res.status(400).json({ error: 'reviewerId is required' });
+    // A user may only leave a review as themselves (admins may review for any).
+    if (req.dbUser?.role !== 'ADMIN' && String(reviewerId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot submit a review as another user' });
+    }
     const review = await prisma.review.create({ data: req.body });
     res.json(review);
   } catch (error: any) {

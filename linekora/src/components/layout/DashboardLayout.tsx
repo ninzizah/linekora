@@ -249,6 +249,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             }
           });
         }
+        // Also clear legacy global keys that could leak across users
+        localStorage.removeItem('worker_profile_name');
+        localStorage.removeItem('company_display_name_override');
+        localStorage.removeItem('current_username');
+        localStorage.removeItem('employer_profile_overrides');
+        localStorage.removeItem('company_bids');
+        localStorage.removeItem('company_active_jobs_count');
+        localStorage.removeItem('company_expired_jobs_count');
+        localStorage.removeItem('company_shortlist_count');
+        localStorage.removeItem('system_alerts');
+        localStorage.removeItem('company_unpaid_commission');
       } catch (e) {
         console.error('Failed to clear local session data', e);
       }
@@ -429,10 +440,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
               <div className="overflow-hidden flex-1">
                 <p className="text-sm font-bold text-gray-900 truncate font-sans">
-                {roleKey === 'worker' ? (localStorage.getItem('worker_profile_name') || user?.displayName || t('unknown_user')) :
-                 roleKey === 'company' ? (localStorage.getItem('company_display_name_override') || user?.displayName || t('unknown_user')) :
-                 roleKey === 'individual' ? (localStorage.getItem('current_username') || user?.displayName || t('unknown_user')) :
-                 (user?.displayName || t('unknown_user'))}
+                {(() => {
+                  const uid = user?.firebaseUid || '';
+                  const scopedName =
+                    roleKey === 'worker' ? localStorage.getItem(`worker_profile_name_${uid}`) :
+                    roleKey === 'company' ? localStorage.getItem(`company_name_${uid}`) :
+                    roleKey === 'individual' ? localStorage.getItem(`current_username_${uid}`) :
+                    null;
+                  return scopedName || user?.displayName || t('unknown_user');
+                })()}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className={`text-[8px] font-black uppercase tracking-[0.2em] px-1.5 py-0.5 rounded ${

@@ -83,6 +83,11 @@ export default function EmployerSettings() {
     localStorage.setItem('employer_profile_overrides', JSON.stringify(payload));
     localStorage.setItem('current_username', displayName);
     localStorage.setItem('current_user_location', location);
+    // Scoped key for DashboardLayout sidebar display name
+    const empScopedUid = profile?.firebaseUid || profile?.id || '';
+    if (empScopedUid) {
+      localStorage.setItem(`current_username_${empScopedUid}`, displayName);
+    }
 
     // Save avatar
     const empUid = profile?.firebaseUid || profile?.id || 'guest';
