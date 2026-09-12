@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Star, MessageSquare, ShieldCheck, User } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion } from 'motion/react';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage } from '../../lib/userScopedStorage';
+import { getReviews } from '../../lib/api';
 
 export default function WorkerReviews() {
   const { t } = useLanguage();
@@ -25,6 +26,32 @@ export default function WorkerReviews() {
 
     return convertedReviews;
   });
+
+  // Online source of truth: DB reviews left about this worker.
+  useEffect(() => {
+    if (!profile?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const dbReviews = await getReviews(profile.id);
+        if (cancelled) return;
+        if (dbReviews.length > 0) {
+          setReviews(dbReviews.map(r => ({
+            id: r.id,
+            author: r.reviewer?.displayName || t('employer'),
+            company: t('linekora_client'),
+            rating: r.rating,
+            comment: r.comment || t('no_comment_provided'),
+            date: new Date(r.createdAt).toLocaleDateString(),
+            task: t('reviews_task')
+          })));
+        }
+      } catch (err) {
+        console.error('Failed to load reviews', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <DashboardLayout>

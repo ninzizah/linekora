@@ -68,10 +68,10 @@ const LoadingSpinner = () => (
 const DashboardRedirect = () => {
   const { user, profile, loading } = useAuth();
   
-  if (loading || (user && !profile)) return <LoadingSpinner />;
-  
+  if (loading) return <LoadingSpinner />;
+
   if (!user) return <Navigate to="/login" />;
-  
+
   if (!profile) return <Navigate to="/select-role" />;
 
   if (profile.role === 'WORKER') return <Navigate to="/dashboard/worker" />;
@@ -88,7 +88,7 @@ const DashboardRedirect = () => {
 const RoleRoute = ({ allowedRoles, children }: { allowedRoles: string[]; children: ReactNode }) => {
   const { user, profile, loading } = useAuth();
 
-  if (loading || (user && !profile)) return <LoadingSpinner />;
+  if (loading) return <LoadingSpinner />;
 
   if (!user) return <Navigate to="/login" replace />;
   if (!profile) return <Navigate to="/select-role" replace />;
@@ -127,11 +127,28 @@ const HomeRoute = () => {
   return <Home />;
 };
 
+/** Global Ctrl + Shift + Alt + A shortcut to open the admin portal. */
+const AdminShortcut = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.altKey && e.code === 'KeyA') {
+        e.preventDefault();
+        navigate('/admin');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [navigate]);
+  return null;
+};
+
 export default function App() {
   return (
     <LanguageProvider>
       <BrowserRouter>
         <AuthProvider>
+          <AdminShortcut />
           <Routes>
           {/* Public Routes */}
           <Route path="/" element={<HomeRoute />} />
@@ -182,8 +199,11 @@ export default function App() {
           <Route path="/dashboard/employer/settings" element={<RoleRoute allowedRoles={['EMPLOYER']}><EmployerSettings /></RoleRoute>} />
           <Route path="/dashboard/employer/*" element={<RoleRoute allowedRoles={['EMPLOYER']}><EmployerDashboard /></RoleRoute>} />
           {/* Admin Routes */}
-          <Route path="/admin" element={<RoleRoute allowedRoles={['ADMIN']}><AdminDashboard /></RoleRoute>} />
-          <Route path="/admin/*" element={<RoleRoute allowedRoles={['ADMIN']}><AdminDashboard /></RoleRoute>} />
+          {/* Admin Routes — open to any authenticated user; the passkey unlock
+              gate inside AdminDashboard grants access. Backend still enforces
+              requireAdmin on all admin endpoints. */}
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/*" element={<AdminDashboard />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

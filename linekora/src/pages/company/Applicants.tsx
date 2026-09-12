@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { getApplications, updateApplication, createNotification, sendMessage } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
-import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import { useNavigate } from 'react-router-dom';
 
 interface Applicant {
@@ -66,34 +65,8 @@ export default function CompanyApplicants() {
     try {
       await updateApplication(appId, { status: newStatus });
       
-      // If hired, record active contract in local store for escrow/review workflow
-      if (newStatus === 'accepted') {
-        let contractList: any[] = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
-        const exists = contractList.some(c => c.id === app.id);
-        if (!exists) {
-          contractList.push({
-            id: app.id,
-            jobTitle: app.job?.title || 'Contract Gig',
-            company: profile?.displayName || 'Employer',
-            salary: app.job?.salary || 'RWF 20,000 / Task',
-            location: app.job?.location || 'Kigali',
-            status: 'accepted',
-            workerId: app.workerId || 'unknown',
-            workerName: app.worker?.displayName || 'Worker',
-            employerId: profile?.id,
-            employerName: profile?.displayName || 'Employer',
-            daysSinceRequest: 0,
-            rating: 0,
-            review: '',
-            commissionPaidWorker: false,
-            commissionPaidEmployer: false,
-            date: 'Active Shift Contract',
-            logo: 'PJ',
-            phone: app.worker?.phone || '+250 780 000 000'
-          });
-          writeScopedStorage(profile?.id, 'linekora_contracts', contractList);
-        }
-      }
+      // If hired, the backend automatically opens a DB-backed contract for
+      // the escrow/review workflow (no localStorage mirror needed anymore).
 
       // Notify the worker
       if (app.workerId) {

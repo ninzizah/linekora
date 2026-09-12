@@ -7,7 +7,7 @@ import { useLanguage, Language } from '../../lib/LanguageContext';
 import { useAuth } from '../../lib/AuthContext';
 import { signOut, sendPasswordResetEmail, fetchSignInMethodsForEmail, deleteUser } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
-import { deleteUserRecord } from '../../lib/api';
+import { deleteUserRecord, createNotification } from '../../lib/api';
 import { applyThemePrefs } from '../../lib/theme';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../layout/DashboardLayout';
@@ -132,23 +132,41 @@ export default function SettingsHub({ role, accountSection }: SettingsHubProps) 
       addToast(t('settings_notifications'), t('enable_inapp_first'), 'error');
       return;
     }
-    try {
-      const raw = localStorage.getItem('system_alerts');
-      const list = raw ? JSON.parse(raw) : [];
-      list.unshift({
-        id: Date.now(),
-        category: 'general',
-        title: t('test_notification_title'),
-        details: t('test_notification_body'),
-        time: t('just_now'),
-        read: false,
-      });
-      localStorage.setItem('system_alerts', JSON.stringify(list.slice(0, 30)));
-      addToast(t('settings_notifications'), t('test_notification_sent'), 'success');
-    } catch (err) {
-      console.error('Failed to send test notification:', err);
+    // DB-backed system alert so it's visible online
+    if (!profile?.id) {
       addToast(t('settings_notifications'), t('error_sending'), 'error');
+      return;
     }
+    createNotification({
+      userId: profile.id,
+      title: t('test_notification_title'),
+      body: t('test_notification_body'),
+      type: 'info',
+      linkTarget: 'settings',
+    })
+      .then(() => {
+        // Also mirror into the local feed so it shows immediately
+        try {
+          const raw = localStorage.getItem('system_alerts');
+          const list = raw ? JSON.parse(raw) : [];
+          list.unshift({
+            id: Date.now(),
+            category: 'general',
+            title: t('test_notification_title'),
+            details: t('test_notification_body'),
+            time: t('just_now'),
+            read: false,
+          });
+          localStorage.setItem('system_alerts', JSON.stringify(list.slice(0, 30)));
+        } catch (err) {
+          console.error('Failed to mirror test alert', err);
+        }
+        addToast(t('settings_notifications'), t('test_notification_sent'), 'success');
+      })
+      .catch((err) => {
+        console.error('Failed to send test notification:', err);
+        addToast(t('settings_notifications'), t('error_sending'), 'error');
+      });
   };
 
   const handleLogout = async () => {

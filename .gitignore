@@ -43,3 +43,11 @@ coverage/
 DPO_Registration_Answers_For_Yves.md
 Data-Controller-Registration-Form.pdf
 karamera 2.docx
+
+# Local scratch / media (never commit these)
+full
+projects
+video.mp4
+*.jpeg
+*.png
+WhatsApp Image*

@@ -20,33 +20,54 @@ const getApiBase = () => {
 
 const API_BASE = getApiBase();
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(path: string, options?: RequestInit & { timeoutMs?: number }): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
-  // Attach the current user's Firebase ID token so the backend can verify it.
-  const user = auth.currentUser;
-  if (user) {
-    try {
-      const token = await getIdToken(user);
-      headers['Authorization'] = `Bearer ${token}`;
-    } catch {
-      // No valid token available — the backend will reject protected routes with 401.
+  // Standalone admin operator token (no Firebase account needed). Take priority
+  // so the Admin Portal works even without a signed-in LINEKORA user.
+  const operatorToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_operator_token') : null;
+  if (operatorToken) {
+    headers['Authorization'] = `Operator ${operatorToken}`;
+  } else {
+    // Attach the current user's Firebase ID token so the backend can verify it.
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        const token = await getIdToken(user);
+        headers['Authorization'] = `Bearer ${token}`;
+      } catch {
+        // No valid token available — the backend will reject protected routes with 401.
+      }
     }
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers,
-    ...options,
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    // Treat 401 as "not logged in" so callers can redirect to sign-in.
-    if (res.status === 401) {
-      throw new Error('Unauthorized: please sign in again');
+  const { timeoutMs, ...fetchOptions } = options || {};
+  const controller = timeoutMs ? new AbortController() : undefined;
+  const timer = timeoutMs ? setTimeout(() => controller!.abort(), timeoutMs) : undefined;
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      headers,
+      ...fetchOptions,
+      ...(controller ? { signal: controller.signal } : {}),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      // Treat 401 as "not logged in" so callers can redirect to sign-in.
+      if (res.status === 401) {
+        throw new Error('Unauthorized: please sign in again');
+      }
+      throw new Error(errorData.error || `API error: ${res.status}`);
     }
-    throw new Error(errorData.error || `API error: ${res.status}`);
+    return res.json();
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Request timed out. Please check your connection and try again.');
+    }
+    throw err;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
-  return res.json();
 }
 
 // ─── STATS ───────────────────────────────────────────────────────────────────
@@ -76,6 +97,10 @@ export interface UserProfile {
   skills?: string;
   experience?: string;
   education?: string;
+  certificates?: string;
+  portfolio?: string;
+  cvFile?: string;
+  cvFilename?: string;
   registrationNumber?: string;
   taxId?: string;
   trustScore: number;
@@ -108,11 +133,13 @@ export const deleteUserRecord = (id: string) =>
 
 export const getUsers = () => request<UserProfile[]>('/users');
 
-// Authenticate the current Firebase account as admin with the operator credentials.
+// Standalone admin shortcut: exchange the operator credentials for a signed,
+// expiring operator token. No LINEKORA/Firebase account required.
 export const unlockAdmin = (username: string, passkey: string) =>
-  request<{ success: boolean; role: string }>('/admin/unlock', {
+  request<{ success: boolean; token: string; role: string }>('/operator/unlock', {
     method: 'POST',
     body: JSON.stringify({ username, passkey }),
+    timeoutMs: 15000,
   });
 
 // Scoped worker directory (minimal public fields, no email/phone)
@@ -409,3 +436,107 @@ export const getTeamStats = (teamId: string) =>
 
 export const assignMembers = (applicationId: number, assignedMembers: string[]) =>
   request<Application>(`/applications/${applicationId}/assign`, { method: 'PATCH', body: JSON.stringify({ assignedMembers }) });
+
+// ─── CONTRACTS (contract lifecycle, DB-backed) ───────────────────────────────
+
+export interface Contract {
+  id: number;
+  applicationId?: number | null;
+  jobId?: number | null;
+  jobTitle: string;
+  company: string;
+  salary: string;
+  location: string;
+  status: 'accepted' | 'completion_requested' | 'still_in_progress' | 'disputed' | 'completed' | 'not_trusted';
+  workerId: string;
+  workerName?: string;
+  employerId: string;
+  employerName: string;
+  daysSinceRequest: number;
+  rating?: number | null;
+  review?: string | null;
+  commissionPaidWorker: boolean;
+  commissionPaidEmployer: boolean;
+  logo?: string | null;
+  phone?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  worker?: Pick<UserProfile, 'id' | 'displayName'>;
+}
+
+export const getContracts = (params: { workerId?: string; employerId?: string }) => {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+  ).toString();
+  return request<Contract[]>(`/contracts${qs ? `?${qs}` : ''}`);
+};
+
+export const createContract = (data: { applicationId: number } | {
+  jobTitle: string;
+  company?: string;
+  salary?: string;
+  location?: string;
+  workerId: string;
+  employerId: string;
+  employerName?: string;
+  logo?: string;
+  status?: string;
+  phone?: string;
+}) =>
+  request<Contract>('/contracts', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateContract = (id: number, data: Partial<Contract>) =>
+  request<Contract>(`/contracts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+// ─── SAVED JOBS ──────────────────────────────────────────────────────────────
+
+export interface SavedJob {
+  id: number;
+  userId: string;
+  jobId: number;
+  createdAt: string;
+  job: Job;
+}
+
+export const getSavedJobs = (userId: string) =>
+  request<SavedJob[]>(`/saved-jobs?userId=${userId}`);
+
+export const saveJob = (userId: string, jobId: number) =>
+  request<SavedJob>('/saved-jobs', { method: 'POST', body: JSON.stringify({ userId, jobId }) });
+
+export const deleteSavedJob = (id: number) =>
+  request<{ success: boolean }>(`/saved-jobs/${id}`, { method: 'DELETE' });
+
+// ─── BIDS (company subcontracting) ───────────────────────────────────────────
+
+export interface Bid {
+  id: number;
+  companyId: string;
+  jobId?: number | null;
+  leadTitle?: string | null;
+  proposedPrice: number;
+  proposedStaff: number;
+  coverLetter: string;
+  timeline: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  job?: Job;
+  company?: Pick<UserProfile, 'id' | 'displayName' | 'avatarUrl'>;
+}
+
+export const getBids = (params: { companyId?: string; jobId?: number }) => {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+  ).toString();
+  return request<Bid[]>(`/bids${qs ? `?${qs}` : ''}`);
+};
+
+export const createBid = (data: { companyId: string; jobId?: number; leadTitle?: string; proposedPrice: number; proposedStaff: number; coverLetter?: string; timeline?: string }) =>
+  request<Bid>('/bids', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateBid = (id: number, data: Partial<Bid>) =>
+  request<Bid>(`/bids/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const deleteBid = (id: number) =>
+  request<{ success: boolean }>(`/bids/${id}`, { method: 'DELETE' });

@@ -30,7 +30,7 @@ interface AuditLog {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { refreshProfile } = useAuth();
   const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
@@ -39,18 +39,30 @@ export default function AdminDashboard() {
   const [showInactivityWarning, setShowInactivityWarning] = useState(false);
 
   // ─── ADMIN UNLOCK (legacy shortcut gate) ──────────────────────────────────
-  const [unlockOpen, setUnlockOpen] = useState(() => sessionStorage.getItem('admin_unlocked') !== '1');
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('admin_unlocked') === '1');
+  const [unlockOpen, setUnlockOpen] = useState(() => sessionStorage.getItem('admin_unlocked') !== '1' || !sessionStorage.getItem('admin_operator_token'));
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem('admin_unlocked') === '1' && !!sessionStorage.getItem('admin_operator_token'));
+  const [unlockServerError, setUnlockServerError] = useState<string | null>(null);
 
   const handleUnlock = async (username: string, passkey: string) => {
+    setUnlockServerError(null);
     try {
-      await unlockAdmin(username, passkey);
+      const res = await unlockAdmin(username, passkey);
+      sessionStorage.setItem('admin_operator_token', res.token);
       sessionStorage.setItem('admin_unlocked', '1');
       setUnlocked(true);
       setUnlockOpen(false);
+      refreshProfile();
       fetchAll();
     } catch (err: any) {
-      setNotification({ id: Date.now(), message: err.message || 'Failed to unlock admin', type: 'error' });
+      setUnlockServerError(err.message || 'Failed to unlock admin');
+      setUnlockOpen(true);
+    }
+  };
+
+  const handleCloseUnlock = () => {
+    if (!unlocked) {
+      navigate('/');
+    } else {
       setUnlockOpen(false);
     }
   };
@@ -102,21 +114,32 @@ export default function AdminDashboard() {
   };
 
   const fetchAll = async () => {
-    try {
-      const [apiUsers, apiJobs, apiApps, pending, apiStats] = await Promise.all([
-        getUsers(),
-        getJobs({ includeExpired: true }),
-        getApplications({}),
-        getPendingVerifications(),
-        getStats(),
-      ]);
-      setUsers(apiUsers.filter(u => u.role !== 'ADMIN'));
-      setJobs(apiJobs);
-      setApplications(apiApps);
-      setVerificationQueue(pending);
-      setStats(apiStats);
-    } catch (err) {
-      console.error('Failed to fetch admin data', err);
+    // allSettled: one failing endpoint must never blank the whole dashboard.
+    const [apiUsers, apiJobs, apiApps, pending, apiStats] = await Promise.allSettled([
+      getUsers(),
+      getJobs({ includeExpired: true }),
+      getApplications({}),
+      getPendingVerifications(),
+      getStats(),
+    ]);
+    if (apiUsers.status === 'fulfilled') setUsers(apiUsers.value.filter(u => u.role !== 'ADMIN'));
+    if (apiJobs.status === 'fulfilled') setJobs(apiJobs.value);
+    if (apiApps.status === 'fulfilled') setApplications(apiApps.value);
+    if (pending.status === 'fulfilled') setVerificationQueue(pending.value);
+    if (apiStats.status === 'fulfilled') setStats(apiStats.value);
+
+    const rejected = [apiUsers, apiJobs, apiApps, pending].filter(
+      (r): r is PromiseRejectedResult => r.status === 'rejected'
+    );
+    if (rejected.some(r => String(r.reason?.message || '').toLowerCase().includes('unauthorized'))) {
+      // Expired/invalid operator session — lock the portal again.
+      sessionStorage.removeItem('admin_operator_token');
+      sessionStorage.removeItem('admin_unlocked');
+      setUnlocked(false);
+      setUnlockOpen(true);
+      setUnlockServerError('Your admin session has expired. Unlock again to continue.');
+    } else if (rejected.length > 0) {
+      console.error('Some admin data failed to load', rejected.map(r => r.reason));
     }
   };
 
@@ -178,6 +201,10 @@ export default function AdminDashboard() {
 
   const handleLogoutAdmin = async () => {
     triggerNotification(t('toast_logging_out'), "info");
+    sessionStorage.removeItem('admin_operator_token');
+    sessionStorage.removeItem('admin_unlocked');
+    setUnlocked(false);
+    setUnlockOpen(false);
     try {
       await signOut(auth);
     } catch (err) {
@@ -1911,8 +1938,10 @@ export default function AdminDashboard() {
       {/* ADMIN UNLOCK (legacy shortcut) */}
       <AdminUnlockModal
         isOpen={unlockOpen}
-        onClose={() => setUnlockOpen(false)}
+        onClose={handleCloseUnlock}
         onSuccess={handleUnlock}
+        serverError={unlockServerError}
+        onDismissServerError={() => setUnlockServerError(null)}
       />
 
     </div>

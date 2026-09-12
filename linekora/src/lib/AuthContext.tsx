@@ -17,12 +17,22 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
 });
 
+/** Races a promise against a deadline so slow/hung requests can't block the UI forever. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Request timed out')), ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 /** Tries to fetch user profile from DB with retries (handles signup race condition) */
-async function fetchProfileWithRetry(firebaseUser: User, retries = 4, delayMs = 800): Promise<UserProfile | null> {
+async function fetchProfileWithRetry(firebaseUser: User, retries = 3, delayMs = 700, attemptTimeoutMs = 8000): Promise<UserProfile | null> {
   for (let i = 0; i < retries; i++) {
     try {
-      const data = await getUser(firebaseUser.uid);
-      return data;
+      return await withTimeout(getUser(firebaseUser.uid), attemptTimeoutMs);
     } catch {
       if (i < retries - 1) {
         await new Promise((r) => setTimeout(r, delayMs));
@@ -63,6 +73,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     handleRedirect();
 
+    // Last-resort guard: if Firebase auth never resolves (SDK hang), release
+    // the loading spinner after a fixed delay instead of spinning forever.
+    const authTimeout = setTimeout(() => {
+      profileReqId.current += 1;
+      setLoading(false);
+    }, 15000);
+
     const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       // Invalidate any in-flight profile fetch for a previous session/user.
       profileReqId.current += 1;
@@ -71,14 +88,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser) {
         // Keep loading=true until the profile resolves so routes never render
         // with a null profile right after login (avoids false /select-role redirects).
-        await fetchProfile(firebaseUser);
+        // Hard cap the whole wait so "Securing session..." can never spin forever.
+        await withTimeout(fetchProfile(firebaseUser), 10000).catch(() => {});
       } else {
         setProfile(null);
       }
       setLoading(false);
     });
 
-    return () => unsubAuth();
+    return () => {
+      clearTimeout(authTimeout);
+      unsubAuth();
+    };
   }, []);
 
   return (

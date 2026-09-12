@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import { useLanguage } from '../../lib/LanguageContext';
-import { getApplications, updateApplication, deleteApplication, createNotification, Application as ApiApplication } from '../../lib/api';
+import { getApplications, updateApplication, deleteApplication, createNotification, getContracts, createContract, updateContract, Application as ApiApplication } from '../../lib/api';
 
 interface Application {
   id: number;
@@ -51,6 +51,9 @@ export default function WorkerApplications() {
   const [loading, setLoading] = useState(true);
   const [apps, setApps] = useState<any[]>([]);
 
+  // Maps application id -> DB contract id so status updates hit the API correctly.
+  const [dbContractMap, setDbContractMap] = useState<Record<number, number>>({});
+
   // Worker review states
   const [showWorkerReviewForm, setShowWorkerReviewForm] = useState(false);
   const [workerRating, setWorkerRating] = useState(5);
@@ -84,31 +87,89 @@ export default function WorkerApplications() {
       const apiApps = await getApplications({ workerId: profile.id });
       const formattedApi = apiApps.map(formatApiApp);
 
-      const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
-      const myContracts = contractList.filter(c => c.workerId === profile?.id);
-      const formattedContracts = myContracts.map(c => ({
-        id: c.id,
-        jobTitle: c.jobTitle,
-        company: c.company,
-        location: c.location,
-        salary: c.salary,
-        status: c.status,
-        date: c.status === 'accepted' ? t('active_shift_contract') : 
-              c.status === 'completion_requested' ? t('completion_requested') : 
-              c.status === 'completed' ? t('contract_completed') : 
-              c.status === 'still_in_progress' ? t('revision_in_progress') : 
-              c.status === 'disputed' ? t('disputed_milestone') : t('flagged_untrusted'),
-        logo: c.logo || 'PJ',
-        phone: c.phone || '',
-        description: c.description || t('milestone_opportunity_desc'),
-        employerId: c.employerId,
-        isContract: true
-      }));
+      // DB-backed contracts are the source of truth; local store is a cache fallback.
+      const contractMap: Record<number, number> = {};
+      const apiContracts = await getContracts({ workerId: profile.id });
+      const formattedContracts = apiContracts.map(c => {
+        contractMap[c.applicationId] = c.id;
+        return {
+          id: c.applicationId,
+          dbContractId: c.id,
+          jobTitle: c.jobTitle,
+          company: c.company,
+          location: c.location,
+          salary: c.salary,
+          status: c.status,
+          date: c.status === 'accepted' ? t('active_shift_contract') :
+                c.status === 'completion_requested' ? t('completion_requested') :
+                c.status === 'completed' ? t('contract_completed') :
+                c.status === 'still_in_progress' ? t('revision_in_progress') :
+                c.status === 'disputed' ? t('disputed_milestone') : t('flagged_untrusted'),
+          logo: c.logo || 'PJ',
+          phone: c.phone || '',
+          description: c.review || t('milestone_opportunity_desc'),
+          employerId: c.employerId,
+          isContract: true,
+          apiContract: true,
+        };
+      });
+      setDbContractMap(contractMap);
+
+      if (apiContracts.length === 0) {
+        // Fallback to the legacy local cache so pre-migration contracts still show.
+        const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
+        const myContracts = contractList.filter(c => c.workerId === profile?.id);
+        const legacyContracts = myContracts.map(c => ({
+          id: c.id,
+          jobTitle: c.jobTitle,
+          company: c.company,
+          location: c.location,
+          salary: c.salary,
+          status: c.status,
+          date: c.status === 'accepted' ? t('active_shift_contract') :
+                c.status === 'completion_requested' ? t('completion_requested') :
+                c.status === 'completed' ? t('contract_completed') :
+                c.status === 'still_in_progress' ? t('revision_in_progress') :
+                c.status === 'disputed' ? t('disputed_milestone') : t('flagged_untrusted'),
+          logo: c.logo || 'PJ',
+          phone: c.phone || '',
+          description: c.description || t('milestone_opportunity_desc'),
+          employerId: c.employerId,
+          isContract: true,
+        }));
+        setApps([...formattedApi.filter(a => !legacyContracts.some(l => l.id === a.id)), ...legacyContracts]);
+        return;
+      }
 
       const contractIds = new Set(formattedContracts.map(c => c.id));
       setApps([...formattedApi.filter(a => !contractIds.has(a.id)), ...formattedContracts]);
     } catch (err) {
       console.error('Failed to load applications', err);
+      try {
+        const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
+        const myContracts = contractList.filter(c => c.workerId === profile?.id);
+        const legacyContracts = myContracts.map(c => ({
+          id: c.id,
+          jobTitle: c.jobTitle,
+          company: c.company,
+          location: c.location,
+          salary: c.salary,
+          status: c.status,
+          date: c.status === 'accepted' ? t('active_shift_contract') :
+                c.status === 'completion_requested' ? t('completion_requested') :
+                c.status === 'completed' ? t('contract_completed') :
+                c.status === 'still_in_progress' ? t('revision_in_progress') :
+                c.status === 'disputed' ? t('disputed_milestone') : t('flagged_untrusted'),
+          logo: c.logo || 'PJ',
+          phone: c.phone || '',
+          description: c.description || t('milestone_opportunity_desc'),
+          employerId: c.employerId,
+          isContract: true,
+        }));
+        setApps(legacyContracts);
+      } catch (e) {
+        setApps([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -121,14 +182,7 @@ export default function WorkerApplications() {
     writeScopedStorage(profile?.id, 'worker_applications', appsOnly);
   };
 
-  // Mirror a contract change into the employer's store so their dashboard can act on it
-  const syncEmployerContract = (employerId: string | undefined, update: (list: any[]) => any[]) => {
-    if (!employerId) return;
-    const list = readScopedStorage<any[]>(employerId, 'linekora_contracts', []);
-    writeScopedStorage(employerId, 'linekora_contracts', update(list));
-  };
-
-  // Dispatch a notification + system alert to the employer who owns the job
+  // Dispatch a database notification to the employer who owns the job
   const notifyEmployer = async (employerId: string | undefined, title: string, body: string, type: 'success' | 'urgent', linkTarget?: string) => {
     if (!employerId) return;
     try {
@@ -136,17 +190,6 @@ export default function WorkerApplications() {
     } catch (err) {
       console.error('Failed to notify employer', err);
     }
-    const alerts = readScopedStorage<any[]>(employerId, 'system_alerts', []);
-    alerts.push({
-      id: Date.now().toString(),
-      category: type,
-      title,
-      details: body,
-      time: t('just_now'),
-      read: false,
-      link: '/dashboard/company/applicants'
-    });
-    writeScopedStorage(employerId, 'system_alerts', alerts);
   };
 
   const handleDeclineOrReject = async (id: number) => {
@@ -160,14 +203,20 @@ export default function WorkerApplications() {
         console.error('Failed to reject application', err);
       }
     } else {
+      // DB-backed contract: persist the status to the API
+      const dbContractId = declinedApp?.dbContractId ?? dbContractMap[id];
+      if (dbContractId) {
+        try {
+          await updateContract(dbContractId, { status: 'rejected' } as any);
+        } catch (err) {
+          console.error('Failed to reject contract', err);
+        }
+      }
       const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
       const updatedContracts = contractList.map(c => 
         c.id === id ? { ...c, status: 'rejected' } : c
       );
       writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
-      syncEmployerContract(declinedApp?.employerId, list => list.map(c =>
-        c.id === id ? { ...c, status: 'rejected' } : c
-      ));
     }
 
     // Notify the employer so they know the worker declined their offer
@@ -180,18 +229,14 @@ export default function WorkerApplications() {
         'contracts'
       );
 
-      // Push alert
-      const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
-      alertsArr.push({
-        id: Date.now().toString(),
-        category: 'urgent',
-        title: t('job_offer_declined'),
-        details: t('offer_declined_details', { name: profile?.displayName || t('worker'), title: declinedApp.jobTitle }),
-        time: t('just_now'),
-        read: false,
-        link: '/dashboard/worker/applications'
-      });
-      writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
+      // Push alert (DB notification is the online source for the alerts panel)
+      if (profile?.id) {
+        try {
+          await createNotification({ userId: profile.id, title: t('job_offer_declined'), body: t('offer_declined_details', { name: profile?.displayName || t('worker'), title: declinedApp.jobTitle }), type: 'urgent', linkTarget: 'applications' });
+        } catch (err) {
+          console.error('Failed to create alert', err);
+        }
+      }
     }
 
     const updated = apps.map(ap => 
@@ -243,34 +288,13 @@ export default function WorkerApplications() {
     if (acceptedApp) {
       const employerId = acceptedApp.employerId;
 
-      // Mirror the accepted contract into the employer's store so they can track/approve it
-      syncEmployerContract(employerId, list => {
-        const exists = list.some(c => c.id === id);
-        if (!exists) {
-          return [...list, {
-            id: acceptedApp.id,
-            jobTitle: acceptedApp.jobTitle,
-            company: acceptedApp.company,
-            salary: acceptedApp.salary,
-            location: acceptedApp.location,
-            status: 'accepted',
-            workerId: profile?.id,
-            workerName: profile?.displayName || t('worker'),
-            employerId,
-            employerName: acceptedApp.company,
-            daysSinceRequest: 0,
-            rating: 0,
-            review: '',
-            commissionPaidWorker: false,
-            commissionPaidEmployer: false,
-            date: t('active_shift_contract'),
-            logo: acceptedApp.logo,
-            phone: acceptedApp.phone,
-            description: acceptedApp.description
-          }];
-        }
-        return list.map(c => c.id === id ? { ...c, status: 'accepted', date: t('active_shift_contract') } : c);
-      });
+      // The backend auto-opens a DB-backed contract when the application is
+      // accepted; create it explicitly (idempotent) so it's guaranteed to exist.
+      try {
+        await createContract({ applicationId: id });
+      } catch (err) {
+        console.error('Failed to create contract', err);
+      }
 
       // Notify the employer who provided the job
       await notifyEmployer(
@@ -281,7 +305,7 @@ export default function WorkerApplications() {
         'contracts'
       );
 
-      // Worker's own contract store
+      // Worker's own contract store (local cache for optimistic UI)
       let contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
 
       const exists = contractList.some(c => c.id === id);
@@ -315,18 +339,13 @@ export default function WorkerApplications() {
       }
       writeScopedStorage(profile?.id, 'linekora_contracts', contractList);
 
-      // Push alert
-      const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
-      alertsArr.push({
-        id: Date.now().toString(),
-        category: 'success',
-        title: t('job_offer_approved'),
-        details: t('offer_approved_details', { name: profile?.displayName || t('worker'), title: acceptedApp.jobTitle }),
-        time: t('just_now'),
-        read: false,
-        link: '/dashboard/worker/applications'
-      });
-      writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
+      // Push alert (DB-backed)
+      if (profile?.id) {
+        try {
+          await createNotification({ userId: profile.id, title: t('job_offer_approved'), body: t('offer_approved_details', { name: profile?.displayName || t('worker'), title: acceptedApp.jobTitle }), type: 'success', linkTarget: 'applications' });
+        } catch (err) {
+          console.error('Failed to create alert', err);
+        }
       }
 
       const updated = apps.map(ap => 
@@ -340,12 +359,23 @@ export default function WorkerApplications() {
         title: t('congratulations'),
         message: t('contract_accepted_message')
       });
+    }
   };
 
   const handleRequestCompletion = (id: number) => {
     setIsProcessing(true);
     const target = apps.find(ap => ap.id === id);
     setTimeout(async () => {
+      // Persist the completion request to the DB contract, then to the cache
+      const dbContractId = target?.dbContractId ?? dbContractMap[id];
+      if (dbContractId) {
+        try {
+          await updateContract(dbContractId, { status: 'completion_requested' });
+        } catch (err) {
+          console.error('Failed to request completion', err);
+        }
+      }
+
       // 1. Read existing contract list
       const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
 
@@ -355,12 +385,7 @@ export default function WorkerApplications() {
       );
       writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
 
-      // 3. Mirror the completion request into the employer's store so they can approve it
-      syncEmployerContract(target?.employerId, list => list.map(c =>
-        c.id === id ? { ...c, status: 'completion_requested', date: t('completion_pending') } : c
-      ));
-
-      // 4. Notify the employer (database notification + their system alerts)
+      // 3. Notify the employer (database notification)
       await notifyEmployer(
         target?.employerId,
         t('completion_requested_alert'),
@@ -388,14 +413,20 @@ export default function WorkerApplications() {
     setIsProcessing(true);
     const target = apps.find(ap => ap.id === id);
     setTimeout(async () => {
+      // Persist to the DB contract, then to the cache
+      const dbContractId = target?.dbContractId ?? dbContractMap[id];
+      if (dbContractId) {
+        try {
+          await updateContract(dbContractId, { status: 'completion_requested' });
+        } catch (err) {
+          console.error('Failed to update contract', err);
+        }
+      }
       const contractList = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
       const updatedContracts = contractList.map(c => 
         c.id === id ? { ...c, status: 'completion_requested', date: t('completion_pending') } : c
       );
       writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
-      syncEmployerContract(target?.employerId, list => list.map(c =>
-        c.id === id ? { ...c, status: 'completion_requested', date: t('completion_pending') } : c
-      ));
       await notifyEmployer(
         target?.employerId,
         t('job_approved_finished'),
@@ -426,9 +457,6 @@ export default function WorkerApplications() {
         c.id === reviewingContract.id ? { ...c, workerRating, workerReview: workerReviewText || t('great_employer') } : c
       );
       writeScopedStorage(profile?.id, 'linekora_contracts', updatedContracts);
-      syncEmployerContract(reviewingContract.employerId, list => list.map(c =>
-        c.id === reviewingContract.id ? { ...c, workerRating, workerReview: workerReviewText || t('great_employer') } : c
-      ));
       const refreshedApps = apps.map(ap => 
         ap.id === reviewingContract.id ? { ...ap, workerRating, workerReview: workerReviewText || t('great_employer') } : ap
       );

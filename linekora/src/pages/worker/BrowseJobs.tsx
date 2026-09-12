@@ -8,7 +8,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
-import { getJobs, createApplication, createNotification, Job } from '../../lib/api';
+import { getJobs, createApplication, createNotification, getSavedJobs, saveJob, deleteSavedJob, Job } from '../../lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useLanguage } from '../../lib/LanguageContext';
 
@@ -34,6 +34,8 @@ export default function BrowseJobs() {
   const [savedIds, setSavedIds] = useState<Set<number>>(() => {
     return new Set(readScopedStorage<number[]>(profile?.id, 'saved_job_ids', []));
   });
+  // Maps jobId -> DB SavedJob record id so unsaving hits the API correctly.
+  const [savedRecordMap, setSavedRecordMap] = useState<Map<number, number>>(new Map());
 
   // Filter states
   const [filterCategory, setFilterCategory] = useState('');
@@ -69,6 +71,17 @@ export default function BrowseJobs() {
     // Load previously applied IDs
     const cached = readScopedStorage<number[]>(profile?.id, 'applied_job_ids', []);
     setAppliedIds(new Set(cached));
+    // Load DB-backed saved jobs (source of truth)
+    if (profile?.id) {
+      getSavedJobs(profile.id)
+        .then((saved) => {
+          const ids = new Set(saved.map(s => s.jobId));
+          setSavedIds(ids);
+          setSavedRecordMap(new Map(saved.map(s => [s.jobId, s.id])));
+          writeScopedStorage(profile.id, 'saved_job_ids', [...ids]);
+        })
+        .catch((err) => console.error('Failed to load saved jobs', err));
+    }
   }, [filterUrgent, filterCategory]);
 
   const handleApply = async (job: Job) => {
@@ -118,10 +131,33 @@ export default function BrowseJobs() {
     }
   };
 
-  const handleSave = (jobId: number) => {
+  const handleSave = async (jobId: number) => {
+    if (!profile?.id) return;
     const updated = new Set(savedIds);
-    if (updated.has(jobId)) { updated.delete(jobId); } 
-    else { updated.add(jobId); }
+    if (updated.has(jobId)) {
+      updated.delete(jobId);
+      const recordId = savedRecordMap.get(jobId);
+      if (recordId) {
+        deleteSavedJob(recordId).catch((err) => console.error('Failed to unsave job', err));
+      }
+    } else {
+      updated.add(jobId);
+      try {
+        const created = await saveJob(profile.id, jobId);
+        setSavedRecordMap(prev => {
+          const next = new Map(prev);
+          next.set(jobId, created.id);
+          return next;
+        });
+      } catch (err: any) {
+        if (err.message?.includes('already saved')) {
+          getSavedJobs(profile.id).then(saved => setSavedRecordMap(new Map(saved.map(s => [s.jobId, s.id])))).catch(() => {});
+        } else {
+          updated.delete(jobId);
+          showToast(err.message || t('failed_to_save_job'), 'error');
+        }
+      }
+    }
     setSavedIds(updated);
     writeScopedStorage(profile?.id, 'saved_job_ids', [...updated]);
   };

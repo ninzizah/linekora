@@ -7,9 +7,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../lib/AuthContext';
 import { useLanguage } from '../lib/LanguageContext';
 import { readScopedStorage, writeScopedStorage } from '../lib/userScopedStorage';
+import { getContracts, updateContract, createNotification, Contract as ApiContract } from '../lib/api';
 
 interface Contract {
   id: number;
+  applicationId: number;
   jobTitle: string;
   company: string;
   salary: string;
@@ -53,44 +55,73 @@ export default function ActiveContractsResolver() {
     localStorage.setItem('company_completed_jobs_since_last_payment', '0');
   }, []);
 
+  // Map an API contract row into the local display shape (date derived from status)
+  const mapApiContract = (c: ApiContract): Contract => ({
+    id: c.id,
+    applicationId: c.applicationId,
+    jobTitle: c.jobTitle,
+    company: c.company,
+    salary: c.salary,
+    location: c.location,
+    status: c.status,
+    workerId: c.workerId,
+    workerName: (c as any).worker?.displayName || 'Worker',
+    employerId: c.employerId,
+    employerName: c.employerName,
+    daysSinceRequest: c.daysSinceRequest,
+    rating: c.rating || 0,
+    review: c.review || '',
+    commissionPaidWorker: c.commissionPaidWorker,
+    commissionPaidEmployer: c.commissionPaidEmployer,
+    date: c.status === 'accepted' ? t('active_shift_contract') :
+          c.status === 'completion_requested' ? t('completion_requested') :
+          c.status === 'still_in_progress' ? t('revision_pending') :
+          c.status === 'disputed' ? t('disputed_milestone') :
+          c.status === 'not_trusted' ? t('flagged_untrusted') : t('contract_approved'),
+    logo: c.logo || 'PJ',
+    phone: c.phone || undefined,
+  });
+
   useEffect(() => {
     loadContracts();
 
-    // Real-time sync: reload contracts when another tab/page updates localStorage
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === `linekora_contracts_${profile?.id}`) {
-        loadContracts();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-
-    // Also poll every 4 seconds as a fallback for same-tab updates
-    const interval = setInterval(loadContracts, 4000);
+    // Real-time sync: reload contracts when the DB-driven poll refreshes
+    const interval = setInterval(loadContracts, 5000);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
     };
   }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadContracts = () => {
-    const cached = readScopedStorage<Contract[]>(profile?.id, 'linekora_contracts', []);
-    setContracts(cached);
+  const loadContracts = async () => {
+    try {
+      const apiContracts = await getContracts({});
+      setContracts(apiContracts.map(mapApiContract));
+    } catch (err) {
+      // Fallback to the local cache (pre-migration data / offline)
+      const cached = readScopedStorage<Contract[]>(profile?.id, 'linekora_contracts', []);
+      setContracts(cached);
+    }
   };
 
-  const updateContractInDatabase = (updatedList: Contract[]) => {
+  // Persist any changed contracts to the DB; always updates state + cache
+  const updateContractInDatabase = async (updatedList: Contract[]) => {
     setContracts(updatedList);
     writeScopedStorage(profile?.id, 'linekora_contracts', updatedList);
-  };
-
-  // Mirror the updated contract into the worker's store so their Applications page stays in sync
-  const mirrorToWorker = (contract: Contract) => {
-    if (!contract.workerId) return;
-    const workerList = readScopedStorage<Contract[]>(contract.workerId, 'linekora_contracts', []);
-    if (workerList.some(c => c.id === contract.id)) {
-      writeScopedStorage(contract.workerId, 'linekora_contracts', workerList.map(c => c.id === contract.id ? { ...contract } : c));
-    } else {
-      writeScopedStorage(contract.workerId, 'linekora_contracts', [...workerList, { ...contract }]);
+    const changed = updatedList.filter(n => {
+      const prev = contracts.find(c => c.id === n.id);
+      return !prev || prev.status !== n.status || prev.rating !== n.rating || prev.review !== n.review;
+    });
+    for (const c of changed) {
+      try {
+        await updateContract(c.id, {
+          status: c.status,
+          rating: c.rating,
+          review: c.review,
+        });
+      } catch (err) {
+        console.error('Failed to sync contract status', err);
+      }
     }
   };
 
@@ -152,25 +183,26 @@ export default function ActiveContractsResolver() {
       }
 
       updateContractInDatabase(updatedContracts as Contract[]);
-      mirrorToWorker(updatedContracts.find(c => c.id === id) as Contract);
       setIsSubmitingAction(false);
       setActionSuccessMessage(t('contract_state_updated', { status: status.replace('_', ' ').toUpperCase() }));
       setTimeout(() => setActionSuccessMessage(null), 3000);
     }, 1000);
   };
 
-  const logSystemAlert = (category: 'urgent' | 'success' | 'info', title: string, details: string, link?: string) => {
-    const alertsArr = readScopedStorage<any[]>(profile?.id, 'system_alerts', []);
-    alertsArr.push({
-      id: Date.now().toString(),
-      category,
-      title,
-      details,
-      time: t('just_now'),
-      read: false,
-      link: link || null
-    });
-    writeScopedStorage(profile?.id, 'system_alerts', alertsArr);
+  const logSystemAlert = async (category: 'urgent' | 'success' | 'info', title: string, details: string, link?: string) => {
+    // DB-backed: create a notification so the alerts panel is online.
+    if (!profile?.id) return;
+    try {
+      await createNotification({
+        userId: profile.id,
+        title,
+        body: details,
+        type: category === 'urgent' ? 'urgent' : category === 'success' ? 'success' : 'info',
+        link,
+      });
+    } catch (err) {
+      console.error('Failed to create alert', err);
+    }
   };
 
   // Where the current user should land to see the related contract
@@ -208,7 +240,6 @@ export default function ActiveContractsResolver() {
 
       // 5. Save everything and refresh states
       updateContractInDatabase(updatedContracts);
-      mirrorToWorker(updatedContracts.find(c => c.id === selectedContract.id) as Contract);
       logSystemAlert(
         'success',
         t('contract_finalized_released'),

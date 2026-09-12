@@ -10,6 +10,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
+import { getBids, createBid, deleteBid } from '../../lib/api';
 import ActiveContractsResolver from '../../components/ActiveContractsResolver';
 
 interface NotificationMsg {
@@ -42,7 +43,7 @@ export default function CompanyDashboard() {
   // Subcontracting leads list
   const [subcontractLeads, setSubcontractLeads] = useState<any[]>([]);
 
-  // Saved corporate bids
+  // Saved corporate bids (DB-backed, localStorage only as an offline cache)
   const [companyBids, setCompanyBids] = useState<any[]>(() => {
     const cached = localStorage.getItem('company_bids');
     if (cached) {
@@ -54,6 +55,37 @@ export default function CompanyDashboard() {
   useEffect(() => {
     localStorage.setItem('company_bids', JSON.stringify(companyBids));
   }, [companyBids]);
+
+  // Load DB-backed bids (source of truth)
+  useEffect(() => {
+    if (!profile?.id) return;
+    getBids({ companyId: profile.id })
+      .then((bids) => {
+        if (bids.length > 0) {
+          setCompanyBids(bids.map(b => ({
+            id: b.id,
+            leadTitle: b.leadTitle || b.job?.title || t('subcontract_lead'),
+            bidPrice: b.proposedPrice,
+            teamSize: b.proposedStaff,
+            timeline: b.timeline,
+            status: b.status,
+            date: new Date(b.createdAt).toLocaleDateString(),
+            details: b.coverLetter,
+          })));
+          localStorage.setItem('company_bids', JSON.stringify(bids.map(b => ({
+            id: b.id,
+            leadTitle: b.leadTitle || b.job?.title || t('subcontract_lead'),
+            bidPrice: b.proposedPrice,
+            teamSize: b.proposedStaff,
+            timeline: b.timeline,
+            status: b.status,
+            date: new Date(b.createdAt).toLocaleDateString(),
+            details: b.coverLetter,
+          }))));
+        }
+      })
+      .catch((err) => console.error('Failed to load bids', err));
+  }, [profile?.id]);
 
   // Dynamic state for Stats
   const [activeJobsCount, setActiveJobsCount] = useState(() => {
@@ -188,24 +220,56 @@ export default function CompanyDashboard() {
     const lead = subcontractLeads.find(l => l.id === chosenLeadId);
     if (!lead) return;
 
-    const newBidObj = {
+    const leadTitle = lead.title || t('subcontract_lead');
+
+    setCompanyBids(prev => [{
       id: Date.now(),
-      leadTitle: lead.title,
+      leadTitle,
       bidPrice: proposedPrice,
       teamSize: proposedStaff,
       timeline: proposedTimeline,
       status: 'pending',
       date: t('submitted_just_now'),
       details: proposedCoverLetter
-    };
-
-    setCompanyBids(prev => [newBidObj, ...prev]);
+    }, ...prev]);
     setShowBidModal(false);
+
+    // Persist to the DB (online source of truth)
+    if (profile?.id) {
+      createBid({
+        companyId: profile.id,
+        jobId: lead.jobId || undefined,
+        leadTitle,
+        proposedPrice,
+        proposedStaff,
+        coverLetter: proposedCoverLetter,
+        timeline: proposedTimeline,
+      })
+        .then((created) => {
+          setCompanyBids(prev => [{
+            id: created.id,
+            leadTitle: created.leadTitle || leadTitle,
+            bidPrice: created.proposedPrice,
+            teamSize: created.proposedStaff,
+            timeline: created.timeline,
+            status: created.status,
+            date: new Date(created.createdAt).toLocaleDateString(),
+            details: created.coverLetter,
+          }, ...prev.filter(b => b.id !== Date.now())]);
+        })
+        .catch((err) => console.error('Failed to place bid', err));
+    }
+
     addNotification('success', t('toast_proposal_placed'), t('toast_proposal_placed_msg', { title: lead.title }));
   };
 
-  const handleRetractBid = (id: number, title: string) => {
+  const handleRetractBid = async (id: number, title: string) => {
     setCompanyBids(prev => prev.filter(b => b.id !== id));
+    try {
+      await deleteBid(id);
+    } catch (err) {
+      console.error('Failed to retract bid', err);
+    }
     addNotification('info', t('toast_bid_retracted'), t('toast_bid_retracted_msg', { title }));
   };
 

@@ -7,9 +7,11 @@ interface AdminUnlockModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (username: string, passkey: string) => void;
+  serverError?: string | null;
+  onDismissServerError?: () => void;
 }
 
-export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUnlockModalProps) {
+export default function AdminUnlockModal({ isOpen, onClose, onSuccess, serverError, onDismissServerError }: AdminUnlockModalProps) {
   const { t } = useLanguage();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -27,40 +29,43 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
       setUsername('');
       setPassword('');
       setError(null);
+      setLoading(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    onDismissServerError?.();
     setLoading(true);
 
-    // Simulated secure latency for operational verification
-    setTimeout(() => {
-      // SECURE ADMINISTRATIVE CREDENTIALS
-      const CORRECT_USERNAME = 'Ndive Labs';
-      const CORRECT_PASSWORD = 'Ndive-admin@12345';
+    // SECURE ADMINISTRATIVE CREDENTIALS
+    const CORRECT_USERNAME = 'Ndive Labs';
+    const CORRECT_PASSWORD = 'Ndive-admin@12345';
 
-      if (username === CORRECT_USERNAME && password === CORRECT_PASSWORD) {
-        onSuccess(username, password);
-      } else {
-        setError(t('unauthorized_credentials'));
-        setLoading(false);
-      }
-    }, 1200);
+    // Simulated secure latency for operational verification
+    await new Promise((r) => setTimeout(r, 1200));
+
+    if (username === CORRECT_USERNAME && password === CORRECT_PASSWORD) {
+      setLoading(false);
+      onSuccess(username, password);
+    } else {
+      setError(t('unauthorized_credentials'));
+      setLoading(false);
+    }
   };
 
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        {/* Deep Backdrop Overlay */}
+        {/* Deep Backdrop Overlay — inert on purpose: the gate can only be
+            dismissed by authorizing, or via the close button. */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
           className="absolute inset-0 bg-gray-950/90 backdrop-blur-xl"
         />
 
@@ -97,13 +102,14 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess }: AdminUn
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
-            {error && (
+            {(error || serverError) && (
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="p-4 bg-red-950/20 border border-red-900/40 text-red-400 text-xs font-bold rounded-xl text-center font-mono uppercase tracking-tight"
               >
-                {error}
+                <ShieldAlert size={16} className="inline-block mr-1.5 -mt-0.5" />
+                {serverError || error}
               </motion.div>
             )}
 

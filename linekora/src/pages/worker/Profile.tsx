@@ -10,6 +10,7 @@ import { useLanguage } from '../../lib/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { openDataUrlInNewTab } from '../../lib/filePreview';
+import { updateUser } from '../../lib/api';
 
 interface NotificationMsg {
   id: string;
@@ -103,6 +104,30 @@ export default function WorkerProfile() {
     if (profile?.location && !localStorage.getItem(sk('worker_profile_location'))) {
       setLocationOverride(profile.location);
     }
+    // Pull profile extras from the DB (source of truth) when there's no local edit
+    try {
+      if (profile?.skills && !localStorage.getItem(sk('worker_profile_skills'))) {
+        setSkillsList(JSON.parse(profile.skills));
+      }
+      if (profile?.experience && !localStorage.getItem(sk('worker_profile_experience'))) {
+        setExperienceList(JSON.parse(profile.experience));
+      }
+      if (profile?.education && !localStorage.getItem(sk('worker_profile_education'))) {
+        setEducationList(JSON.parse(profile.education));
+      }
+      if (profile?.certificates && !localStorage.getItem(sk('worker_profile_certificates'))) {
+        setCertificatesList(JSON.parse(profile.certificates));
+      }
+      if (profile?.portfolio && !localStorage.getItem(sk('worker_profile_portfolio'))) {
+        setPortfolioList(JSON.parse(profile.portfolio));
+      }
+      if (profile?.cvFile && !localStorage.getItem(sk('worker_cv_data'))) {
+        setCvFile({ name: profile?.cvFilename || 'resume.pdf', size: '', dataUrl: profile?.cvFile || '', date: '' });
+        setCvName(profile?.cvFilename || '');
+      }
+    } catch (e) {
+      console.error('Failed to load profile extras from DB', e);
+    }
   }, [profile]);
 
   // Sync to local storage for persistence
@@ -127,6 +152,23 @@ export default function WorkerProfile() {
   useEffect(() => { localStorage.setItem(sk('worker_profile_experience'), JSON.stringify(experienceList)); }, [experienceList]);
   useEffect(() => { localStorage.setItem(sk('worker_profile_education'), JSON.stringify(educationList)); }, [educationList]);
   useEffect(() => { localStorage.setItem(sk('worker_profile_certificates'), JSON.stringify(certificatesList)); }, [certificatesList]);
+
+  // Persist profile extras to the DB (debounced) so they're online across devices
+  useEffect(() => {
+    if (!profile?.id) return;
+    const timer = setTimeout(() => {
+      updateUser(profile.id, {
+        skills: JSON.stringify(skillsList),
+        experience: JSON.stringify(experienceList),
+        education: JSON.stringify(educationList),
+        certificates: JSON.stringify(certificatesList),
+        portfolio: JSON.stringify(portfolioList),
+        cvFile: cvFile?.dataUrl || null,
+        cvFilename: cvFile?.name || null,
+      } as any).catch((err) => console.error('Failed to sync profile extras', err));
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [skillsList, experienceList, educationList, certificatesList, portfolioList, cvFile, profile?.id]);
 
   // Notifications system state
   const [notifications, setNotifications] = useState<NotificationMsg[]>([]);

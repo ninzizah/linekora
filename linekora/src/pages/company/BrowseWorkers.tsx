@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
-import { getWorkers, sendMessage } from '../../lib/api';
+import { getWorkers, sendMessage, createContract } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import PublicProfileModal from '../../components/PublicProfileModal';
@@ -59,19 +59,23 @@ export default function BrowseWorkers() {
         const users = await getWorkers();
         const realWorkers: WorkerItem[] = users
           .filter(u => u.role === 'WORKER')
-          .map((u) => ({
-            id: u.id,
-            name: u.displayName,
-            role: t('professional_worker'),
-            location: u.location || 'Kigali',
-            rating: 0,
-            jobs: 0,
-            verified: u.verificationStatus === 'verified',
-            skills: [],
-            trustScore: u.trustScore,
-            experience: '',
-            avatarUrl: u.avatarUrl,
-          }));
+          .map((u) => {
+            let parsedSkills: string[] = [];
+            try { parsedSkills = u.skills ? JSON.parse(u.skills) : []; } catch (e) {}
+            return {
+              id: u.id,
+              name: u.displayName,
+              role: t('professional_worker'),
+              location: u.location || 'Kigali',
+              rating: 0,
+              jobs: 0,
+              verified: u.verificationStatus === 'verified',
+              skills: Array.isArray(parsedSkills) ? parsedSkills : [],
+              trustScore: u.trustScore,
+              experience: '',
+              avatarUrl: u.avatarUrl,
+            };
+          });
         // Set real workers
         setWorkers(realWorkers);
       } catch (err) {
@@ -219,7 +223,7 @@ export default function BrowseWorkers() {
             const parsedContracts = existingContracts ? JSON.parse(existingContracts) : [];
             localStorage.setItem('active_contracts_history', JSON.stringify([newContract, ...parsedContracts]));
 
-            // Save to active resolver contracts to be displayable in Dashboard
+            // Save to active resolver contracts (DB-backed so it's visible cross-device)
             const contractForResolver = {
               id: Date.now(),
               jobTitle: draftObj?.title || t('custom_direct_task'),
@@ -229,7 +233,7 @@ export default function BrowseWorkers() {
               status: 'completion_requested' as const,
               workerId: String(hiringWorker.id),
               workerName: hiringWorker.name,
-              employerId: 'current-employer',
+              employerId: profile?.id || 'current-employer',
               employerName: profile?.displayName || t('employer'),
               daysSinceRequest: 3,
               rating: 0,
@@ -238,6 +242,20 @@ export default function BrowseWorkers() {
               commissionPaidEmployer: false,
               date: t('waiting_for_resolution')
             };
+
+            if (profile?.id && hiringWorker.id) {
+              createContract({
+                jobTitle: contractForResolver.jobTitle,
+                company: 'LINEKORA Tasks',
+                salary: contractForResolver.salary,
+                location: contractForResolver.location,
+                workerId: String(hiringWorker.id),
+                employerId: profile.id,
+                employerName: contractForResolver.employerName,
+                logo: 'PJ',
+                status: 'completion_requested',
+              }).catch((err) => console.error('Failed to persist direct-hire contract', err));
+            }
 
             const existingResolverContracts = readScopedStorage<any[]>(profile?.id, 'linekora_contracts', []);
             writeScopedStorage(profile?.id, 'linekora_contracts', [contractForResolver, ...existingResolverContracts]);

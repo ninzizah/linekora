@@ -9,7 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
-import { getJobs, createApplication, createNotification, applyToJob, getApplications, Job } from '../../lib/api';
+import { getJobs, createApplication, createNotification, applyToJob, getApplications, getSavedJobs, saveJob, deleteSavedJob, Job } from '../../lib/api';
 import { formatDistanceToNow } from 'date-fns';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useLiveChat } from '../../lib/useLiveChat';
@@ -37,6 +37,22 @@ export default function WorkerDashboard() {
   const [savedJobs, setSavedJobs] = useState<any[]>(() => {
     return readScopedStorage<any[]>(profile?.id, 'worker_saved_jobs', []);
   });
+  // Maps jobId -> DB SavedJob record id for API-based unsaving
+  const [savedRecordMap, setSavedRecordMap] = useState<Map<number, number>>(new Map());
+
+  // Load DB-backed saved jobs (source of truth)
+  useEffect(() => {
+    if (!profile?.id) return;
+    getSavedJobs(profile.id)
+      .then((saved) => {
+        if (saved.length > 0) {
+          setSavedJobs(saved.map(s => s.job));
+          setSavedRecordMap(new Map(saved.map(s => [s.jobId, s.id])));
+          writeScopedStorage(profile.id, 'worker_saved_jobs', saved.map(s => s.job));
+        }
+      })
+      .catch((err) => console.error('Failed to load saved jobs', err));
+  }, [profile?.id]);
 
   const [urgentJobs, setUrgentJobs] = useState<any[]>(() => {
     const parsed = readScopedStorage<any[]>(profile?.id, 'urgent_jobs', []);
@@ -104,12 +120,28 @@ export default function WorkerDashboard() {
       e.stopPropagation();
       e.preventDefault();
     }
+    if (!profile?.id) return;
     const isSaved = savedJobs.some(sj => sj.id === job.id || sj.title === job.title);
     let updated;
     if (isSaved) {
       updated = savedJobs.filter(sj => sj.id !== job.id && sj.title !== job.title);
+      const recordId = savedRecordMap.get(job.id);
+      if (recordId) {
+        deleteSavedJob(recordId).catch((err) => console.error('Failed to unsave job', err));
+      }
     } else {
       updated = [...savedJobs, job];
+      if (job.id) {
+        saveJob(profile.id, job.id)
+          .then((created) => {
+            setSavedRecordMap(prev => {
+              const next = new Map(prev);
+              next.set(created.jobId, created.id);
+              return next;
+            });
+          })
+          .catch((err) => console.error('Failed to save job', err));
+      }
     }
     setSavedJobs(updated);
     writeScopedStorage(profile?.id, 'worker_saved_jobs', updated);

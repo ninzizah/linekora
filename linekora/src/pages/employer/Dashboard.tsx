@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import ActiveContractsResolver from '../../components/ActiveContractsResolver';
-import { getJobs, deleteJob } from '../../lib/api';
+import { getJobs, deleteJob, createNotification } from '../../lib/api';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 
 interface RecentTask {
@@ -41,20 +41,16 @@ export default function EmployerDashboard() {
       setIsProcessingPay(false);
       setShowPayModal(false);
 
-      // Add system alert
-      const existingAlerts = localStorage.getItem('system_alerts') || '[]';
-      let alertsArr = [];
-      try { alertsArr = JSON.parse(existingAlerts); } catch (e) { alertsArr = []; }
-      alertsArr.push({
-        id: Date.now().toString(),
-        category: 'success',
-        title: t('toast_corporate_fee_received'),
-        details: t('toast_corporate_fee_received_desc', { amount: unpaidCommission.toLocaleString() }),
-        time: t('just_now'),
-        read: false,
-        link: '/dashboard/employer'
-      });
-      localStorage.setItem('system_alerts', JSON.stringify(alertsArr));
+      // Add system alert (DB-backed so it's online)
+      if (profile?.id) {
+        createNotification({
+          userId: profile.id,
+          title: t('toast_corporate_fee_received'),
+          body: t('toast_corporate_fee_received_desc', { amount: unpaidCommission.toLocaleString() }),
+          type: 'success',
+          linkTarget: 'employer',
+        }).catch((err) => console.error('Failed to create alert', err));
+      }
     }, 1200);
   };
 

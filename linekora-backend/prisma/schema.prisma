@@ -28,6 +28,12 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  // Worker profile extras (JSON arrays)
+  certificates       String?  @db.Text
+  portfolio          String?  @db.Text
+  cvFile             String?  @db.Text
+  cvFilename         String?
+
   // Verification documents (stored server-side for admin review)
   verificationData   String?  @db.Text  // JSON: { nationalId, frontId, backId, selfie, tinNumber, certFile, sector, cell, address, website, selectedTier, date }
 
@@ -41,6 +47,10 @@ model User {
   teamMemberships TeamMembership[]
   conversationPrefs UserConversation[] @relation("ConversationOwner")
   conversationPrefsAsPeer UserConversation[] @relation("ConversationPeer")
+  contractsAsWorker Contract[] @relation("ContractWorker")
+  contractsAsEmployer Contract[] @relation("ContractEmployer")
+  savedJobs       SavedJob[]
+  bidsPlaced      Bid[]
 }
 
 model Team {
@@ -118,6 +128,8 @@ model Job {
   updatedAt   DateTime  @updatedAt
 
   applications Application[]
+  savedBy      SavedJob[]
+  bids         Bid[]
 }
 
 model Application {
@@ -133,6 +145,8 @@ model Application {
   assignedMembers String?  @db.Text  // JSON array of userIds assigned by leader
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  contract        Contract?
 
   @@unique([jobId, workerId])
 }
@@ -191,4 +205,62 @@ enum Role {
   COMPANY
   EMPLOYER
   ADMIN
+}
+
+// Contract lifecycle (created when application is accepted, or via direct hire)
+model Contract {
+  id                      Int       @id @default(autoincrement())
+  applicationId           Int?      @unique
+  application             Application? @relation(fields: [applicationId], references: [id])
+  jobId                   Int?
+  jobTitle                String
+  company                 String
+  salary                  String
+  location                String
+  status                  String    @default("accepted") // accepted, completion_requested, still_in_progress, disputed, completed, not_trusted
+  workerId                String
+  worker                  User      @relation("ContractWorker", fields: [workerId], references: [id])
+  employerId              String
+  employer                User      @relation("ContractEmployer", fields: [employerId], references: [id])
+  employerName            String
+  daysSinceRequest        Int       @default(0)
+  rating                  Int?
+  review                  String?   @db.Text
+  commissionPaidWorker    Boolean   @default(false)
+  commissionPaidEmployer  Boolean   @default(false)
+  logo                    String?
+  phone                   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+// Saved jobs (bookmarked by workers)
+model SavedJob {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  jobId     Int
+  job       Job      @relation(fields: [jobId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+}
+
+// Bids placed by companies on jobs (or subcontracting leads)
+model Bid {
+  id           Int      @id @default(autoincrement())
+  companyId    String
+  company      User     @relation(fields: [companyId], references: [id])
+  jobId        Int?
+  job          Job?     @relation(fields: [jobId], references: [id])
+  leadTitle    String?
+  proposedPrice  Int
+  proposedStaff  Int
+  coverLetter   String  @db.Text
+  timeline      String
+  status        String  @default("pending") // pending, accepted, rejected
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([companyId, jobId])
 }

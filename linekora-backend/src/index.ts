@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { SignJWT } from 'jose';
 
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -16,6 +17,9 @@ const prisma = new PrismaClient({ adapter } as any);
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+// Secret used to sign standalone admin operator tokens (must match middleware/auth.ts).
+const OPERATOR_SECRET = process.env.OPERATOR_SECRET || 'linekora_operator_SafeOps_2026!';
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -51,6 +55,31 @@ app.get('/api/stats', async (_req, res) => {
   }
 });
 
+// ─── OPERATOR UNLOCK (standalone admin shortcut) ──────────────────────────
+// Grants a signed, expiring "operator" token when the operator credentials
+// match. No LINEKORA / Firebase account required. Placed before requireAuth so
+// the credentials alone are enough to obtain admin access.
+app.post('/api/operator/unlock', async (req, res) => {
+  try {
+    const username = String(req.body?.username || '');
+    const passkey = String(req.body?.passkey || '');
+    const expectedUser = process.env.ADMIN_USERNAME || 'Ndive Labs';
+    const expectedPass = process.env.ADMIN_PASSKEY || 'Ndive-admin@12345';
+    if (username !== expectedUser || passkey !== expectedPass) {
+      return res.status(401).json({ error: 'Invalid admin credentials' });
+    }
+    const token = await new SignJWT({ op: 'admin', grant: 'operator' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('12h')
+      .sign(new TextEncoder().encode(OPERATOR_SECRET));
+    res.json({ success: true, token, role: 'OPERATOR', expiresIn: 12 * 3600 });
+  } catch (error: any) {
+    console.error('Failed to issue operator token:', error);
+    res.status(500).json({ error: error.message || 'Failed to authorize admin' });
+  }
+});
+
 // ─── AUTH ──────────────────────────────────────────────────────────────────
 // Every route defined below this point requires a valid Firebase ID token.
 app.use('/api', requireAuth);
@@ -58,6 +87,17 @@ app.use('/api', requireAuth);
 // Attach the caller's DB record so handlers can authorise by role / ownership.
 app.use('/api', async (req, _res, next) => {
   try {
+    if (req.operator) {
+      // Operator tokens carry no Firebase account. Fabricate an ADMIN identity
+      // so every existing role/ownership guard treats the operator as admin.
+      req.dbUser = {
+        id: '__operator__',
+        role: 'ADMIN',
+        firebaseUid: '__operator__',
+        displayName: 'Linekora Operator',
+      };
+      return next();
+    }
     req.dbUser = await prisma.user.findUnique({
       where: { firebaseUid: req.user!.uid },
       select: { id: true, role: true, firebaseUid: true, displayName: true },
@@ -217,7 +257,7 @@ app.patch('/api/users/:id', async (req, res) => {
 
     // Identity/profile fields — editable only for your own account.
     if (isSelf || isAdmin) {
-      for (const f of ['displayName', 'phone', 'location', 'avatarUrl', 'bio', 'skills', 'experience', 'education', 'registrationNumber', 'taxId']) {
+      for (const f of ['displayName', 'phone', 'location', 'avatarUrl', 'bio', 'skills', 'experience', 'education', 'registrationNumber', 'taxId', 'certificates', 'portfolio', 'cvFile', 'cvFilename']) {
         if (body[f] !== undefined) safe[f] = body[f];
       }
     }
@@ -642,7 +682,7 @@ app.patch('/api/applications/:id', async (req, res) => {
   try {
     const application = await prisma.application.findUnique({
       where: { id: parseInt(req.params.id) },
-      include: { job: true },
+      include: { job: { include: { employer: true } }, worker: true },
     });
     if (!application) return res.status(404).json({ error: 'Application not found' });
 
@@ -658,9 +698,41 @@ app.patch('/api/applications/:id', async (req, res) => {
       data: req.body,
       include: {
         job: { include: { employer: { select: { id: true, displayName: true } } } },
-        worker: { select: { id: true, displayName: true } },
+        worker: { select: { id: true, displayName: true, phone: true } },
       },
     });
+
+    // When an application is accepted, automatically open a DB-backed contract
+    // for the escrow / milestone review workflow.
+    if (req.body?.status === 'accepted') {
+      try {
+        const existingContract = await (prisma as any).contract.findUnique({
+          where: { applicationId: application.id },
+        });
+        if (!existingContract) {
+          await (prisma as any).contract.create({
+            data: {
+              applicationId: application.id,
+              jobId: application.jobId,
+              jobTitle: application.job?.title || 'Contract Gig',
+              company: application.job?.employer?.displayName || 'Employer',
+              salary: application.job?.salary || 'RWF 20,000 / Task',
+              location: application.job?.location || 'Kigali',
+              status: 'accepted',
+              workerId: application.workerId,
+              employerId: application.job.employerId,
+              employerName: application.job?.employer?.displayName || 'Employer',
+              daysSinceRequest: 0,
+              logo: 'PJ',
+              phone: application.worker?.phone || null,
+            },
+          });
+        }
+      } catch (contractError) {
+        console.error('Failed to auto-create contract on accept:', contractError);
+      }
+    }
+
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update application' });
@@ -1377,6 +1449,308 @@ app.post('/api/reviews', async (req, res) => {
     res.json(review);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create review' });
+  }
+});
+
+// ─── CONTRACTS (contract lifecycle, DB-backed) ───────────────────────────────
+
+app.get('/api/contracts', async (req, res) => {
+  try {
+    const { workerId, employerId } = req.query;
+    const role = req.dbUser?.role;
+    const uid = req.dbUser?.id;
+
+    const where: any = {};
+    if (workerId) where.workerId = workerId as string;
+    if (employerId) where.employerId = employerId as string;
+
+    // Workers see only their own contracts; employers/companies see only theirs.
+    if (role === 'WORKER') {
+      where.workerId = uid;
+    } else if (role === 'COMPANY' || role === 'EMPLOYER') {
+      where.employerId = uid;
+    }
+    // ADMIN sees everything.
+
+    const contracts = await (prisma as any).contract.findMany({
+      where,
+      include: { worker: { select: { id: true, displayName: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(contracts);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch contracts' });
+  }
+});
+
+app.post('/api/contracts', async (req, res) => {
+  try {
+    const { applicationId } = req.body;
+    if (!applicationId) {
+      // Direct-hire contract (no application): a company/employer hires a worker directly.
+      const { jobId, jobTitle, company, salary, location, workerId, employerId, employerName, logo, phone, status } = req.body;
+      if (!workerId || !employerId) {
+        return res.status(400).json({ error: 'workerId and employerId are required for direct contracts' });
+      }
+      if (req.dbUser?.role !== 'ADMIN' && String(employerId) !== req.dbUser?.id) {
+        return res.status(403).json({ error: 'Forbidden: cannot create a direct contract as another user' });
+      }
+      const contract = await (prisma as any).contract.create({
+        data: {
+          jobId: jobId || null,
+          jobTitle: jobTitle || 'Contract Gig',
+          company: company || req.dbUser?.displayName || 'Employer',
+          salary: salary || 'RWF 20,000 / Task',
+          location: location || 'Kigali',
+          status: status || 'accepted',
+          workerId,
+          employerId,
+          employerName: employerName || 'Employer',
+          daysSinceRequest: 0,
+          logo: logo || 'PJ',
+          phone: phone || null,
+        },
+        include: { worker: { select: { id: true, displayName: true } } },
+      });
+      return res.json(contract);
+    }
+
+    const application = await prisma.application.findUnique({
+      where: { id: parseInt(applicationId) },
+      include: { job: { include: { employer: true } }, worker: true },
+    });
+    if (!application) return res.status(404).json({ error: 'Application not found' });
+
+    // Job owner or the applying worker may create the contract (admins may always).
+    const isJobOwner = application.job?.employerId === req.dbUser?.id;
+    const isWorker = application.workerId === req.dbUser?.id;
+    if (req.dbUser?.role !== 'ADMIN' && !isJobOwner && !isWorker) {
+      return res.status(403).json({ error: 'Forbidden: cannot create a contract for this application' });
+    }
+
+    const existingContract = await (prisma as any).contract.findUnique({
+      where: { applicationId: application.id },
+    });
+    if (existingContract) return res.json(existingContract);
+
+    const contract = await (prisma as any).contract.create({
+      data: {
+        applicationId: application.id,
+        jobId: application.jobId,
+        jobTitle: application.job?.title || 'Contract Gig',
+        company: application.job?.employer?.displayName || 'Employer',
+        salary: application.job?.salary || 'RWF 20,000 / Task',
+        location: application.job?.location || 'Kigali',
+        status: 'accepted',
+        workerId: application.workerId,
+        employerId: application.job.employerId,
+        employerName: application.job?.employer?.displayName || 'Employer',
+        daysSinceRequest: 0,
+        logo: 'PJ',
+        phone: application.worker?.phone || null,
+      },
+      include: { worker: { select: { id: true, displayName: true } } },
+    });
+    res.json(contract);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to create contract' });
+  }
+});
+
+app.patch('/api/contracts/:id', async (req, res) => {
+  try {
+    const contract = await (prisma as any).contract.findUnique({
+      where: { id: parseInt(req.params.id) },
+    });
+    if (!contract) return res.status(404).json({ error: 'Contract not found' });
+
+    const isEmployer = contract.employerId === req.dbUser?.id;
+    const isWorker = contract.workerId === req.dbUser?.id;
+    if (req.dbUser?.role !== 'ADMIN' && !isEmployer && !isWorker) {
+      return res.status(403).json({ error: 'Forbidden: cannot update this contract' });
+    }
+
+    const safe: any = {};
+    const body = req.body;
+    for (const f of ['status', 'rating', 'review', 'daysSinceRequest', 'commissionPaidWorker', 'commissionPaidEmployer']) {
+      if (body[f] !== undefined) safe[f] = body[f];
+    }
+
+    const updated = await (prisma as any).contract.update({
+      where: { id: contract.id },
+      data: safe,
+    });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to update contract' });
+  }
+});
+
+// ─── SAVED JOBS ──────────────────────────────────────────────────────────────
+
+app.get('/api/saved-jobs', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot read another user\'s saved jobs' });
+    }
+    const savedJobs = await (prisma as any).savedJob.findMany({
+      where: { userId: userId as string },
+      include: { job: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(savedJobs);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch saved jobs' });
+  }
+});
+
+app.post('/api/saved-jobs', async (req, res) => {
+  try {
+    const { userId, jobId } = req.body;
+    if (!userId || !jobId) return res.status(400).json({ error: 'userId and jobId are required' });
+    if (req.dbUser?.role !== 'ADMIN' && String(userId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot save a job for another user' });
+    }
+    const savedJob = await (prisma as any).savedJob.create({
+      data: { userId, jobId: parseInt(jobId) },
+      include: { job: true },
+    });
+    res.json(savedJob);
+  } catch (error: any) {
+    if (error?.code === 'P2002') return res.status(409).json({ error: 'Job already saved' });
+    res.status(500).json({ error: error.message || 'Failed to save job' });
+  }
+});
+
+app.delete('/api/saved-jobs/:id', async (req, res) => {
+  try {
+    const savedJob = await (prisma as any).savedJob.findUnique({
+      where: { id: parseInt(req.params.id) },
+    });
+    if (!savedJob) return res.status(404).json({ error: 'Saved job not found' });
+    if (req.dbUser?.role !== 'ADMIN' && savedJob.userId !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot delete another user\'s saved job' });
+    }
+    await (prisma as any).savedJob.delete({ where: { id: savedJob.id } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete saved job' });
+  }
+});
+
+// ─── BIDS (company subcontracting) ───────────────────────────────────────────
+
+app.get('/api/bids', async (req, res) => {
+  try {
+    const { companyId, jobId } = req.query;
+    const role = req.dbUser?.role;
+    const uid = req.dbUser?.id;
+
+    const where: any = {};
+    if (companyId) where.companyId = companyId as string;
+    if (jobId) where.jobId = parseInt(jobId as string);
+
+    if (role === 'COMPANY') {
+      where.companyId = uid;
+    } else if (role === 'EMPLOYER') {
+      // Employers may see bids placed on their jobs.
+      where.job = { employerId: uid };
+    }
+    // ADMIN sees everything.
+
+    const bids = await (prisma as any).bid.findMany({
+      where,
+      include: {
+        job: { include: { employer: { select: { id: true, displayName: true } } } },
+        company: { select: { id: true, displayName: true, avatarUrl: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(bids);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch bids' });
+  }
+});
+
+app.post('/api/bids', async (req, res) => {
+  try {
+    const { companyId, jobId, leadTitle, proposedPrice, proposedStaff, coverLetter, timeline } = req.body;
+    if (!companyId) return res.status(400).json({ error: 'companyId is required' });
+    // A company may only bid as itself (admins may bid for any).
+    if (req.dbUser?.role !== 'ADMIN' && String(companyId) !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot place a bid as another user' });
+    }
+    const bid = await (prisma as any).bid.create({
+      data: {
+        companyId,
+        jobId: jobId ? parseInt(jobId) : null,
+        leadTitle: leadTitle || null,
+        proposedPrice: parseInt(proposedPrice || 0),
+        proposedStaff: parseInt(proposedStaff || 1),
+        coverLetter: coverLetter || '',
+        timeline: timeline || '3 Weeks',
+      },
+      include: {
+        job: { include: { employer: { select: { id: true, displayName: true } } } },
+        company: { select: { id: true, displayName: true, avatarUrl: true } },
+      },
+    });
+    res.json(bid);
+  } catch (error: any) {
+    if (error?.code === 'P2002') return res.status(409).json({ error: 'Bid already placed for this job' });
+    res.status(500).json({ error: error.message || 'Failed to place bid' });
+  }
+});
+
+app.patch('/api/bids/:id', async (req, res) => {
+  try {
+    const bid = await (prisma as any).bid.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { job: true },
+    });
+    if (!bid) return res.status(404).json({ error: 'Bid not found' });
+
+    const isCompany = bid.companyId === req.dbUser?.id;
+    const isJobOwner = bid.job?.employerId === req.dbUser?.id;
+    if (req.dbUser?.role !== 'ADMIN' && !isCompany && !isJobOwner) {
+      return res.status(403).json({ error: 'Forbidden: cannot update this bid' });
+    }
+
+    const safe: any = {};
+    const body = req.body;
+    for (const f of ['proposedPrice', 'proposedStaff', 'coverLetter', 'timeline', 'status']) {
+      if (body[f] !== undefined) safe[f] = body[f];
+    }
+
+    const updated = await (prisma as any).bid.update({
+      where: { id: bid.id },
+      data: safe,
+      include: {
+        job: { include: { employer: { select: { id: true, displayName: true } } } },
+        company: { select: { id: true, displayName: true, avatarUrl: true } },
+      },
+    });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to update bid' });
+  }
+});
+
+app.delete('/api/bids/:id', async (req, res) => {
+  try {
+    const bid = await (prisma as any).bid.findUnique({
+      where: { id: parseInt(req.params.id) },
+    });
+    if (!bid) return res.status(404).json({ error: 'Bid not found' });
+    if (req.dbUser?.role !== 'ADMIN' && bid.companyId !== req.dbUser?.id) {
+      return res.status(403).json({ error: 'Forbidden: cannot delete this bid' });
+    }
+    await (prisma as any).bid.delete({ where: { id: bid.id } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete bid' });
   }
 });
 
