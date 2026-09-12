@@ -41,16 +41,20 @@ export default function AdminUnlockModal({ isOpen, onClose, onSuccess, serverErr
     onDismissServerError?.();
     setLoading(true);
 
-    // SECURE ADMINISTRATIVE CREDENTIALS
+    // SECURE ADMINISTRATIVE CREDENTIALS (whitespace-trimmed so autofill /
+    // keyboard trailing spaces never cause a false rejection)
     const CORRECT_USERNAME = 'Ndive Labs';
     const CORRECT_PASSWORD = 'Ndive-admin@12345';
+
+    const inputUsername = username.trim();
+    const inputPasskey = password.trim();
 
     // Simulated secure latency for operational verification
     await new Promise((r) => setTimeout(r, 1200));
 
-    if (username === CORRECT_USERNAME && password === CORRECT_PASSWORD) {
+    if (inputUsername === CORRECT_USERNAME && inputPasskey === CORRECT_PASSWORD) {
       setLoading(false);
-      onSuccess(username, password);
+      onSuccess(inputUsername, inputPasskey);
     } else {
       setError(t('unauthorized_credentials'));
       setLoading(false);

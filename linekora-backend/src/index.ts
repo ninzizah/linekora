@@ -61,10 +61,10 @@ app.get('/api/stats', async (_req, res) => {
 // the credentials alone are enough to obtain admin access.
 app.post('/api/operator/unlock', async (req, res) => {
   try {
-    const username = String(req.body?.username || '');
-    const passkey = String(req.body?.passkey || '');
-    const expectedUser = process.env.ADMIN_USERNAME || 'Ndive Labs';
-    const expectedPass = process.env.ADMIN_PASSKEY || 'Ndive-admin@12345';
+    const username = String(req.body?.username || '').trim();
+    const passkey = String(req.body?.passkey || '').trim();
+    const expectedUser = (process.env.ADMIN_USERNAME || 'Ndive Labs').trim();
+    const expectedPass = (process.env.ADMIN_PASSKEY || 'Ndive-admin@12345').trim();
     if (username !== expectedUser || passkey !== expectedPass) {
       return res.status(401).json({ error: 'Invalid admin credentials' });
     }
