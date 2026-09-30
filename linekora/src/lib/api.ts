@@ -23,22 +23,26 @@ const API_BASE = getApiBase();
 async function request<T>(path: string, options?: RequestInit & { timeoutMs?: number }): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
-  // Standalone admin operator token (no Firebase account needed). Take priority
-  // so the Admin Portal works even without a signed-in LINEKORA user.
   const operatorToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_operator_token') : null;
-  if (operatorToken) {
-    headers['Authorization'] = `Operator ${operatorToken}`;
-  } else {
-    // Attach the current user's Firebase ID token so the backend can verify it.
-    const user = auth.currentUser;
-    if (user) {
-      try {
-        const token = await getIdToken(user);
-        headers['Authorization'] = `Bearer ${token}`;
-      } catch {
-        // No valid token available — the backend will reject protected routes with 401.
-      }
+
+  // A signed-in Firebase account must always win over the operator token.
+  // Operator auth carries no Firebase identity, so the backend sees
+  // `req.user === undefined` and rejects profile reads with 403 — which made a
+  // perfectly valid user look like they had no account, bouncing them to
+  // /select-role. The operator token only exists to let the Admin Portal work
+  // with no LINEKORA account at all, so it is the fallback, never the override.
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      const token = await getIdToken(user);
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch {
+      // Token unavailable (e.g. network blip) — fall through to the operator
+      // token so the Admin Portal still works; protected routes will 401.
     }
+  }
+  if (!headers['Authorization'] && operatorToken) {
+    headers['Authorization'] = `Operator ${operatorToken}`;
   }
 
   const { timeoutMs, ...fetchOptions } = options || {};
