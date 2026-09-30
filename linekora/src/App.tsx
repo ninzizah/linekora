@@ -54,6 +54,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import Register from './pages/auth/Register';
 import Login from './pages/auth/Login';
 import RoleSelection from './pages/auth/RoleSelection';
+import CompleteContact from './pages/auth/CompleteContact';
 
 
 // Dashboard Layouts
@@ -64,6 +65,14 @@ const LoadingSpinner = () => (
   </div>
 );
 
+/**
+ * Accounts registered before a phone number became mandatory are held here
+ * until they supply one. Admin/operator accounts are exempt — they are
+ * unlocked through a separate passkey path, not self-registration.
+ */
+const needsPhone = (profile: { role: string; phone?: string | null } | null) =>
+  !!profile && profile.role !== 'ADMIN' && !profile.phone?.trim();
+
 /** Blocks access until profile is fully loaded, then enforces role-based routing. */
 const DashboardRedirect = () => {
   const { user, profile, loading } = useAuth();
@@ -73,6 +82,8 @@ const DashboardRedirect = () => {
   if (!user) return <Navigate to="/login" />;
 
   if (!profile) return <Navigate to="/select-role" />;
+
+  if (needsPhone(profile)) return <Navigate to="/complete-contact" replace />;
 
   if (profile.role === 'WORKER') return <Navigate to="/dashboard/worker" />;
   if (profile.role === 'COMPANY') return <Navigate to="/dashboard/company" />;
@@ -92,6 +103,8 @@ const RoleRoute = ({ allowedRoles, children }: { allowedRoles: string[]; childre
 
   if (!user) return <Navigate to="/login" replace />;
   if (!profile) return <Navigate to="/select-role" replace />;
+
+  if (needsPhone(profile)) return <Navigate to="/complete-contact" replace />;
 
   if (!allowedRoles.includes(profile.role)) {
     // Redirect to the correct dashboard for their actual role
@@ -125,6 +138,27 @@ const HomeRoute = () => {
   if (loading || (user && profile?.role)) return null;
   if (user && !profile) return null;
   return <Home />;
+};
+
+/**
+ * Guards the contact-completion screen itself: signed-in users who still lack
+ * a phone. Anyone else (signed out, no profile, or already has a phone) is sent
+ * on to their normal destination, so the page can't be used to sidestep the rule.
+ */
+const CompleteContactRoute = () => {
+  const { user, profile, loading } = useAuth();
+
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!profile) return <Navigate to="/select-role" replace />;
+  if (!needsPhone(profile)) {
+    if (profile.role === 'WORKER') return <Navigate to="/dashboard/worker" replace />;
+    if (profile.role === 'COMPANY') return <Navigate to="/dashboard/company" replace />;
+    if (profile.role === 'EMPLOYER') return <Navigate to="/dashboard/employer" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <CompleteContact />;
 };
 
 /** Global Ctrl + Shift + Alt + A shortcut to open the admin portal. */
@@ -162,6 +196,7 @@ export default function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/select-role" element={<RoleSelection />} />
+          <Route path="/complete-contact" element={<CompleteContactRoute />} />
 
           {/* Dashboard Entry */}
           <Route path="/dashboard" element={<DashboardRedirect />} />

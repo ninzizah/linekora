@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Briefcase, Building, User, ChevronRight } from 'lucide-react';
+import { Shield, Briefcase, Building, User, ChevronRight, Phone } from 'lucide-react';
 import { motion } from 'motion/react';
 import { auth } from '../../lib/firebase';
 import { upsertUser } from '../../lib/api';
@@ -12,6 +12,7 @@ type Role = 'WORKER' | 'COMPANY' | 'EMPLOYER';
 export default function RoleSelection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phone, setPhone] = useState('');
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const { t } = useLanguage();
@@ -27,6 +28,11 @@ export default function RoleSelection() {
       navigate('/login');
       return;
     }
+    // A contact number is mandatory — the API rejects the account otherwise.
+    if (!phone.trim()) {
+      setError(t('error_phone_required'));
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -35,6 +41,7 @@ export default function RoleSelection() {
         email: user.email || '',
         displayName: user.displayName || user.email?.split('@')[0] || 'User',
         role: selectedRole,
+        phone: phone.trim(),
       });
       await refreshProfile();
       localStorage.setItem('lastAuthMethod', 'google');
@@ -73,6 +80,21 @@ export default function RoleSelection() {
             {user.email}
           </p>
         )}
+
+        <div className="mb-6">
+          <label className="block text-sm font-bold text-white/70 mb-2">{t('phone_number')}</label>
+          <div className="relative">
+            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
+            <input
+              type="tel"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+250..."
+              className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none font-sans text-white placeholder-white/20 transition-all"
+            />
+          </div>
+        </div>
 
         <div className="space-y-4">
           {roles.map((r) => (

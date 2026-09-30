@@ -199,12 +199,20 @@ app.get('/api/users/:firebaseUid', async (req, res) => {
   }
 });
 
+// Contact number is mandatory. Free text, no format lock-in — but never empty.
+function normalisePhone(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 app.post('/api/users', async (req, res) => {
   try {
     if (req.body.firebaseUid !== req.user?.uid) {
       return res.status(403).json({ error: 'Forbidden: firebaseUid does not match authenticated user' });
     }
     const data = { ...req.body };
+    const phone = normalisePhone(data.phone);
     const existing = await prisma.user.findUnique({
       where: { firebaseUid: req.body.firebaseUid },
     });
@@ -214,7 +222,12 @@ app.post('/api/users', async (req, res) => {
       const safe: any = {};
       if (data.displayName !== undefined) safe.displayName = data.displayName;
       if (data.email !== undefined) safe.email = data.email;
-      if (data.phone !== undefined) safe.phone = data.phone;
+      if (data.phone !== undefined) {
+        if (!phone) {
+          return res.status(400).json({ error: 'Phone number is required' });
+        }
+        safe.phone = phone;
+      }
       if (data.location !== undefined) safe.location = data.location;
       if (data.avatarUrl !== undefined) safe.avatarUrl = data.avatarUrl;
       if (data.bio !== undefined) safe.bio = data.bio;
@@ -230,6 +243,13 @@ app.post('/api/users', async (req, res) => {
     if (data.role !== undefined && !['WORKER', 'COMPANY', 'EMPLOYER'].includes(data.role)) {
       delete data.role;
     }
+    // Every account needs a reachable contact number. This is the only place
+    // users are created, so this is the single gate that stops a registration
+    // (form or direct API call) from landing without a phone.
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+    data.phone = phone;
     const user = await prisma.user.create({ data });
     res.json(user);
   } catch (error: any) {
@@ -257,8 +277,17 @@ app.patch('/api/users/:id', async (req, res) => {
 
     // Identity/profile fields — editable only for your own account.
     if (isSelf || isAdmin) {
-      for (const f of ['displayName', 'phone', 'location', 'avatarUrl', 'bio', 'skills', 'experience', 'education', 'registrationNumber', 'taxId', 'certificates', 'portfolio', 'cvFile', 'cvFilename']) {
+      for (const f of ['displayName', 'location', 'avatarUrl', 'bio', 'skills', 'experience', 'education', 'registrationNumber', 'taxId', 'certificates', 'portfolio', 'cvFile', 'cvFilename']) {
         if (body[f] !== undefined) safe[f] = body[f];
+      }
+      // A phone may be corrected but never blanked out — otherwise the
+      // registration requirement could be undone by clearing the field later.
+      if (body.phone !== undefined) {
+        const phone = normalisePhone(body.phone);
+        if (!phone) {
+          return res.status(400).json({ error: 'Phone number is required' });
+        }
+        safe.phone = phone;
       }
     }
 

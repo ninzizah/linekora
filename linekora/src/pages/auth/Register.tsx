@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../../lib/firebase';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, updateProfile, type User as FirebaseUser } from 'firebase/auth';
 import { upsertUser } from '../../lib/api';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage, Language } from '../../lib/LanguageContext';
@@ -37,6 +37,10 @@ export default function Register() {
     responsiblePerson: '',
   });
 
+  // The Firebase account returned by the Google popup. The auth context can lag
+  // behind the popup, so we hold on to it and fall back to `user` at submit time.
+  const [googleUser, setGoogleUser] = useState<FirebaseUser | null>(null);
+
   const field = (key: keyof typeof formData) => ({
     value: formData[key],
     onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -54,7 +58,7 @@ export default function Register() {
       email,
       displayName,
       role: selectedRole as any,
-      phone: formData.phone || undefined,
+      phone: formData.phone.trim(),
       location: formData.location || undefined,
       skills: selectedRole === 'WORKER' ? formData.skills || undefined : undefined,
       experience: selectedRole === 'WORKER' ? formData.experience || undefined : undefined,
@@ -80,11 +84,16 @@ export default function Register() {
         }
         throw popupErr;
       }
+      // Do NOT create the account here. Step 3 collects the phone number, and
+      // the API rejects any user created without one.
       const fbUser = result.user;
-      await syncToDatabase(fbUser.uid, fbUser.email!, fbUser.displayName || 'User', role);
-      localStorage.setItem('lastAuthMethod', 'google');
-      await refreshProfile();
-      navigate(role === 'WORKER' ? '/dashboard/worker' : '/dashboard');
+      setGoogleUser(fbUser);
+      setFormData((prev) => ({
+        ...prev,
+        email: fbUser.email || prev.email,
+        displayName: fbUser.displayName || prev.displayName,
+      }));
+      setStep(3);
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') return;
       setError(err.message || t('error_google_registration_failed'));
@@ -96,13 +105,23 @@ export default function Register() {
   const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!role) return;
+
+    // Guard in JS as well as via the input's `required` attribute: a
+    // whitespace-only value satisfies the browser but is not a real number.
+    if (!formData.phone.trim()) {
+      setError(t('error_phone_required'));
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      if (user) {
-        await syncToDatabase(user.uid, user.email || formData.email, formData.displayName, role);
-        localStorage.setItem('lastAuthMethod', 'email');
+      const signedIn = user ?? googleUser;
+      if (signedIn) {
+        const method = googleUser ? 'google' : 'email';
+        await syncToDatabase(signedIn.uid, signedIn.email || formData.email, formData.displayName, role);
+        localStorage.setItem('lastAuthMethod', method);
         await refreshProfile();
         navigate(role === 'WORKER' ? '/dashboard/worker' : '/dashboard');
       } else {

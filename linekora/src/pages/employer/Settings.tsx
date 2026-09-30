@@ -20,6 +20,7 @@ export default function EmployerSettings() {
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   // Verification state
   const [isVerified, setIsVerified] = useState(false);
@@ -75,6 +76,13 @@ export default function EmployerSettings() {
     if (!displayName.trim()) {
       return;
     }
+    // The API refuses a blank phone — stop before the local mirror is written
+    // so a rejected save can't leave the UI showing a number the DB never took.
+    if (!phone.trim()) {
+      setPhoneError(t('error_phone_required'));
+      return;
+    }
+    setPhoneError('');
 
     setSaving(true);
     const payload = {
@@ -194,13 +202,17 @@ export default function EmployerSettings() {
               <div className="relative">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold" size={14} />
                 <input 
-                  type="text" 
+                  type="tel" 
+                  required
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => { setPhone(e.target.value); setPhoneError(''); }}
                   placeholder="+250..."
                   className="w-full pl-11 pr-5 py-4 rounded-xl bg-gray-50 border border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all text-sm"
                 />
               </div>
+              {phoneError && (
+                <p className="text-xs font-bold text-red-600 px-1">{phoneError}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">{t('account_role_status')}</label>

@@ -26,6 +26,7 @@ export default function WorkerSettings() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   // CV & Portfolio upload states
   const [cvFile, setCvFile] = useState<{ name: string; size: string; dataUrl: string; date: string } | null>(() => {
@@ -72,6 +73,13 @@ export default function WorkerSettings() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    // The API refuses a blank phone, so catch it here rather than letting the
+    // save fail silently after the local mirror has already been written.
+    if (!phone.trim()) {
+      setPhoneError(t('error_phone_required'));
+      return;
+    }
+    setPhoneError('');
     localStorage.setItem(sk('worker_profile_name'), displayName);
     localStorage.setItem(sk('worker_profile_location'), location);
     localStorage.setItem(sk('worker_profile_bio'), bio);
@@ -267,11 +275,15 @@ export default function WorkerSettings() {
                   <label className="text-xs font-black text-gray-400 uppercase tracking-widest font-sans px-1">{t('phone_number')}</label>
                   <input 
                     type="tel" 
+                    required
                     value={phone} 
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => { setPhone(e.target.value); setPhoneError(''); }}
                     placeholder="+250 788 123 456"
                     className="w-full px-5 py-3.5 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all text-sm"
                   />
+                  {phoneError && (
+                    <p className="text-xs font-bold text-red-600 px-1">{phoneError}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">

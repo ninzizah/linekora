@@ -21,6 +21,7 @@ export default function CompanySettings() {
   const [headquarters, setHeadquarters] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [strictHiring, setStrictHiring] = useState(false);
 
@@ -56,6 +57,13 @@ export default function CompanySettings() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    // The API refuses a blank phone. Check before the localStorage mirror is
+    // written, otherwise the UI and the database disagree after a failed save.
+    if (!phone.trim()) {
+      setPhoneError(t('error_phone_required'));
+      return;
+    }
+    setPhoneError('');
     localStorage.setItem(storageKey('company_name'), companyName);
     localStorage.setItem(storageKey('company_industry'), industry);
     localStorage.setItem(storageKey('company_email'), email);
@@ -178,12 +186,16 @@ export default function CompanySettings() {
                 <Phone className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
                   type="tel" 
+                  required
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => { setPhone(e.target.value); setPhoneError(''); }}
                   placeholder="+250..."
                   className="w-full pl-14 pr-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all"
                 />
               </div>
+              {phoneError && (
+                <p className="text-xs font-bold text-red-600 px-2">{phoneError}</p>
+              )}
             </div>
           </div>
         </section>
