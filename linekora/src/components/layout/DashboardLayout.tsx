@@ -276,6 +276,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       { name: t('applications'), icon: FileText, path: '/dashboard/worker/applications' },
       { name: t('messages'), icon: MessageSquare, path: '/dashboard/worker/messages' },
       { name: t('verification'), icon: ShieldCheck, path: '/dashboard/worker/verify' },
+      { name: t('my_team'), icon: Users, path: '/dashboard/worker/team-setup' },
       { name: t('reviews'), icon: Star, path: '/dashboard/worker/reviews' },
       { name: t('settings'), icon: Settings, path: '/dashboard/worker/settings' },
     ],

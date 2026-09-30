@@ -26,6 +26,11 @@ import WorkerApplications from './pages/worker/Applications';
 import WorkerMessages from './pages/worker/Messages';
 import WorkerSettings from './pages/worker/Settings';
 import WorkerProfile from './pages/worker/Profile';
+import WorkerTeamSetup from './pages/worker/TeamSetup';
+import WorkerMyTeam from './pages/worker/MyTeam';
+import WorkerTeamDashboard from './pages/worker/TeamDashboard';
+import WorkerTeamAnnouncements from './pages/worker/TeamAnnouncements';
+import WorkerTeamJobAssignments from './pages/worker/TeamJobAssignments';
 
 // Company Pages
 import CompanyDashboard from './pages/company/Dashboard';
@@ -211,6 +216,15 @@ export default function App() {
           <Route path="/dashboard/worker/messages" element={<RoleRoute allowedRoles={['WORKER']}><WorkerMessages /></RoleRoute>} />
           <Route path="/dashboard/worker/settings" element={<RoleRoute allowedRoles={['WORKER']}><WorkerSettings /></RoleRoute>} />
           <Route path="/dashboard/worker/profile" element={<RoleRoute allowedRoles={['WORKER']}><WorkerProfile /></RoleRoute>} />
+
+          {/* Worker Teams — must stay above the /dashboard/worker/* catch-all below,
+              otherwise these paths silently fall through to the plain dashboard. */}
+          <Route path="/dashboard/worker/team-setup" element={<RoleRoute allowedRoles={['WORKER']}><WorkerTeamSetup /></RoleRoute>} />
+          <Route path="/dashboard/worker/team" element={<RoleRoute allowedRoles={['WORKER']}><WorkerTeamDashboard /></RoleRoute>} />
+          <Route path="/dashboard/worker/my-team" element={<RoleRoute allowedRoles={['WORKER']}><WorkerMyTeam /></RoleRoute>} />
+          <Route path="/dashboard/worker/team-announcements" element={<RoleRoute allowedRoles={['WORKER']}><WorkerTeamAnnouncements /></RoleRoute>} />
+          <Route path="/dashboard/worker/team-assignments" element={<RoleRoute allowedRoles={['WORKER']}><WorkerTeamJobAssignments /></RoleRoute>} />
+
           <Route path="/dashboard/worker/*" element={<RoleRoute allowedRoles={['WORKER']}><WorkerDashboard /></RoleRoute>} />
           
           <Route path="/dashboard/company" element={<RoleRoute allowedRoles={['COMPANY']}><CompanyDashboard /></RoleRoute>} />

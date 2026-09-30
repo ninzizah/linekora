@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   Users, UserPlus, Copy, CheckCircle2, Loader2, Shield,
   Megaphone, Briefcase, Settings, ChevronRight, Star,
-  AlertCircle, Crown
+  AlertCircle, Crown, ClipboardList
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
@@ -306,6 +306,19 @@ export default function TeamDashboard() {
                   <span className="font-sans font-black text-gray-900 uppercase tracking-tight text-sm">{t('browse_jobs')}</span>
                 </div>
                 <ChevronRight size={16} className="text-gray-300 group-hover:text-green-600" />
+              </Link>
+
+              <Link
+                to="/dashboard/worker/team-assignments"
+                className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-6 hover:border-amber-600 hover:shadow-md transition-all group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-all">
+                    <ClipboardList size={20} />
+                  </div>
+                  <span className="font-sans font-black text-gray-900 uppercase tracking-tight text-sm">{t('team_assignments')}</span>
+                </div>
+                <ChevronRight size={16} className="text-gray-300 group-hover:text-amber-600" />
               </Link>
             </div>
           </motion.div>
