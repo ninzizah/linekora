@@ -1126,6 +1126,117 @@ app.patch('/api/conversations/prefs', async (req, res) => {
 
 // ─── TEAMS ──────────────────────────────────────────────────────────────────
 
+// Role-based access control for teams. This is the single source of truth for
+// "may this person do this to this team?" — the role table from the MVP spec:
+//
+//   super_leader     everything, incl. removing anyone, deleting, ownership
+//   senior_leader    jobs, apply, employer messages, announcements, add/remove members
+//   assistant_leader jobs, apply, employer messages, announcements, view members
+//   member           view announcements only
+//
+// Authorisation must live here, not in the UI. Hiding a button is cosmetic; a
+// logged-in user can call any of these routes directly.
+
+const TEAM_LEADER_ROLES = ['super_leader', 'senior_leader', 'assistant_leader'] as const;
+const TEAM_LEADER_TIERS = ['super_leader', 'senior_leader', 'assistant_leader'];
+
+/** MVP caps a team at three leaders; ordinary members are unlimited (§8). */
+const MAX_TEAM_LEADERS = 3;
+
+const isTeamLeader = (role?: string | null) =>
+  !!role && (TEAM_LEADER_ROLES as readonly string[]).includes(role);
+
+type TeamAction =
+  | 'view'            // any member
+  | 'announce'        // any leader
+  | 'invite_member'   // any leader
+  | 'invite_leader'   // super_leader only
+  | 'remove_member'   // super_leader any; senior_leader members only
+  | 'assign'          // any leader (team applications, §16)
+  | 'manage';         // super_leader only (delete team, ownership, team email)
+
+/**
+ * Resolves whether the caller may perform `action` on `teamId`.
+ *
+ * Returns the caller's membership alongside the decision so handlers can use
+ * the role without a second query. Admins bypass membership entirely.
+ */
+async function authorizeTeam(
+  req: any,
+  teamId: string,
+  action: TeamAction
+): Promise<
+  | { ok: true; membership: { userId: string; role: string } | null; isAdmin: boolean }
+  | { ok: false; status: number; error: string }
+> {
+  const isAdmin = req.dbUser?.role === 'ADMIN';
+  const userId = req.dbUser?.id;
+
+  if (!isAdmin && !userId) {
+    return { ok: false, status: 401, error: 'Unauthorized: not signed in' };
+  }
+
+  const membership = isAdmin || !userId
+    ? null
+    : await prisma.teamMembership.findUnique({
+        where: { userId_teamId: { userId, teamId } },
+      });
+
+  if (action === 'view') {
+    if (isAdmin || membership) return { ok: true, membership, isAdmin };
+    return { ok: false, status: 403, error: 'Forbidden: not a member of this team' };
+  }
+
+  // Everything below requires leadership.
+  if (isAdmin) return { ok: true, membership, isAdmin };
+
+  if (!membership) {
+    return { ok: false, status: 403, error: 'Forbidden: not a member of this team' };
+  }
+  if (!isTeamLeader(membership.role)) {
+    return { ok: false, status: 403, error: 'Forbidden: this action requires a team leader' };
+  }
+
+  if (action === 'announce' || action === 'invite_member' || action === 'assign') {
+    return { ok: true, membership, isAdmin };
+  }
+
+  if (action === 'invite_leader' || action === 'manage') {
+    if (membership.role !== 'super_leader') {
+      return { ok: false, status: 403, error: 'Forbidden: only the Super Leader can do this' };
+    }
+    return { ok: true, membership, isAdmin };
+  }
+
+  // remove_member — a senior leader may remove ordinary members but not leaders.
+  if (membership.role === 'super_leader') {
+    return { ok: true, membership, isAdmin };
+  }
+  if (membership.role === 'senior_leader') {
+    return { ok: true, membership, isAdmin };
+  }
+  // assistant_leader may only add/remove when the Super Leader explicitly grants
+  // it (§8). No grant flag exists in the schema, so this stays denied for now.
+  return { ok: false, status: 403, error: 'Forbidden: only the Super Leader or a Senior Leader can remove members' };
+}
+
+/**
+ * True when `actorRole` is allowed to strip `targetRole` from the team.
+ * Nobody may remove a leader except the Super Leader.
+ */
+function canRemoveRole(actorRole: string | undefined, targetRole: string | undefined): boolean {
+  if (actorRole === 'super_leader') return true;
+  if (actorRole === 'senior_leader') return !isTeamLeader(targetRole);
+  return false;
+}
+
+/** Counts current leaders so the three-leader cap can be enforced (§8). */
+async function countLeaders(teamId: string): Promise<number> {
+  return prisma.teamMembership.count({
+    where: { teamId, role: { in: [...TEAM_LEADER_TIERS] } },
+  });
+}
+
 // Create a team (creator becomes super_leader)
 app.post('/api/teams', async (req, res) => {
   try {
@@ -1171,14 +1282,9 @@ app.post('/api/teams', async (req, res) => {
 app.get('/api/teams/:teamId', async (req, res) => {
   try {
     // Only team members or admins may read the full team (includes member email/phone).
-    if (req.dbUser?.role !== 'ADMIN') {
-      const membership = await prisma.teamMembership.findFirst({
-        where: { teamId: req.params.teamId, userId: req.dbUser?.id },
-      });
-      if (!membership) {
-        return res.status(403).json({ error: 'Forbidden: not a member of this team' });
-      }
-    }
+    const auth = await authorizeTeam(req, req.params.teamId, 'view');
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
     const team = await prisma.team.findUnique({
       where: { id: req.params.teamId },
       include: {
@@ -1219,7 +1325,7 @@ app.get('/api/teams/user/:userId', async (req, res) => {
 // Join team by team code
 app.post('/api/teams/join', async (req, res) => {
   try {
-    const { userId, teamCode, role } = req.body;
+    const { userId, teamCode } = req.body;
     if (!userId || !teamCode) return res.status(400).json({ error: 'userId and teamCode are required' });
 
     // A user may only join a team for themselves (admins may join for any).
@@ -1235,11 +1341,14 @@ app.post('/api/teams/join', async (req, res) => {
     });
     if (existing) return res.status(409).json({ error: 'Already a member of this team' });
 
+    // Joining with a code always produces an ordinary member. A role in the
+    // request body is ignored on purpose: leadership is only ever granted by an
+    // authorised leader through an invitation (§8/§9), never self-assigned.
     const membership = await prisma.teamMembership.create({
       data: {
         userId,
         teamId: team.id,
-        role: role || 'member',
+        role: 'member',
       },
       include: { team: true },
     });
@@ -1250,21 +1359,38 @@ app.post('/api/teams/join', async (req, res) => {
   }
 });
 
-// Remove member from team
+// Remove member from team — removes ONLY the membership. The Worker's account,
+// profile, CV, skills and verification all survive (§21/§13).
 app.delete('/api/teams/:teamId/members/:userId', async (req, res) => {
   try {
     const { teamId, userId } = req.params;
-    // Users may only remove themselves; team super_leaders/admins may remove others.
-    if (req.dbUser?.role === 'ADMIN' || String(userId) === req.dbUser?.id) {
-      // allowed — self-removal or admin
-    } else {
-      const membership = await prisma.teamMembership.findFirst({
-        where: { teamId, userId: req.dbUser?.id },
+    const isAdmin = req.dbUser?.role === 'ADMIN';
+
+    // Anyone may remove themselves — that is "leave team" (§21).
+    if (!isAdmin && String(userId) === req.dbUser?.id) {
+      const own = await prisma.teamMembership.findUnique({
+        where: { userId_teamId: { userId, teamId } },
       });
-      if (membership?.role !== 'super_leader') {
-        return res.status(403).json({ error: 'Forbidden: only the team leader or the member themselves can remove membership' });
-      }
+      if (!own) return res.status(404).json({ error: 'You are not a member of this team' });
+      await prisma.teamMembership.delete({
+        where: { userId_teamId: { userId, teamId } },
+      });
+      return res.json({ success: true });
     }
+
+    const auth = await authorizeTeam(req, teamId, 'remove_member');
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
+    // A Senior Leader may remove ordinary members but never another leader.
+    const target = await prisma.teamMembership.findUnique({
+      where: { userId_teamId: { userId, teamId } },
+    });
+    if (!target) return res.status(404).json({ error: 'That person is not a member of this team' });
+
+    if (!canRemoveRole(auth.membership?.role, target.role)) {
+      return res.status(403).json({ error: 'Forbidden: you cannot remove a team leader' });
+    }
+
     await prisma.teamMembership.delete({
       where: { userId_teamId: { userId, teamId } },
     });
@@ -1274,7 +1400,7 @@ app.delete('/api/teams/:teamId/members/:userId', async (req, res) => {
   }
 });
 
-// Invite member to team
+// Invite a member or leader to a team
 app.post('/api/teams/invite', async (req, res) => {
   try {
     const { teamId, email, phone, role, invitedBy } = req.body;
@@ -1285,12 +1411,40 @@ app.post('/api/teams/invite', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden: cannot invite as another user' });
     }
 
+    // The invitee cannot pick their own level: super_leader is never grantable
+    // by invitation, and leader invitations are the Super Leader's call (§8/§9).
+    const requested = TEAM_LEADER_TIERS.includes(role) ? role : 'member';
+
+    // Anyone with leadership may add ordinary members; only the Super Leader may
+    // add other leaders. Without this check any account could invite people into
+    // a team it has nothing to do with.
+    const action: TeamAction = isTeamLeader(requested) ? 'invite_leader' : 'invite_member';
+    const auth = await authorizeTeam(req, teamId, action);
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
+    if (requested === 'super_leader') {
+      return res.status(400).json({ error: 'A team has exactly one Super Leader — transfer ownership instead' });
+    }
+
+    // A team may hold at most three leaders (§8).
+    if (isTeamLeader(requested) && (await countLeaders(teamId)) >= MAX_TEAM_LEADERS) {
+      return res.status(409).json({ error: `A team can have at most ${MAX_TEAM_LEADERS} leaders` });
+    }
+
+    // Don't stack duplicate pending invitations for the same address.
+    const existingInvite = await prisma.teamInvitation.findFirst({
+      where: { teamId, email, status: 'pending' },
+    });
+    if (existingInvite) {
+      return res.status(409).json({ error: 'An invitation is already pending for this email' });
+    }
+
     const invitation = await prisma.teamInvitation.create({
       data: {
         teamId,
         email,
         phone: phone || null,
-        role: role || 'member',
+        role: requested,
         invitedBy,
       },
       include: { team: true },
@@ -1306,14 +1460,9 @@ app.post('/api/teams/invite', async (req, res) => {
 app.get('/api/teams/:teamId/invitations', async (req, res) => {
   try {
     // Only team members or admins may view invitations.
-    if (req.dbUser?.role !== 'ADMIN') {
-      const membership = await prisma.teamMembership.findFirst({
-        where: { teamId: req.params.teamId, userId: req.dbUser?.id },
-      });
-      if (!membership) {
-        return res.status(403).json({ error: 'Forbidden: not a member of this team' });
-      }
-    }
+    const auth = await authorizeTeam(req, req.params.teamId, 'view');
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
     const invitations = await prisma.teamInvitation.findMany({
       where: { teamId: req.params.teamId },
       orderBy: { createdAt: 'desc' },
@@ -1327,31 +1476,110 @@ app.get('/api/teams/:teamId/invitations', async (req, res) => {
 // Accept invitation
 app.patch('/api/teams/invitations/:id/accept', async (req, res) => {
   try {
-    const invitation = await prisma.teamInvitation.update({
-      where: { id: req.params.id },
-      data: { status: 'accepted' },
-    });
+    const isAdmin = req.dbUser?.role === 'ADMIN';
 
-    // Find the user by email and create membership
-    const user = await prisma.user.findFirst({ where: { email: invitation.email } });
-    if (user) {
-      const existing = await prisma.teamMembership.findUnique({
-        where: { userId_teamId: { userId: user.id, teamId: invitation.teamId } },
-      });
-      if (!existing) {
-        await prisma.teamMembership.create({
-          data: {
-            userId: user.id,
-            teamId: invitation.teamId,
-            role: invitation.role,
-          },
-        });
-      }
+    const invitation = await prisma.teamInvitation.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!invitation) return res.status(404).json({ error: 'Invitation not found' });
+
+    // Only the person the invitation was addressed to may accept it. Without
+    // this check any signed-in account could accept any invitation and be
+    // inserted into that team with the invited role — including leader roles.
+    const callerEmail = (req.user?.email || '').toLowerCase();
+    if (!isAdmin && callerEmail !== invitation.email.toLowerCase()) {
+      return res.status(403).json({ error: 'Forbidden: this invitation was sent to a different email address' });
     }
 
-    res.json(invitation);
+    if (invitation.status === 'accepted') {
+      return res.status(409).json({ error: 'This invitation has already been accepted' });
+    }
+    if (invitation.status === 'declined') {
+      return res.status(409).json({ error: 'This invitation was declined' });
+    }
+
+    // The invitee must have a Worker account before a membership can exist
+    // (§9/§11). An invite to an unregistered email stays pending and is
+    // surfaced on the registration screen instead.
+    const user = await prisma.user.findFirst({
+      where: { email: invitation.email },
+    });
+    if (!user) {
+      return res.status(409).json({
+        error: 'No Worker account exists for this email yet. Create an account first, then accept the invitation.',
+        code: 'ACCOUNT_REQUIRED',
+      });
+    }
+
+    // A team may hold at most three leaders (§8).
+    if (isTeamLeader(invitation.role) && (await countLeaders(invitation.teamId)) >= MAX_TEAM_LEADERS) {
+      return res.status(409).json({ error: `This team already has its ${MAX_TEAM_LEADERS} leaders` });
+    }
+
+    const existing = await prisma.teamMembership.findUnique({
+      where: { userId_teamId: { userId: user.id, teamId: invitation.teamId } },
+    });
+    if (!existing) {
+      await prisma.teamMembership.create({
+        data: { userId: user.id, teamId: invitation.teamId, role: invitation.role },
+      });
+    }
+
+    const accepted = await prisma.teamInvitation.update({
+      where: { id: invitation.id },
+      data: { status: 'accepted' },
+      include: { team: true },
+    });
+
+    res.json(accepted);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to accept invitation' });
+  }
+});
+
+// Decline invitation
+app.patch('/api/teams/invitations/:id/decline', async (req, res) => {
+  try {
+    const isAdmin = req.dbUser?.role === 'ADMIN';
+
+    const invitation = await prisma.teamInvitation.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!invitation) return res.status(404).json({ error: 'Invitation not found' });
+
+    const callerEmail = (req.user?.email || '').toLowerCase();
+    if (!isAdmin && callerEmail !== invitation.email.toLowerCase()) {
+      return res.status(403).json({ error: 'Forbidden: this invitation was sent to a different email address' });
+    }
+    if (invitation.status === 'accepted') {
+      return res.status(409).json({ error: 'This invitation has already been accepted' });
+    }
+
+    const declined = await prisma.teamInvitation.update({
+      where: { id: invitation.id },
+      data: { status: 'declined' },
+    });
+    res.json(declined);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to decline invitation' });
+  }
+});
+
+// Invitations addressed to the signed-in caller, across all teams (§9).
+// This is what the post-registration "you have been invited" screen reads.
+app.get('/api/teams/invitations/mine', async (req, res) => {
+  try {
+    const email = (req.user?.email || '').toLowerCase();
+    if (!email) return res.status(401).json({ error: 'Unauthorized: no email on the signed-in account' });
+
+    const invitations = await prisma.teamInvitation.findMany({
+      where: { email: { equals: email, mode: 'insensitive' }, status: 'pending' },
+      include: { team: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(invitations);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch invitations' });
   }
 });
 
@@ -1366,6 +1594,11 @@ app.post('/api/teams/announcements', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden: cannot post an announcement as another user' });
     }
 
+    // Members read announcements; only leaders write them (§8/§15/§17). Without
+    // this check any signed-in account could post into any team.
+    const auth = await authorizeTeam(req, teamId, 'announce');
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
     const announcement = await prisma.teamAnnouncement.create({
       data: { teamId, title, body, authorId },
     });
@@ -1379,14 +1612,9 @@ app.post('/api/teams/announcements', async (req, res) => {
 app.get('/api/teams/:teamId/announcements', async (req, res) => {
   try {
     // Only team members or admins may view announcements.
-    if (req.dbUser?.role !== 'ADMIN') {
-      const membership = await prisma.teamMembership.findFirst({
-        where: { teamId: req.params.teamId, userId: req.dbUser?.id },
-      });
-      if (!membership) {
-        return res.status(403).json({ error: 'Forbidden: not a member of this team' });
-      }
-    }
+    const auth = await authorizeTeam(req, req.params.teamId, 'view');
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
     const announcements = await prisma.teamAnnouncement.findMany({
       where: { teamId: req.params.teamId },
       orderBy: { createdAt: 'desc' },
@@ -1401,14 +1629,9 @@ app.get('/api/teams/:teamId/announcements', async (req, res) => {
 app.get('/api/teams/:teamId/stats', async (req, res) => {
   try {
     // Only team members or admins may view team stats.
-    if (req.dbUser?.role !== 'ADMIN') {
-      const membership = await prisma.teamMembership.findFirst({
-        where: { teamId: req.params.teamId, userId: req.dbUser?.id },
-      });
-      if (!membership) {
-        return res.status(403).json({ error: 'Forbidden: not a member of this team' });
-      }
-    }
+    const auth = await authorizeTeam(req, req.params.teamId, 'view');
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
     const { teamId } = req.params;
     const [memberCount, activeJobs, announcementCount] = await Promise.all([
       prisma.teamMembership.count({ where: { teamId } }),
@@ -1431,13 +1654,15 @@ app.patch('/api/applications/:id/assign', async (req, res) => {
     });
     if (!app_) return res.status(404).json({ error: 'Application not found' });
 
-    // Only admins or the team leader of the applicant team may assign members.
-    if (req.dbUser?.role !== 'ADMIN' && app_.teamId) {
-      const membership = await prisma.teamMembership.findFirst({
-        where: { teamId: app_.teamId, userId: req.dbUser?.id, role: 'super_leader' },
-      });
-      if (!membership) {
-        return res.status(403).json({ error: 'Forbidden: only the team leader or an admin may assign members' });
+    // Only admins or a leader of the applicant team may assign members (§16).
+    // A team application must be handled by that team's leadership; an individual
+    // application may only be changed by the applicant themselves.
+    if (req.dbUser?.role !== 'ADMIN') {
+      if (app_.teamId) {
+        const auth = await authorizeTeam(req, app_.teamId, 'assign');
+        if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+      } else if (String(app_.workerId) !== req.dbUser?.id) {
+        return res.status(403).json({ error: 'Forbidden: you can only assign members on your own application' });
       }
     }
 
