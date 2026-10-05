@@ -39,6 +39,9 @@ declare global {
         /** Server-side ban state. Absent for operator tokens, which have no account. */
         isBanned?: boolean;
         banReason?: string | null;
+        /** Server-side suspension state. Narrower than a ban: read access is kept. */
+        isSuspended?: boolean;
+        suspendReason?: string | null;
       } | null;
     }
   }

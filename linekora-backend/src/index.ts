@@ -106,6 +106,7 @@ app.use('/api', async (req, res, next) => {
       select: {
         id: true, role: true, firebaseUid: true, displayName: true,
         isBanned: true, banReason: true,
+        isSuspended: true, suspendReason: true,
       },
     });
     // Ban enforcement. This gate sits in front of every /api route, so a banned
@@ -117,6 +118,25 @@ app.use('/api', async (req, res, next) => {
         banned: true,
         banReason: req.dbUser.banReason || null,
       });
+    }
+    // Suspension is narrower than a ban: the account keeps read access so it can
+    // see its own state and the reason, but write endpoints that represent work
+    // or spend (posting a job, applying for one, bidding) are refused here.
+    // Admins are exempt so an admin can always undo a suspension.
+    if (req.dbUser?.isSuspended && req.dbUser.role !== 'ADMIN') {
+      const suspendedWritePaths = [
+        /^\/api\/jobs$/,
+        /^\/api\/applications$/,
+        /^\/api\/bids$/,
+        /^\/api\/contracts\/[^/]+\/accept$/,
+      ];
+      if (req.method !== 'GET' && suspendedWritePaths.some((re) => re.test(req.path))) {
+        return res.status(403).json({
+          error: 'Forbidden: account is suspended',
+          suspended: true,
+          suspendReason: req.dbUser.suspendReason || null,
+        });
+      }
     }
   } catch {
     req.dbUser = null;
@@ -130,6 +150,42 @@ const requireAdmin: express.RequestHandler = (req, res, next) => {
   }
   next();
 };
+
+// ─── AUDIT LOG ──────────────────────────────────────────────────────────────
+// Writes an audit entry server-side. This is deliberately NOT exposed as a
+// public "add entry" endpoint: if a client could post its own log lines, an
+// admin could simply omit the ones they wanted hidden. Entries are created by
+// the handlers that perform the action, and the acting admin comes from the
+// authenticated session (req.dbUser), never from the request body.
+async function writeAudit(req: any, entry: {
+  action: string;
+  category?: 'SECURITY' | 'FINANCIAL' | 'SAFETY' | 'SYSTEM';
+  targetType?: string;
+  targetId?: string;
+  targetName?: string | null;
+  metadata?: Record<string, any>;
+}) {
+  try {
+    await (prisma as any).auditLog.create({
+      data: {
+        action: entry.action,
+        category: entry.category || 'SYSTEM',
+        adminId: req.dbUser?.id || null,
+        adminEmail: req.dbUser?.email || null,
+        targetType: entry.targetType || null,
+        targetId: entry.targetId || null,
+        targetName: entry.targetName || null,
+        metadata: entry.metadata ? JSON.stringify(entry.metadata) : null,
+        ipAddress: (req.headers?.['x-forwarded-for'] || '').toString().split(',')[0].trim() || req.ip || null,
+      },
+    });
+  } catch (e) {
+    // Auditing must never break the operation it is recording. Log loudly and
+    // continue: a failed write is an operational problem, not a reason to reject
+    // a legitimate admin action.
+    console.error('AUDIT LOG WRITE FAILED:', entry.action, e);
+  }
+}
 
 // ─── ADMIN UNLOCK (operator passkey) ───────────────────────────────────────
 // Grants ADMIN role to the authenticated Firebase account when the operator
@@ -333,6 +389,28 @@ app.patch('/api/users/:id', async (req, res) => {
       where: { id: existing.id },
       data: safe,
     });
+
+    // Audit admin-driven verification/reputation changes. Verification decisions
+    // are the kind of action a compliance reviewer will ask to see, and this is
+    // the only endpoint that can change them.
+    if (isAdmin) {
+      const adminChanges: any[] = [];
+      for (const f of ['verificationStatus', 'tier', 'trustScore']) {
+        if (safe[f] !== undefined && safe[f] !== (existing as any)[f]) {
+          adminChanges.push({ field: f, from: (existing as any)[f], to: safe[f] });
+        }
+      }
+      if (adminChanges.length > 0) {
+        await writeAudit(req, {
+          action: `Updated ${existing.displayName || existing.email || existing.id}: ${adminChanges.map((c) => `${c.field} ${c.from} → ${c.to}`).join(', ')}`,
+          category: 'SECURITY',
+          targetType: 'USER',
+          targetId: existing.id,
+          targetName: existing.displayName || existing.email,
+          metadata: { changes: adminChanges },
+        });
+      }
+    }
     res.json(user);
   } catch (error: any) {
     console.error('Failed to update user:', error);
@@ -373,6 +451,14 @@ app.post('/api/admin/users/:id/ban', requireAdmin, async (req, res) => {
         trustScore: 0,
       },
     });
+    await writeAudit(req, {
+      action: `Banned ${target.displayName || target.email || target.id}`,
+      category: 'SECURITY',
+      targetType: 'USER',
+      targetId: user.id,
+      targetName: target.displayName || target.email,
+      metadata: { reason, previousTrustScore: target.trustScore, newTrustScore: 0 },
+    });
     res.json({
       success: true,
       user: { id: user.id, isBanned: user.isBanned, banReason: user.banReason, bannedAt: user.bannedAt, trustScore: user.trustScore },
@@ -407,6 +493,14 @@ app.post('/api/admin/users/:id/unban', requireAdmin, async (req, res) => {
         trustScore: 50,
       },
     });
+    await writeAudit(req, {
+      action: `Unbanned ${target.displayName || target.email || target.id}`,
+      category: 'SECURITY',
+      targetType: 'USER',
+      targetId: user.id,
+      targetName: target.displayName || target.email,
+      metadata: { originalReason: target.banReason, bannedAt: target.bannedAt, restoredTrustScore: 50 },
+    });
     res.json({
       success: true,
       user: { id: user.id, isBanned: user.isBanned, banReason: user.banReason, bannedAt: user.bannedAt, trustScore: user.trustScore },
@@ -414,6 +508,142 @@ app.post('/api/admin/users/:id/unban', requireAdmin, async (req, res) => {
   } catch (error: any) {
     console.error('Failed to unban user:', error);
     res.status(500).json({ error: error.message || 'Failed to unban user' });
+  }
+});
+
+// ─── SUSPEND / UNSUSPEND (admin only) ───────────────────────────────────────
+// Suspension is the softer counterpart to a ban: the account still authenticates
+// and can read the platform, but cannot post jobs or apply. Like a ban it lives
+// on the User row so it applies to every device and outlives the admin browser.
+// Suspension does not zero trustScore, since the profile is not being condemned,
+// only paused.
+
+app.post('/api/admin/users/:id/suspend', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const target = await prisma.user.findFirst({
+      where: { OR: [{ id }, { firebaseUid: id }] },
+    });
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (target.id === req.dbUser?.id) {
+      return res.status(400).json({ error: 'Cannot suspend your own admin account' });
+    }
+    const reason = String(req.body?.reason || '').trim();
+    if (!reason) {
+      return res.status(400).json({ error: 'A suspension reason is required' });
+    }
+    if (target.isSuspended) {
+      return res.status(400).json({ error: 'This account is already suspended' });
+    }
+    const user = await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        isSuspended: true,
+        suspendReason: reason,
+        suspendedAt: new Date(),
+        suspendedBy: req.dbUser?.displayName || req.dbUser?.firebaseUid || 'admin',
+      },
+    });
+    await writeAudit(req, {
+      action: `Suspended ${target.displayName || target.email || target.id}`,
+      category: 'SAFETY',
+      targetType: 'USER',
+      targetId: user.id,
+      targetName: target.displayName || target.email,
+      metadata: { reason, role: target.role },
+    });
+    res.json({
+      success: true,
+      user: { id: user.id, isSuspended: user.isSuspended, suspendReason: user.suspendReason, suspendedAt: user.suspendedAt },
+    });
+  } catch (error: any) {
+    console.error('Failed to suspend user:', error);
+    res.status(500).json({ error: error.message || 'Failed to suspend user' });
+  }
+});
+
+app.post('/api/admin/users/:id/unsuspend', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const target = await prisma.user.findFirst({
+      where: { OR: [{ id }, { firebaseUid: id }] },
+    });
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (!target.isSuspended) {
+      return res.status(400).json({ error: 'This account is not suspended' });
+    }
+    const user = await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        isSuspended: false,
+        suspendReason: null,
+        suspendedAt: null,
+        suspendedBy: null,
+      },
+    });
+    await writeAudit(req, {
+      action: `Unsuspended ${target.displayName || target.email || target.id}`,
+      category: 'SAFETY',
+      targetType: 'USER',
+      targetId: user.id,
+      targetName: target.displayName || target.email,
+      metadata: { originalReason: target.suspendReason, suspendedAt: target.suspendedAt },
+    });
+    res.json({
+      success: true,
+      user: { id: user.id, isSuspended: user.isSuspended, suspendReason: user.suspendReason, suspendedAt: user.suspendedAt },
+    });
+  } catch (error: any) {
+    console.error('Failed to unsuspend user:', error);
+    res.status(500).json({ error: error.message || 'Failed to unsuspend user' });
+  }
+});
+
+// ─── AUDIT LOG (admin only, read) ───────────────────────────────────────────
+// Read-only by design. There is intentionally no POST/PATCH/DELETE: the trail
+// is append-only from the server's perspective.
+app.get('/api/admin/audit-logs', requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(String(req.query.limit || '100'), 10) || 100, 500);
+    const offset = Math.max(parseInt(String(req.query.offset || '0'), 10) || 0, 0);
+    const category = String(req.query.category || '').trim().toUpperCase();
+    const where: any = {};
+    if (category && category !== 'ALL') where.category = category;
+
+    const [logs, total] = await Promise.all([
+      (prisma as any).auditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      (prisma as any).auditLog.count({ where }),
+    ]);
+    res.json({
+      logs: logs.map((l: any) => ({
+        id: l.id,
+        action: l.action,
+        category: l.category,
+        adminId: l.adminId,
+        adminEmail: l.adminEmail,
+        targetType: l.targetType,
+        targetId: l.targetId,
+        targetName: l.targetName,
+        metadata: l.metadata,
+        ipAddress: l.ipAddress,
+        createdAt: l.createdAt,
+      })),
+      total,
+      limit,
+      offset,
+    });
+  } catch (error: any) {
+    console.error('Failed to load audit logs:', error);
+    res.status(500).json({ error: error.message || 'Failed to load audit logs' });
   }
 });
 

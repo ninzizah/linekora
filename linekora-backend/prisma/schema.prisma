@@ -34,6 +34,14 @@ model User {
   bannedAt           DateTime?
   bannedBy           String?
 
+  // Suspend (enforced server-side — a suspended account can read but cannot
+  // post jobs or apply). Separate from ban: suspension is reversible and does
+  // not lock the account out of the API.
+  isSuspended        Boolean  @default(false)
+  suspendReason      String?  @db.Text
+  suspendedAt        DateTime?
+  suspendedBy        String?
+
   // Worker profile extras (JSON arrays)
   certificates       String?  @db.Text
   portfolio          String?  @db.Text
@@ -57,6 +65,7 @@ model User {
   contractsAsEmployer Contract[] @relation("ContractEmployer")
   savedJobs       SavedJob[]
   bidsPlaced      Bid[]
+  auditLogEntries AuditLog[] @relation("AdminAuditLogs")
 }
 
 model Team {
@@ -269,4 +278,33 @@ model Bid {
   updatedAt     DateTime @updatedAt
 
   @@unique([companyId, jobId])
+}
+
+// Admin action trail. Previously the admin portal kept this in the browser
+// (localStorage "admin_audit_logs"), which meant the record died with the
+// browser, was per-device, attributed every action to a hardcoded
+// "Linekora Admin", and could be edited by whoever held the machine. Entries
+// are now written server-side by the handlers performing the action, so an
+// admin cannot omit one.
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  action     String
+  category   String   @default("SYSTEM") // SECURITY, FINANCIAL, SAFETY, SYSTEM
+  // Admin who performed the action. Set from the authenticated session, never
+  // from the request body, so it cannot be spoofed by the client.
+  adminId    String?
+  adminEmail String?
+  targetType String? // USER, JOB, CONTRACT, APPLICATION, PAYOUT
+  targetId   String?
+  targetName String?
+  // JSON blob with action-specific context (e.g. the ban reason).
+  metadata   String? @db.Text
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  admin User? @relation("AdminAuditLogs", fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([category])
+  @@index([adminId])
 }
