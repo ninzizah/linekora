@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import {
   Shield, Users, UserPlus, UserCheck, ChevronRight,
   ArrowLeft, Loader2, X, CheckCircle2, Copy, Search
@@ -19,6 +19,10 @@ export default function WorkerTeamSetup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasTeam, setHasTeam] = useState(false);
+  // Membership is fetched async. Without this gate the create/join chooser
+  // renders for a frame before the answer arrives, so a user who already has a
+  // team is briefly asked to choose create/join again.
+  const [checkingTeam, setCheckingTeam] = useState(true);
 
   // Create team form
   const [teamName, setTeamName] = useState('');
@@ -34,10 +38,22 @@ export default function WorkerTeamSetup() {
   const [createdTeamCode, setCreatedTeamCode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!profile?.id) return;
-    getTeamByUser(profile.id).then(m => {
-      if (m?.team) setHasTeam(true);
-    }).catch(() => {});
+    if (!profile?.id) {
+      setCheckingTeam(false);
+      return;
+    }
+    let cancelled = false;
+    getTeamByUser(profile.id)
+      .then(m => {
+        if (!cancelled) setHasTeam(!!m?.team);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setCheckingTeam(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [profile?.id]);
 
   const handleCreateTeam = async (e: React.FormEvent) => {
@@ -78,24 +94,8 @@ export default function WorkerTeamSetup() {
     }
   };
 
-  if (hasTeam) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/10 p-8 text-center">
-          <CheckCircle2 size={48} className="text-green-400 mx-auto mb-4" />
-          <h2 className="text-xl font-black text-white font-sans uppercase tracking-tight mb-2">Already in a Team</h2>
-          <p className="text-white/50 text-sm font-sans mb-8">You are already a member of a team.</p>
-          <button
-            onClick={() => navigate('/dashboard/worker/team')}
-            className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-sans font-bold transition-all shadow-xl shadow-blue-900/40 flex items-center justify-center gap-2"
-          >
-            Go to Team Dashboard <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  // Checked before the hasTeam redirect: immediately after creating a team the
+  // user does have one, but the invite-code screen still needs to be shown.
   if (createdTeamCode) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4">
@@ -125,6 +125,22 @@ export default function WorkerTeamSetup() {
         </div>
       </div>
     );
+  }
+
+  // Hold the chooser back until we know whether this worker already has a team,
+  // otherwise the create/join options flash for a frame on every visit.
+  if (checkingTeam) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex flex-col items-center justify-center p-4">
+        <Loader2 size={32} className="text-white/40 animate-spin" />
+      </div>
+    );
+  }
+
+  // Already part of a team: this page only exists to create or join one, so send
+  // them straight to their team instead of a dead end with a button to press.
+  if (hasTeam) {
+    return <Navigate to="/dashboard/worker/my-team" replace />;
   }
 
   return (
