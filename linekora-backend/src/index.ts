@@ -85,7 +85,7 @@ app.post('/api/operator/unlock', async (req, res) => {
 app.use('/api', requireAuth);
 
 // Attach the caller's DB record so handlers can authorise by role / ownership.
-app.use('/api', async (req, _res, next) => {
+app.use('/api', async (req, res, next) => {
   try {
     if (req.operator) {
       // Operator tokens carry no Firebase account. Fabricate an ADMIN identity
@@ -100,8 +100,21 @@ app.use('/api', async (req, _res, next) => {
     }
     req.dbUser = await prisma.user.findUnique({
       where: { firebaseUid: req.user!.uid },
-      select: { id: true, role: true, firebaseUid: true, displayName: true },
+      select: {
+        id: true, role: true, firebaseUid: true, displayName: true,
+        isBanned: true, banReason: true,
+      },
     });
+    // Ban enforcement. This gate sits in front of every /api route, so a banned
+    // account is locked out of the whole platform rather than just hidden in the
+    // admin UI. Admins are exempt so a mistaken self-ban can always be undone.
+    if (req.dbUser?.isBanned && req.dbUser.role !== 'ADMIN') {
+      return res.status(403).json({
+        error: 'Forbidden: account is banned',
+        banned: true,
+        banReason: req.dbUser.banReason || null,
+      });
+    }
   } catch {
     req.dbUser = null;
   }
@@ -321,6 +334,83 @@ app.patch('/api/users/:id', async (req, res) => {
   } catch (error: any) {
     console.error('Failed to update user:', error);
     res.status(500).json({ error: error.message || 'Failed to update user' });
+  }
+});
+
+// ─── BAN / UNBAN (admin only) ──────────────────────────────────────────────
+// Ban state lives on the User row rather than in any client-side store, so it
+// applies to every device and survives the admin's browser. The /api gate in
+// index.ts rejects banned accounts before any route handler runs.
+
+app.post('/api/admin/users/:id/ban', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const target = await prisma.user.findFirst({
+      where: { OR: [{ id }, { firebaseUid: id }] },
+    });
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    // Guard rail: an admin banning themselves would lock themselves out of the
+    // very endpoint needed to undo it. Refuse rather than create that dead end.
+    if (target.id === req.dbUser?.id) {
+      return res.status(400).json({ error: 'Cannot ban your own admin account' });
+    }
+    const reason = String(req.body?.reason || '').trim();
+    if (!reason) {
+      return res.status(400).json({ error: 'A ban reason is required' });
+    }
+    const user = await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        isBanned: true,
+        banReason: reason,
+        bannedAt: new Date(),
+        bannedBy: req.dbUser?.displayName || req.dbUser?.firebaseUid || 'admin',
+        trustScore: 0,
+      },
+    });
+    res.json({
+      success: true,
+      user: { id: user.id, isBanned: user.isBanned, banReason: user.banReason, bannedAt: user.bannedAt, trustScore: user.trustScore },
+    });
+  } catch (error: any) {
+    console.error('Failed to ban user:', error);
+    res.status(500).json({ error: error.message || 'Failed to ban user' });
+  }
+});
+
+app.post('/api/admin/users/:id/unban', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const target = await prisma.user.findFirst({
+      where: { OR: [{ id }, { firebaseUid: id }] },
+    });
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (!target.isBanned) {
+      return res.status(400).json({ error: 'This account is not banned' });
+    }
+    // The pre-ban trust score was never stored, so restore the platform default
+    // of 50 rather than inventing a value.
+    const user = await prisma.user.update({
+      where: { id: target.id },
+      data: {
+        isBanned: false,
+        banReason: null,
+        bannedAt: null,
+        bannedBy: null,
+        trustScore: 50,
+      },
+    });
+    res.json({
+      success: true,
+      user: { id: user.id, isBanned: user.isBanned, banReason: user.banReason, bannedAt: user.bannedAt, trustScore: user.trustScore },
+    });
+  } catch (error: any) {
+    console.error('Failed to unban user:', error);
+    res.status(500).json({ error: error.message || 'Failed to unban user' });
   }
 });
 

@@ -28,6 +28,12 @@ model User {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  // Ban (enforced server-side — a banned account is rejected by the API gate)
+  isBanned           Boolean  @default(false)
+  banReason          String?  @db.Text
+  bannedAt           DateTime?
+  bannedBy           String?
+
   // Worker profile extras (JSON arrays)
   certificates       String?  @db.Text
   portfolio          String?  @db.Text

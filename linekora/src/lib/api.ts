@@ -111,6 +111,11 @@ export interface UserProfile {
   tier: string;
   verificationStatus: string;
   verificationData?: string | null;
+  /** Server-side ban state. Enforced by the API, not just the admin UI. */
+  isBanned?: boolean;
+  banReason?: string | null;
+  bannedAt?: string | null;
+  bannedBy?: string | null;
   avatarUrl?: string;
   createdAt: string;
 }
@@ -134,6 +139,19 @@ export const deleteUserRecord = (id: string) =>
   request<{ success: boolean }>(`/users/${id}`, {
     method: 'DELETE',
   });
+
+/** Bans a user server-side. A reason is mandatory so bans are auditable. */
+export const banUser = (id: string, reason: string) =>
+  request<{ success: boolean; user: Pick<UserProfile, 'id' | 'isBanned' | 'banReason' | 'bannedAt' | 'trustScore'> }>(
+    `/admin/users/${id}/ban`,
+    { method: 'POST', body: JSON.stringify({ reason }) },
+  );
+
+export const unbanUser = (id: string) =>
+  request<{ success: boolean; user: Pick<UserProfile, 'id' | 'isBanned' | 'banReason' | 'bannedAt' | 'trustScore'> }>(
+    `/admin/users/${id}/unban`,
+    { method: 'POST' },
+  );
 
 export const getUsers = () => request<UserProfile[]>('/users');
 

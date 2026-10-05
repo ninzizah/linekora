@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   LayoutDashboard, Users, Briefcase, ShieldCheck, Bell, Settings, Activity,
   LogOut, RefreshCw, Search, Eye, Ban, CheckCircle2, XCircle, Check, X,
@@ -12,6 +12,7 @@ import { useLanguage } from '../../lib/LanguageContext';
 import {
   getUsers, updateUser, getPendingVerifications, getJobs, updateJob,
   deleteJob, getApplications, createNotification, getStats, unlockAdmin,
+  banUser, unbanUser,
   type UserProfile, type Job, type Application, type VerificationSubmission, type PlatformStats,
 } from '../../lib/api';
 import { signOut } from 'firebase/auth';
@@ -82,20 +83,25 @@ export default function AdminDashboard() {
     return [];
   });
 
-  const [bannedIds, setBannedIds] = useState<string[]>(() => {
-    const cached = localStorage.getItem('admin_banned_users');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) {}
-    }
-    return [];
-  });
-  const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
+  // Ban state is server-side now and enforced by the API, so it is derived from
+// the fetched users instead of kept in a local list that only ever existed in
+// the browser that set it. Suspend is still admin-local and is unchanged.
+const bannedIds = useMemo(
+  () => users.filter(u => u.isBanned).map(u => u.id),
+  [users],
+);
+const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
     const cached = localStorage.getItem('admin_suspended_users');
     if (cached) {
       try { return JSON.parse(cached); } catch (e) {}
     }
     return [];
   });
+
+  // Ban confirmation dialog state.
+  const [banTarget, setBanTarget] = useState<UserProfile | null>(null);
+  const [banReason, setBanReason] = useState('');
+  const [banLoading, setBanLoading] = useState(false);
 
   const persistAudit = (logs: AuditLog[]) => {
     setAuditLogs(logs);
@@ -307,20 +313,61 @@ export default function AdminDashboard() {
     triggerNotification(t('toast_status_adjusted', { status: next.has(u.id) ? t('status_suspended') : t('status_active') }));
   };
 
-  const handleBanUser = async (u: UserProfile) => {
-    const next = new Set(bannedIds);
-    next.add(u.id);
-    const arr = Array.from(next);
-    setBannedIds(arr);
-    localStorage.setItem('admin_banned_users', JSON.stringify(arr));
-    try {
-      await updateUser(u.id, { trustScore: 0 });
-      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, trustScore: 0 } : x));
-    } catch (err) {
-      console.error(err);
+  /**
+   * Opens the confirmation dialog. Banning is never immediate — the admin has
+   * to supply a reason, which is both an accident guard and an audit trail.
+   */
+  const promptBanUser = (u: UserProfile) => {
+    setBanTarget(u);
+    setBanReason('');
+  };
+
+  const handleConfirmBan = async () => {
+    if (!banTarget) return;
+    const reason = banReason.trim();
+    if (!reason) {
+      triggerNotification(t('ban_reason_required'), 'error');
+      return;
     }
-    addAudit(t('audit_account_banned', { reportedName: u.displayName, reason: 'Manual admin action' }), 'SAFETY');
-    triggerNotification(t('toast_account_banned', { reportedName: u.displayName }), 'error');
+    setBanLoading(true);
+    try {
+      await banUser(banTarget.id, reason);
+      setUsers(prev => prev.map(x => x.id === banTarget.id ? {
+        ...x,
+        isBanned: true,
+        banReason: reason,
+        bannedAt: new Date().toISOString(),
+        trustScore: 0,
+      } : x));
+      addAudit(t('audit_account_banned', { reportedName: banTarget.displayName, reason }), 'SAFETY');
+      triggerNotification(t('toast_account_banned', { reportedName: banTarget.displayName }), 'error');
+      setBanTarget(null);
+      setBanReason('');
+    } catch (err: any) {
+      console.error('Failed to ban user', err);
+      triggerNotification(err?.message || t('toast_action_failed'), 'error');
+    } finally {
+      setBanLoading(false);
+    }
+  };
+
+  /** Lifts a ban. The server clears the flags and restores the default score. */
+  const handleUnbanUser = async (u: UserProfile) => {
+    try {
+      const res = await unbanUser(u.id);
+      setUsers(prev => prev.map(x => x.id === u.id ? {
+        ...x,
+        isBanned: false,
+        banReason: null,
+        bannedAt: null,
+        trustScore: res.user?.trustScore ?? 50,
+      } : x));
+      addAudit(t('audit_status_modified', { name: u.displayName, status: t('status_active') }), 'SAFETY');
+      triggerNotification(t('toast_status_adjusted', { status: t('status_active') }));
+    } catch (err: any) {
+      console.error('Failed to unban user', err);
+      triggerNotification(err?.message || t('toast_action_failed'), 'error');
+    }
   };
 
   // ─── JOB ACTIONS ──────────────────────────────────────────────────────────
@@ -550,7 +597,7 @@ export default function AdminDashboard() {
   // ─── FILTERS ──────────────────────────────────────────────────────────────
   const [userSearch, setUserSearch] = useState('');
   const [userRole, setUserRole] = useState<'all' | 'WORKER' | 'EMPLOYER' | 'COMPANY'>('all');
-  const [userStatus, setUserStatus] = useState<'all' | 'verified' | 'pending' | 'suspended'>('all');
+  const [userStatus, setUserStatus] = useState<'all' | 'verified' | 'pending' | 'suspended' | 'banned'>('all');
   const [jobSearch, setJobSearch] = useState('');
   const [jobStatus, setJobStatus] = useState<'all' | 'active' | 'completed' | 'cancelled'>('all');
   const [verifTab, setVerifTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
@@ -561,7 +608,8 @@ export default function AdminDashboard() {
     const matchSearch = !q || u.displayName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.phone || '').toLowerCase().includes(q);
     const matchStatus =
       userStatus === 'all' ? true :
-      userStatus === 'suspended' ? (bannedIds.includes(u.id) || suspendedIds.includes(u.id)) :
+      userStatus === 'banned' ? bannedIds.includes(u.id) :
+      userStatus === 'suspended' ? suspendedIds.includes(u.id) :
       userStatus === 'verified' ? u.verificationStatus === 'verified' :
       u.verificationStatus === 'pending';
     return matchRole && matchSearch && matchStatus;
@@ -957,6 +1005,7 @@ export default function AdminDashboard() {
                 { id: 'verified', label: t('status_verified') },
                 { id: 'pending', label: t('status_pending') },
                 { id: 'suspended', label: t('status_suspended') },
+                { id: 'banned', label: t('status_banned') },
               ] as const).map((s) => (
                 <button
                   key={s.id}
@@ -1051,10 +1100,21 @@ export default function AdminDashboard() {
                           >
                             <Clock size={14} />
                           </button>
+                          {bannedIds.includes(u.id) && (
+                            <button
+                              type="button"
+                              onClick={() => handleUnbanUser(u)}
+                              className="p-2 text-gray-400 hover:text-white hover:bg-green-650 rounded-lg transition-all cursor-pointer"
+                              title={t('users_unban')}
+                            >
+                              <Shield size={14} />
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => handleBanUser(u)}
-                            className="p-2 text-red-500 hover:text-white hover:bg-red-650 rounded-lg transition-all cursor-pointer"
+                            onClick={() => promptBanUser(u)}
+                            disabled={bannedIds.includes(u.id)}
+                            className={`p-2 rounded-lg transition-all cursor-pointer ${bannedIds.includes(u.id) ? 'text-gray-700 cursor-not-allowed' : 'text-red-500 hover:text-white hover:bg-red-650'}`}
                             title={t('users_ban')}
                           >
                             <Ban size={14} />
@@ -1833,11 +1893,83 @@ export default function AdminDashboard() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { handleBanUser(inspectingUser); setInspectingUser(null); }}
-                  className="flex-1 py-3 bg-red-950 hover:bg-red-900 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-red-900/30"
+                  onClick={() => { handleUnbanUser(inspectingUser); setInspectingUser(null); }}
+                  className="flex-1 py-3 bg-green-950 hover:bg-green-900 text-green-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-green-900/30"
+                >
+                  <Shield size={14} />
+                  {t('users_unban')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => promptBanUser(inspectingUser)}
+                  disabled={bannedIds.includes(inspectingUser.id)}
+                  className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 border ${bannedIds.includes(inspectingUser.id) ? 'bg-gray-900 text-gray-600 cursor-not-allowed border-gray-800' : 'bg-red-950 hover:bg-red-900 text-red-400 border border-red-900/30'}`}
                 >
                   <Ban size={14} />
                   {t('users_ban')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Ban confirmation — a ban locks the account out of the whole platform,
+          so it is never applied on a single click and always records a reason. */}
+      <AnimatePresence>
+        {banTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-gray-950/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans font-medium"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-gray-900 rounded-3xl border border-red-900/40 p-7"
+            >
+              <div className="flex items-start gap-4 mb-5">
+                <div className="h-11 w-11 bg-red-950 rounded-2xl flex items-center justify-center text-red-400 shrink-0 border border-red-900/40">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">{t('ban_confirm_title')}</h3>
+                  <p className="text-xs text-gray-400 font-sans mt-1">{t('ban_confirm_desc', { name: banTarget.displayName })}</p>
+                </div>
+              </div>
+
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                {t('ban_reason_label')}
+              </label>
+              <input
+                type="text"
+                value={banReason}
+                onChange={e => setBanReason(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleConfirmBan(); }}
+                placeholder={t('ban_reason_placeholder')}
+                className="w-full px-4 py-3 rounded-xl bg-gray-950 border border-gray-800 text-sm text-gray-100 font-sans outline-none focus:border-red-600"
+                autoFocus
+              />
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setBanTarget(null); setBanReason(''); }}
+                  disabled={banLoading}
+                  className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBan}
+                  disabled={banLoading || !banReason.trim()}
+                  className="flex-1 py-3 bg-red-650 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Ban size={14} />
+                  {banLoading ? t('loading') : t('ban_confirm_button')}
                 </button>
               </div>
             </motion.div>

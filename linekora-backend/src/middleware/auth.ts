@@ -36,6 +36,9 @@ declare global {
         role: string | null;
         firebaseUid: string | null;
         displayName: string | null;
+        /** Server-side ban state. Absent for operator tokens, which have no account. */
+        isBanned?: boolean;
+        banReason?: string | null;
       } | null;
     }
   }
