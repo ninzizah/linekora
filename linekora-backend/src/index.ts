@@ -39,7 +39,10 @@ app.get('/api/stats', async (_req, res) => {
       prisma.user.count({ where: { role: 'COMPANY', verificationStatus: 'verified' } }),
       prisma.user.count({ where: { verificationStatus: 'pending' } }),
       prisma.job.count({ where: { OR: [{ status: 'open' }, { status: 'accepted' }, { status: 'completion_requested' }] } }),
-      prisma.job.count({ where: { status: 'completed' } }),
+      // A hire completes on the Contract, not the Job. Job.status is only ever
+      // open/accepted/cancelled/expired, so counting completed jobs here always
+      // returned 0. Completion is driven by PATCH /api/contracts/:id.
+      prisma.contract.count({ where: { status: 'completed' } }),
     ]);
     res.json({
       totalUsers,
