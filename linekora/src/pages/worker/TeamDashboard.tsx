@@ -186,31 +186,35 @@ export default function TeamDashboard() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+        {/* Two icon cards per line on mobile, three from lg up. The Team Info card
+            spans both columns while narrow so the team code and copy button are
+            not squeezed into a ~160px track. Sizes here are deliberately compact
+            so four cards sit above the fold on a phone. */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0 }}
-            className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-6"
+            className="col-span-2 lg:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-12 w-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
-                <Users size={24} />
+            <div className="flex items-center justify-between mb-3">
+              <div className="h-9 w-9 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow">
+                <Users size={16} />
               </div>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-sans">
                 {t('team_info')}
               </span>
             </div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('team_name')}</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-1 font-sans">{team.name}</h3>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('team_code')}</span>
-              <span className="font-mono text-sm font-bold text-gray-700 bg-gray-50 px-3 py-1 rounded-lg">{team.teamCode}</span>
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('team_name')}</p>
+            <h3 className="text-base font-black text-gray-900 font-sans leading-tight break-words">{team.name}</h3>
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('team_code')}</span>
+              <span className="font-mono text-xs font-bold text-gray-700 bg-gray-50 px-2 py-0.5 rounded-md break-all">{team.teamCode}</span>
               <button
                 onClick={handleCopyCode}
-                className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
+                className="p-1 rounded-md hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
               >
-                {copied ? <CheckCircle2 size={14} className="text-green-500" /> : <Copy size={14} />}
+                {copied ? <CheckCircle2 size={12} className="text-green-500" /> : <Copy size={12} />}
               </button>
             </div>
           </motion.div>
@@ -221,15 +225,15 @@ export default function TeamDashboard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: (i + 1) * 0.1 }}
-              className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-6"
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`h-12 w-12 ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-lg`}>
-                  <stat.icon size={24} />
+              <div className="flex items-center justify-between mb-3">
+                <div className={`h-9 w-9 ${stat.color} rounded-xl flex items-center justify-center text-white shadow`}>
+                  <stat.icon size={16} />
                 </div>
               </div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans">{stat.label}</p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1 font-sans">{stat.value}</h3>
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest font-sans leading-tight">{stat.label}</p>
+              <h3 className="text-lg font-black text-gray-900 font-sans">{stat.value}</h3>
             </motion.div>
           ))}
         </div>
