@@ -1811,7 +1811,7 @@ export default function AdminDashboard() {
                     <div className="flex flex-col items-start md:items-end justify-between gap-1 border-t md:border-t-0 border-gray-900 pt-2 md:pt-0 shrink-0 uppercase tracking-wider text-[9px] text-gray-550 font-bold">
                       {/* Previously hardcoded to "Linekora Admin" for every row, which
                           meant the trail could not say who did what. */}
-                      <span>{t('terminal_label', { user: log.adminEmail || log.adminId || t('audit_unknown_admin') })}</span>
+                      <span>{t('terminal_label', { user: log.adminEmail || log.adminLabel || log.adminId || t('audit_unknown_admin') })}</span>
                       <span className="text-gray-500 font-mono normal-case tracking-normal">
                         {new Date(log.createdAt).toLocaleString()}
                       </span>

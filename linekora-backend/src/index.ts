@@ -166,12 +166,21 @@ async function writeAudit(req: any, entry: {
   metadata?: Record<string, any>;
 }) {
   try {
+    // /admin is normally unlocked with an operator token, which carries no
+    // Firebase account: the middleware fabricates the id "__operator__" as an
+    // ADMIN identity. That is not a User row, so writing it straight into the
+    // adminId foreign key raises 23503 and the entry is lost — the trail would
+    // have silently recorded nothing for the operator path. Operator actions are
+    // attributed by name instead, with adminId left null.
+    const operatorAuth = req.operator === true;
+    const actorId = operatorAuth ? null : (req.dbUser?.id || null);
     await (prisma as any).auditLog.create({
       data: {
         action: entry.action,
         category: entry.category || 'SYSTEM',
-        adminId: req.dbUser?.id || null,
-        adminEmail: req.dbUser?.email || null,
+        adminId: actorId,
+        adminEmail: operatorAuth ? null : (req.dbUser?.email || null),
+        adminLabel: operatorAuth ? 'Operator passkey (no account)' : (req.dbUser?.displayName || null),
         targetType: entry.targetType || null,
         targetId: entry.targetId || null,
         targetName: entry.targetName || null,
@@ -630,6 +639,7 @@ app.get('/api/admin/audit-logs', requireAdmin, async (req, res) => {
         category: l.category,
         adminId: l.adminId,
         adminEmail: l.adminEmail,
+        adminLabel: l.adminLabel,
         targetType: l.targetType,
         targetId: l.targetId,
         targetName: l.targetName,

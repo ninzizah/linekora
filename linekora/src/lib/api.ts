@@ -185,6 +185,8 @@ export interface AuditLogEntry {
   category: 'SECURITY' | 'FINANCIAL' | 'SAFETY' | 'SYSTEM';
   adminId: string | null;
   adminEmail: string | null;
+  /** Actor name for the operator-passkey path, where there is no Firebase account. */
+  adminLabel?: string | null;
   targetType: string | null;
   targetId: string | null;
   targetName: string | null;

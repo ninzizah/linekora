@@ -294,6 +294,10 @@ model AuditLog {
   // from the request body, so it cannot be spoofed by the client.
   adminId    String?
   adminEmail String?
+  // Human-readable actor for the operator-token path (/admin unlocked with the
+  // passkey), where there is no Firebase account and adminId must stay null to
+  // satisfy the foreign key. Without this those rows read as "unknown admin".
+  adminLabel String?
   targetType String? // USER, JOB, CONTRACT, APPLICATION, PAYOUT
   targetId   String?
   targetName String?
