@@ -905,6 +905,7 @@ app.patch('/api/jobs/:id', async (req, res) => {
 app.delete('/api/jobs/:id', async (req, res) => {
   try {
     const jobId = parseInt(req.params.id);
+    const reason = (req.body?.reason || '').toString().trim() || null;
     const existing = await prisma.job.findUnique({ where: { id: jobId } });
     if (!existing) {
       return res.status(404).json({ error: 'Job not found' });
@@ -917,6 +918,17 @@ app.delete('/api/jobs/:id', async (req, res) => {
     // Remove related applications first to satisfy the foreign key constraint
     await prisma.application.deleteMany({ where: { jobId } });
     await prisma.job.delete({ where: { id: jobId } });
+
+    // A job deletion is permanent, so it belongs in the trail. The admin is
+    // attributed from the authenticated session, never from the request body.
+    await writeAudit(req, {
+      action: `Deleted job "${existing.title}"`,
+      category: 'SYSTEM',
+      targetType: 'JOB',
+      targetId: String(jobId),
+      targetName: existing.title,
+      metadata: { reason: reason || null, employerId: existing.employerId },
+    });
 
     res.json({ success: true });
   } catch (error) {

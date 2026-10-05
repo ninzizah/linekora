@@ -113,6 +113,12 @@ export default function AdminDashboard() {
   const [suspendReason, setSuspendReason] = useState('');
   const [suspendLoading, setSuspendLoading] = useState(false);
 
+  // Job delete confirmation dialog state. Matches the ban dialog: deleting a job
+  // removes it for good, so it is never a single click and always records why.
+  const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Reload after any action that should have produced a new entry. Kept separate
   // from the optimistic user list so the trail is whatever the server recorded.
   const refreshAuditLogs = async () => {
@@ -431,15 +437,29 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteJob = async (j: Job) => {
+  // Opens the confirmation dialog. Deleting a job is permanent, so the handler
+  // below only runs once the admin has confirmed and stated a reason.
+  const openDeleteJobConfirm = (j: Job) => {
+    setDeleteTarget(j);
+    setDeleteReason('');
+  };
+
+  const confirmDeleteJob = async () => {
+    if (!deleteTarget || deleteLoading) return;
+    const j = deleteTarget;
+    setDeleteLoading(true);
     try {
-      await deleteJob(j.id);
+      await deleteJob(j.id, deleteReason.trim() || undefined);
       setJobs(prev => prev.filter(x => x.id !== j.id));
       refreshAuditLogs();
       triggerNotification(t('toast_job_deleted', { title: j.title }));
+      setDeleteTarget(null);
+      setDeleteReason('');
     } catch (err) {
       console.error(err);
       triggerNotification(t('toast_action_failed'), 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -1284,7 +1304,7 @@ export default function AdminDashboard() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDeleteJob(j)}
+                            onClick={() => openDeleteJobConfirm(j)}
                             className="p-2 text-red-500 hover:text-white hover:bg-red-650 rounded-lg transition-all cursor-pointer"
                             title={t('jobs_delete')}
                           >
@@ -2122,6 +2142,70 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
+      {/* Job delete confirmation — same shape as the ban dialog. A job and every
+          application against it are destroyed for good, so it is never applied on
+          a single click and always records a reason. */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-gray-950/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans font-medium"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-gray-900 rounded-3xl border border-red-900/40 p-7"
+            >
+              <div className="flex items-start gap-4 mb-5">
+                <div className="h-11 w-11 bg-red-950 rounded-2xl flex items-center justify-center text-red-400 shrink-0 border border-red-900/40">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">{t('job_delete_confirm_title')}</h3>
+                  <p className="text-xs text-gray-400 font-sans mt-1">{t('job_delete_confirm_desc', { title: deleteTarget.title })}</p>
+                </div>
+              </div>
+
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                {t('job_delete_reason_label')}
+              </label>
+              <input
+                type="text"
+                value={deleteReason}
+                onChange={e => setDeleteReason(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') confirmDeleteJob(); }}
+                placeholder={t('job_delete_reason_placeholder')}
+                className="w-full px-4 py-3 rounded-xl bg-gray-950 border border-gray-800 text-sm text-gray-100 font-sans outline-none focus:border-red-600"
+                autoFocus
+              />
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setDeleteTarget(null); setDeleteReason(''); }}
+                  disabled={deleteLoading}
+                  className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteJob}
+                  disabled={deleteLoading || !deleteReason.trim()}
+                  className="flex-1 py-3 bg-red-650 hover:bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Trash2 size={14} />
+                  {deleteLoading ? t('loading') : t('job_delete_confirm_button')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Job View Modal */}
       <AnimatePresence>
         {inspectingJob && (
@@ -2199,7 +2283,7 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { handleDeleteJob(inspectingJob); setInspectingJob(null); }}
+                    onClick={() => { openDeleteJobConfirm(inspectingJob); setInspectingJob(null); }}
                     className="flex-1 py-3 bg-red-950 hover:bg-red-900 text-red-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-red-900/30"
                   >
                     <Trash2 size={14} />

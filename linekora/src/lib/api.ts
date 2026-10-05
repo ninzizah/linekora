@@ -256,8 +256,11 @@ export const createJob = (data: Omit<Job, 'id' | 'createdAt' | 'employer'>) =>
 export const updateJob = (id: number, data: Partial<Job>) =>
   request<Job>(`/jobs/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 
-export const deleteJob = (id: number) =>
-  request<{ success: boolean }>(`/jobs/${id}`, { method: 'DELETE' });
+export const deleteJob = (id: number, reason?: string) =>
+  request<{ success: boolean }>(`/jobs/${id}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ reason }),
+  });
 
 export const applyToJob = (jobId: number, workerId: string) =>
   request<any>(`/jobs/${jobId}/apply`, { method: 'POST', body: JSON.stringify({ workerId }) });
