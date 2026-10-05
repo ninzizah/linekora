@@ -11,19 +11,35 @@ import Seo from '../../components/Seo';
 export default function Home() {
   const { t } = useLanguage();
 
+  // Platform stats are real figures from /api/stats. They must never be
+  // replaced by invented numbers: showing "8,500 verified workers" when the API
+  // is down is a misrepresentation, not a placeholder. Last good response is
+  // cached so a transient outage still shows real data, and the strip stays
+  // hidden if there is nothing real to show.
+  const STATS_CACHE_KEY = 'linekora_platform_stats';
+
   const [statsData, setStatsData] = useState<{ activeJobs: number; verifiedWorkers: number; verifiedCompanies: number; completedHires: number } | null>(null);
 
   useEffect(() => {
     getStats()
-      .then((s) => setStatsData({
-        activeJobs: s.activeJobs,
-        verifiedWorkers: s.verifiedWorkers,
-        verifiedCompanies: s.verifiedCompanies,
-        completedHires: s.completedHires,
-      }))
+      .then((s) => {
+        const fresh = {
+          activeJobs: s.activeJobs,
+          verifiedWorkers: s.verifiedWorkers,
+          verifiedCompanies: s.verifiedCompanies,
+          completedHires: s.completedHires,
+        };
+        setStatsData(fresh);
+        try {
+          localStorage.setItem(STATS_CACHE_KEY, JSON.stringify(fresh));
+        } catch (e) { /* private mode / quota — the live data still shows */ }
+      })
       .catch((err) => {
         console.error('Failed to load platform stats', err);
-        setStatsData({ activeJobs: 1200, verifiedWorkers: 8500, verifiedCompanies: 450, completedHires: 12000 });
+        try {
+          const cached = localStorage.getItem(STATS_CACHE_KEY);
+          if (cached) setStatsData(JSON.parse(cached));
+        } catch (e) { /* ignore malformed cache, leave the strip hidden */ }
       });
   }, []);
 
@@ -41,6 +57,8 @@ export default function Home() {
     { name: t('category_hospitality'), icon: Users },
   ];
 
+  // No real figures yet (still loading, or the API is down with no cache) — the
+  // strip renders nothing rather than a number we cannot stand behind.
   const stats = statsData
     ? [
         { label: t('active_jobs'), value: `${fmt(statsData.activeJobs)}+` },
@@ -48,12 +66,7 @@ export default function Home() {
         { label: t('verified_companies'), value: `${fmt(statsData.verifiedCompanies)}+` },
         { label: t('completed_hires'), value: `${fmt(statsData.completedHires)}+` },
       ]
-    : [
-        { label: t('active_jobs'), value: '1,200+' },
-        { label: t('verified_workers'), value: '8,500+' },
-        { label: t('verified_companies'), value: '450+' },
-        { label: t('completed_hires'), value: '12,000+' },
-      ];
+    : [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -100,14 +113,16 @@ export default function Home() {
                   {t('hire_workers')}
                 </Link>
               </div>
-              <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
-                {stats.map((stat, i) => (
-                  <div key={i}>
-                    <p className="font-sans text-xl sm:text-2xl font-black text-gray-900">{stat.value}</p>
-                    <p className="font-sans text-xs sm:text-sm text-gray-500 font-medium">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
+              {stats.length > 0 && (
+                <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
+                  {stats.map((stat, i) => (
+                    <div key={i}>
+                      <p className="font-sans text-xl sm:text-2xl font-black text-gray-900">{stat.value}</p>
+                      <p className="font-sans text-xs sm:text-sm text-gray-500 font-medium">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
             
             <motion.div 
