@@ -116,6 +116,11 @@ export interface UserProfile {
   banReason?: string | null;
   bannedAt?: string | null;
   bannedBy?: string | null;
+  /** Server-side suspension state. Read access kept, work-related writes blocked. */
+  isSuspended?: boolean;
+  suspendReason?: string | null;
+  suspendedAt?: string | null;
+  suspendedBy?: string | null;
   avatarUrl?: string;
   createdAt: string;
 }
@@ -152,6 +157,52 @@ export const unbanUser = (id: string) =>
     `/admin/users/${id}/unban`,
     { method: 'POST' },
   );
+
+/**
+ * Suspends a user server-side. Unlike a ban this keeps read access and only
+ * blocks work-related writes (posting, applying, bidding). A reason is
+ * mandatory so suspensions are auditable.
+ */
+export const suspendUser = (id: string, reason: string) =>
+  request<{ success: boolean; user: Pick<UserProfile, 'id' | 'isSuspended' | 'suspendReason' | 'suspendedAt'> }>(
+    `/admin/users/${id}/suspend`,
+    { method: 'POST', body: JSON.stringify({ reason }) },
+  );
+
+export const unsuspendUser = (id: string) =>
+  request<{ success: boolean; user: Pick<UserProfile, 'id' | 'isSuspended' | 'suspendReason' | 'suspendedAt'> }>(
+    `/admin/users/${id}/unsuspend`,
+    { method: 'POST' },
+  );
+
+/**
+ * A server-recorded admin action. Entries are written by the backend handlers,
+ * never by the client, so the trail cannot be trimmed by the admin it records.
+ */
+export interface AuditLogEntry {
+  id: number;
+  action: string;
+  category: 'SECURITY' | 'FINANCIAL' | 'SAFETY' | 'SYSTEM';
+  adminId: string | null;
+  adminEmail: string | null;
+  targetType: string | null;
+  targetId: string | null;
+  targetName: string | null;
+  metadata: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+}
+
+export const getAuditLogs = (params?: { limit?: number; offset?: number; category?: string }) => {
+  const q = new URLSearchParams();
+  if (params?.limit) q.set('limit', String(params.limit));
+  if (params?.offset) q.set('offset', String(params.offset));
+  if (params?.category && params.category !== 'ALL') q.set('category', params.category);
+  const qs = q.toString();
+  return request<{ logs: AuditLogEntry[]; total: number; limit: number; offset: number }>(
+    `/admin/audit-logs${qs ? `?${qs}` : ''}`,
+  );
+};
 
 export const getUsers = () => request<UserProfile[]>('/users');
 

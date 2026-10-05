@@ -12,8 +12,9 @@ import { useLanguage } from '../../lib/LanguageContext';
 import {
   getUsers, updateUser, getPendingVerifications, getJobs, updateJob,
   deleteJob, getApplications, createNotification, getStats, unlockAdmin,
-  banUser, unbanUser,
+  banUser, unbanUser, suspendUser, unsuspendUser, getAuditLogs,
   type UserProfile, type Job, type Application, type VerificationSubmission, type PlatformStats,
+  type AuditLogEntry,
 } from '../../lib/api';
 import { signOut } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
@@ -21,12 +22,22 @@ import AdminUnlockModal from '../../components/AdminUnlockModal';
 
 type TabId = 'dashboard' | 'users' | 'jobs' | 'verification' | 'notifications' | 'settings' | 'activity';
 
-interface AuditLog {
-  id: string;
-  action: string;
-  category: 'SECURITY' | 'FINANCIAL' | 'SAFETY' | 'SYSTEM';
-  date: string;
-  user: string;
+// The trail is fetched from the server; see getAuditLogs. Entries are written
+// by the backend handlers, so the admin cannot omit or edit them.
+
+/** Renders an audit entry's JSON metadata compactly, and never throws on bad input. */
+function formatAuditMetadata(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return Object.entries(parsed)
+        .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+        .join('  ·  ');
+    }
+    return String(parsed);
+  } catch {
+    return raw;
+  }
 }
 
 export default function AdminDashboard() {
@@ -75,48 +86,46 @@ export default function AdminDashboard() {
   const [verificationQueue, setVerificationQueue] = useState<VerificationSubmission[]>([]);
   const [stats, setStats] = useState<PlatformStats | null>(null);
 
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
-    const cached = localStorage.getItem('admin_audit_logs');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) {}
-    }
-    return [];
-  });
+  // The audit trail is read from the server, never written by the browser.
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditFilter, setAuditFilter] = useState<'ALL' | AuditLogEntry['category']>('ALL');
 
-  // Ban state is server-side now and enforced by the API, so it is derived from
-// the fetched users instead of kept in a local list that only ever existed in
-// the browser that set it. Suspend is still admin-local and is unchanged.
-const bannedIds = useMemo(
-  () => users.filter(u => u.isBanned).map(u => u.id),
-  [users],
-);
-const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
-    const cached = localStorage.getItem('admin_suspended_users');
-    if (cached) {
-      try { return JSON.parse(cached); } catch (e) {}
-    }
-    return [];
-  });
+  // Ban and suspend state are both server-side and enforced by the API, so both
+  // are derived from the fetched users. Neither was ever per-browser truth.
+  const bannedIds = useMemo(
+    () => users.filter(u => u.isBanned).map(u => u.id),
+    [users],
+  );
+  const suspendedIds = useMemo(
+    () => users.filter(u => u.isSuspended).map(u => u.id),
+    [users],
+  );
 
   // Ban confirmation dialog state.
   const [banTarget, setBanTarget] = useState<UserProfile | null>(null);
   const [banReason, setBanReason] = useState('');
   const [banLoading, setBanLoading] = useState(false);
 
-  const persistAudit = (logs: AuditLog[]) => {
-    setAuditLogs(logs);
-    localStorage.setItem('admin_audit_logs', JSON.stringify(logs));
-  };
+  // Suspend confirmation dialog state. Mirrors the ban dialog: suspending is
+  // never a single click, because it takes a worker's ability to earn away.
+  const [suspendTarget, setSuspendTarget] = useState<UserProfile | null>(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendLoading, setSuspendLoading] = useState(false);
 
-  const addAudit = (action: string, category: AuditLog['category']) => {
-    const entry: AuditLog = {
-      id: `log_${Date.now()}`,
-      action,
-      category,
-      date: new Date().toLocaleString(),
-      user: 'Linekora Admin',
-    };
-    persistAudit([entry, ...auditLogs].slice(0, 200));
+  // Reload after any action that should have produced a new entry. Kept separate
+  // from the optimistic user list so the trail is whatever the server recorded.
+  const refreshAuditLogs = async () => {
+    setAuditLoading(true);
+    try {
+      const res = await getAuditLogs({ limit: 200, category: auditFilter });
+      setAuditLogs(res.logs);
+    } catch (e) {
+      console.error('Failed to load audit log', e);
+      setAuditLogs([]);
+    } finally {
+      setAuditLoading(false);
+    }
   };
 
   const fetchAll = async () => {
@@ -155,6 +164,14 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
     const interval = setInterval(fetchAll, 30000);
     return () => clearInterval(interval);
   }, [unlocked]);
+
+  // The trail is loaded once the portal is unlocked, and again whenever the
+  // category filter changes. Not on the 30s poll: the trail only grows when
+  // someone acts, and refreshingAuditLogs is called after each action.
+  useEffect(() => {
+    if (!unlocked) return;
+    refreshAuditLogs();
+  }, [unlocked, auditFilter]);
 
   // ─── TOAST ────────────────────────────────────────────────────────────────
   const triggerNotification = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
@@ -291,7 +308,9 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
           linkTarget: 'verification',
         });
       } catch (e) { console.error('Failed to notify user of approval', e); }
-      addAudit(t('audit_verification_approved', { name: u.displayName, id: u.id }), 'SECURITY');
+      // The backend records verification changes in the audit trail, so this
+      // only needs to pick up the new entry.
+      refreshAuditLogs();
       triggerNotification(t('toast_verification_approved', { name: u.displayName }));
     } catch (err) {
       console.error(err);
@@ -299,18 +318,47 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
     }
   };
 
-  const handleSuspendUser = async (u: UserProfile) => {
-    const next = new Set(suspendedIds);
-    if (next.has(u.id)) {
-      next.delete(u.id);
-    } else {
-      next.add(u.id);
+  /** Opens the suspension dialog. Unsuspending is immediate, since it restores access. */
+  const promptSuspendUser = (u: UserProfile) => {
+    if (suspendedIds.includes(u.id)) {
+      handleUnsuspendUser(u);
+      return;
     }
-    const arr = Array.from(next);
-    setSuspendedIds(arr);
-    localStorage.setItem('admin_suspended_users', JSON.stringify(arr));
-    addAudit(t('audit_status_modified', { name: u.displayName, status: next.has(u.id) ? t('status_suspended') : t('status_active') }), 'SYSTEM');
-    triggerNotification(t('toast_status_adjusted', { status: next.has(u.id) ? t('status_suspended') : t('status_active') }));
+    setSuspendTarget(u);
+    setSuspendReason('');
+  };
+
+  const handleUnsuspendUser = async (u: UserProfile) => {
+    try {
+      await unsuspendUser(u.id);
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, isSuspended: false, suspendReason: null, suspendedAt: null } : x));
+      refreshAuditLogs();
+      triggerNotification(t('toast_status_adjusted', { status: t('status_active') }));
+    } catch (err) {
+      console.error(err);
+      triggerNotification(t('toast_action_failed'), 'error');
+    }
+  };
+
+  const confirmSuspendUser = async () => {
+    if (!suspendTarget) return;
+    const reason = suspendReason.trim();
+    // Mandatory, same as a ban: the reason is what makes the action reviewable.
+    if (!reason) return;
+    setSuspendLoading(true);
+    try {
+      await suspendUser(suspendTarget.id, reason);
+      setUsers(prev => prev.map(x => x.id === suspendTarget.id ? { ...x, isSuspended: true, suspendReason: reason, suspendedAt: new Date().toISOString() } : x));
+      setSuspendTarget(null);
+      setSuspendReason('');
+      refreshAuditLogs();
+      triggerNotification(t('toast_status_adjusted', { status: t('status_suspended') }));
+    } catch (err: any) {
+      console.error(err);
+      triggerNotification(err?.message || t('toast_action_failed'), 'error');
+    } finally {
+      setSuspendLoading(false);
+    }
   };
 
   /**
@@ -339,7 +387,7 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
         bannedAt: new Date().toISOString(),
         trustScore: 0,
       } : x));
-      addAudit(t('audit_account_banned', { reportedName: banTarget.displayName, reason }), 'SAFETY');
+      refreshAuditLogs();
       triggerNotification(t('toast_account_banned', { reportedName: banTarget.displayName }), 'error');
       setBanTarget(null);
       setBanReason('');
@@ -362,7 +410,7 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
         bannedAt: null,
         trustScore: res.user?.trustScore ?? 50,
       } : x));
-      addAudit(t('audit_status_modified', { name: u.displayName, status: t('status_active') }), 'SAFETY');
+      refreshAuditLogs();
       triggerNotification(t('toast_status_adjusted', { status: t('status_active') }));
     } catch (err: any) {
       console.error('Failed to unban user', err);
@@ -375,7 +423,7 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
     try {
       await updateJob(j.id, { status: 'cancelled' });
       setJobs(prev => prev.map(x => x.id === j.id ? { ...x, status: 'cancelled' } : x));
-      addAudit(t('audit_job_hidden', { title: j.title }), 'SYSTEM');
+      refreshAuditLogs();
       triggerNotification(t('toast_job_hidden', { title: j.title }));
     } catch (err) {
       console.error(err);
@@ -387,7 +435,7 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
     try {
       await deleteJob(j.id);
       setJobs(prev => prev.filter(x => x.id !== j.id));
-      addAudit(t('audit_job_deleted', { title: j.title }), 'SYSTEM');
+      refreshAuditLogs();
       triggerNotification(t('toast_job_deleted', { title: j.title }));
     } catch (err) {
       console.error(err);
@@ -410,7 +458,7 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
       } catch (e) { console.error('Failed to notify user of approval', e); }
       setVerificationQueue(prev => prev.filter(x => x.id !== v.id));
       setUsers(prev => prev.map(u => u.id === v.id ? { ...u, verificationStatus: 'verified' } : u));
-      addAudit(t('audit_verification_approved', { name: v.displayName, id: v.id }), 'SECURITY');
+      refreshAuditLogs();
       triggerNotification(t('toast_verification_approved', { name: v.displayName }));
     } catch (err) {
       console.error(err);
@@ -441,7 +489,7 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
       } catch (e) { console.error('Failed to notify user of rejection', e); }
       setVerificationQueue(prev => prev.filter(x => x.id !== v.id));
       setUsers(prev => prev.map(u => u.id === v.id ? { ...u, verificationStatus: 'unverified' } : u));
-      addAudit(t('audit_verification_rejected', { name: v.displayName, id: v.id }), 'SECURITY');
+      refreshAuditLogs();
       triggerNotification(t('toast_verification_rejected', { name: v.displayName }), 'error');
       setRejectingVerification(null);
       setRejectReason('');
@@ -529,7 +577,8 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
         },
         ...sentNotifs,
       ].slice(0, 200));
-      addAudit(t('audit_notification_sent', { count: targets.length, title: notifTitle }), 'SYSTEM');
+      // Admin-sent broadcasts are not yet recorded server-side; nothing to reload.
+      // Left local rather than faking a server entry that does not exist.
       triggerNotification(t('notif_sent_success', { count: targets.length }));
       setNotifTitle('');
       setNotifBody('');
@@ -591,7 +640,7 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
     recentActivities.push({ icon: 'check', text: t('act_verified_accounts', { count: verifiedToday.length }), time: t('time_recently'), color: 'indigo' });
   }
   if (auditLogs.length > 0) {
-    recentActivities.push({ icon: 'activity', text: auditLogs[0].action, time: auditLogs[0].date, color: 'gray' });
+    recentActivities.push({ icon: 'activity', text: auditLogs[0].action, time: fmtDate(auditLogs[0].createdAt), color: 'gray' });
   }
 
   // ─── FILTERS ──────────────────────────────────────────────────────────────
@@ -1094,7 +1143,7 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleSuspendUser(u)}
+                            onClick={() => promptSuspendUser(u)}
                             className={`p-2 rounded-lg transition-all cursor-pointer ${suspendedIds.includes(u.id) ? 'text-green-400 hover:bg-green-950/40' : 'text-amber-500 hover:bg-amber-950/30'}`}
                             title={suspendedIds.includes(u.id) ? t('users_unsuspend') : t('users_suspend')}
                           >
@@ -1714,15 +1763,30 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    persistAudit([]);
-                    triggerNotification(t('toast_audit_cleared'));
-                  }}
-                  className="flex items-center gap-1.5 text-[9px] font-black uppercase text-red-500 hover:text-red-400 hover:underline cursor-pointer"
+                  onClick={refreshAuditLogs}
+                  disabled={auditLoading}
+                  className="flex items-center gap-1.5 text-[9px] font-black uppercase text-red-500 hover:text-red-400 hover:underline cursor-pointer disabled:opacity-40"
                 >
-                  <Trash2 size={12} />
-                  {t('clear_ledger')}
+                  <RefreshCw size={12} className={auditLoading ? 'animate-spin' : ''} />
+                  {t('refresh')}
                 </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {(['ALL', 'SECURITY', 'SAFETY', 'FINANCIAL', 'SYSTEM'] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setAuditFilter(c)}
+                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                      auditFilter === c
+                        ? 'bg-red-600 text-white border border-red-500'
+                        : 'bg-gray-950 text-gray-400 border border-gray-900 hover:border-gray-700'
+                    }`}
+                  >
+                    {c === 'ALL' ? t('audit_filter_all') : c}
+                  </button>
+                ))}
               </div>
 
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 scrollbar-none font-mono text-[11px] leading-relaxed">
@@ -1738,15 +1802,24 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
                         {log.category}
                       </span>
                       <p className="text-gray-300 font-sans font-semibold tracking-tight leading-snug">{log.action}</p>
+                      {log.metadata && (
+                        <p className="text-gray-550 font-mono text-[9px] mt-1 break-all">
+                          {formatAuditMetadata(log.metadata)}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-gray-900 pt-2 md:pt-0 shrink-0 uppercase tracking-wider text-[9px] text-gray-550 font-bold">
-                      <span>{t('terminal_label', { user: log.user })}</span>
-                      <span className="text-gray-500 font-mono">{log.date}</span>
+                    <div className="flex flex-col items-start md:items-end justify-between gap-1 border-t md:border-t-0 border-gray-900 pt-2 md:pt-0 shrink-0 uppercase tracking-wider text-[9px] text-gray-550 font-bold">
+                      {/* Previously hardcoded to "Linekora Admin" for every row, which
+                          meant the trail could not say who did what. */}
+                      <span>{t('terminal_label', { user: log.adminEmail || log.adminId || t('audit_unknown_admin') })}</span>
+                      <span className="text-gray-500 font-mono normal-case tracking-normal">
+                        {new Date(log.createdAt).toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 )) : (
                   <div className="py-16 text-center text-gray-500 font-sans text-xs italic font-semibold">
-                    {t('audit_void_msg')}
+                    {auditLoading ? t('audit_loading') : t('audit_void_msg')}
                   </div>
                 )}
               </div>
@@ -1885,7 +1958,7 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { handleSuspendUser(inspectingUser); }}
+                  onClick={() => { promptSuspendUser(inspectingUser); }}
                   className="flex-1 py-3 bg-amber-650 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Clock size={14} />
@@ -1970,6 +2043,78 @@ const [suspendedIds, setSuspendedIds] = useState<string[]>(() => {
                 >
                   <Ban size={14} />
                   {banLoading ? t('loading') : t('ban_confirm_button')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Suspension confirmation — same shape as the ban dialog. Suspension takes
+          a worker's ability to earn away, so it also requires a stated reason. */}
+      <AnimatePresence>
+        {suspendTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-gray-950/80 backdrop-blur-sm flex items-center justify-center p-4 font-sans font-medium"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-gray-900 rounded-3xl border border-amber-900/40 p-7 shadow-2xl"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-amber-950/40 border border-amber-900/40 rounded-2xl flex items-center justify-center shrink-0">
+                  <Shield size={20} className="text-amber-400" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">{t('suspend_confirm_title')}</h3>
+                  <p className="text-[11px] text-gray-400 font-medium mt-1.5 leading-relaxed">
+                    {t('suspend_confirm_desc', { name: suspendTarget.displayName })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('suspend_reason_label')}</label>
+                <textarea
+                  autoFocus
+                  rows={3}
+                  value={suspendReason}
+                  onChange={(e) => setSuspendReason(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && suspendReason.trim() && !suspendLoading) {
+                      e.preventDefault();
+                      confirmSuspendUser();
+                    }
+                  }}
+                  placeholder={t('suspend_reason_placeholder')}
+                  className="w-full p-3 bg-gray-950 border border-gray-900 focus:border-amber-600 rounded-xl outline-none font-sans font-bold text-xs text-white resize-none"
+                />
+                {!suspendReason.trim() && (
+                  <p className="mt-1.5 text-[9px] text-amber-500/80 font-bold">{t('suspend_reason_required')}</p>
+                )}
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setSuspendTarget(null); setSuspendReason(''); }}
+                  className="flex-1 py-3 bg-gray-950 hover:bg-gray-900 text-gray-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmSuspendUser}
+                  disabled={suspendLoading || !suspendReason.trim()}
+                  className="flex-1 py-3 bg-amber-650 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Shield size={14} />
+                  {suspendLoading ? t('loading') : t('suspend_confirm_button')}
                 </button>
               </div>
             </motion.div>
