@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RouteIndexGuard } from './components/Seo';
 
 // Public Pages
 import Home from './pages/public/Home';
@@ -188,6 +189,7 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <AdminShortcut />
+          <RouteIndexGuard />
           <Routes>
           {/* Public Routes */}
           <Route path="/" element={<HomeRoute />} />

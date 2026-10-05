@@ -6,6 +6,7 @@ import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { useLanguage } from '../../lib/LanguageContext';
 import { getStats } from '../../lib/api';
+import Seo from '../../components/Seo';
 
 export default function Home() {
   const { t } = useLanguage();
@@ -56,6 +57,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        path="/"
+        title="Rwanda's Trusted Job Platform"
+        description="LINEKORA connects workers, employers, and companies across Rwanda. Find jobs, hire trusted workers, and grow your business."
+        jsonLd={{
+          '@type': 'WebPage',
+          name: "LINEKORA — Rwanda's Trusted Job Platform",
+          url: 'https://linekora.com/',
+          isPartOf: { '@id': 'https://linekora.com/#website' },
+          about: { '@id': 'https://linekora.com/#organization' },
+          inLanguage: 'en',
+        }}
+      />
       <Navbar />
 
       {/* Hero Section */}

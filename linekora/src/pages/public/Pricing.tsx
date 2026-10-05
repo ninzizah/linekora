@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
+import Seo from '../../components/Seo';
 
 interface Toast {
   id: string;
@@ -559,6 +560,25 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-white relative">
+      <Seo
+        title="Pricing"
+        description="Compare LINEKORA membership tiers for workers and companies in Rwanda — free and paid plans with identity verification, escrow payments, and priority hiring."
+        jsonLd={{
+          '@type': 'Product',
+          name: 'LINEKORA membership',
+          description:
+            'Membership plans for workers and companies on LINEKORA, the trusted job platform for Rwanda.',
+          brand: { '@type': 'Brand', name: 'LINEKORA' },
+          offers: {
+            '@type': 'AggregateOffer',
+            priceCurrency: 'RWF',
+            lowPrice: '0',
+            highPrice: '35000',
+            offerCount: '4',
+            seller: { '@id': 'https://linekora.com/#organization' },
+          },
+        }}
+      />
       <Navbar />
       
       <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">

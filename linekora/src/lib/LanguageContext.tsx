@@ -18,6 +18,11 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
+    // ?lang= takes priority so the hreflang alternates in sitemap.xml resolve to
+    // a page actually rendered in that language. Falls back to the saved choice.
+    const fromUrl = new URLSearchParams(window.location.search).get('lang');
+    if (fromUrl && fromUrl in translations) return fromUrl as Language;
+
     const saved = localStorage.getItem('linekora_lang');
     return (saved as Language) || 'en';
   });

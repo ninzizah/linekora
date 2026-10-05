@@ -2,6 +2,7 @@ import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { AlertTriangle, ShieldCheck, UserX, Wallet, CheckCircle2, Lock } from 'lucide-react';
 import { useLanguage } from '../../lib/LanguageContext';
+import Seo from '../../components/Seo';
 
 export default function ScamAwareness() {
   const { t } = useLanguage();
@@ -30,6 +31,16 @@ export default function ScamAwareness() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title="Job Scam Awareness & Safety"
+        description="Learn how to spot and avoid job scams in Rwanda. Safety guidance for workers and employers hiring online with LINEKORA."
+        jsonLd={{
+          '@type': 'WebPage',
+          name: 'Job Scam Awareness & Safety',
+          url: 'https://linekora.com/scams',
+          isPartOf: { '@id': 'https://linekora.com/#website' },
+        }}
+      />
       <Navbar />
       <div className="mx-auto max-w-4xl px-4 py-24 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 mb-8">

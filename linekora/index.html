@@ -3,14 +3,124 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>LINEKORA — Rwanda's Trusted Job Platform</title>
     <meta name="description" content="LINEKORA connects workers, employers, and companies across Rwanda. Find jobs, hire trusted workers, and grow your business." />
     <meta name="theme-color" content="#2563eb" />
     <link rel="icon" type="image/jpeg" href="/linekora-favicon.jpeg" />
+    <link rel="apple-touch-icon" href="/linekora-logo.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Google Search Console domain verification (HTML-tag fallback for the DNS TXT record) -->
+    <meta name="google-site-verification" content="2RUETjH_MYpncgO8isg5nBQQ8E-RCsh55xrIF606H2g" />
+
+    <!-- Search directives. The Seo component overrides these to noindex on app/auth/admin routes. -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+    <link rel="canonical" href="https://linekora.com/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="LINEKORA" />
+    <meta property="og:title" content="LINEKORA — Rwanda's Trusted Job Platform" />
+    <meta property="og:description" content="LINEKORA connects workers, employers, and companies across Rwanda. Find jobs, hire trusted workers, and grow your business." />
+    <meta property="og:url" content="https://linekora.com/" />
+    <meta property="og:image" content="https://linekora.com/linekora-logo.png" />
+    <meta property="og:image:alt" content="LINEKORA logo" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="rw_RW" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="sw_KE" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="LINEKORA — Rwanda's Trusted Job Platform" />
+    <meta name="twitter:description" content="LINEKORA connects workers, employers, and companies across Rwanda. Find jobs, hire trusted workers, and grow your business." />
+    <meta name="twitter:image" content="https://linekora.com/linekora-logo.png" />
+
+    <!-- Structured data so search engines get the full picture without parsing the SPA -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://linekora.com/#organization",
+            "name": "LINEKORA",
+            "url": "https://linekora.com/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://linekora.com/linekora-logo.png"
+            },
+            "image": "https://linekora.com/linekora-logo.png",
+            "description": "Find trusted work. Hire trusted people. The secure marketplace for verified talent and tasks.",
+            "email": "ndivelabs@gmail.com",
+            "telephone": "+250783274084",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Kicukiro",
+              "addressRegion": "Kigali",
+              "addressCountry": "RW"
+            },
+            "areaServed": {
+              "@type": "Country",
+              "name": "Rwanda"
+            },
+            "availableLanguage": ["en", "rw", "fr", "sw"],
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "telephone": "+250-783-274-084",
+                "contactType": "customer support",
+                "areaServed": "RW",
+                "availableLanguage": ["en", "rw", "fr", "sw"]
+              }
+            ],
+            "sameAs": [
+              "https://x.com/NdiveLabsLtd",
+              "https://www.instagram.com/ndivelabs_ltd",
+              "https://www.tiktok.com/@ndive.labs.ltd"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://linekora.com/#website",
+            "url": "https://linekora.com/",
+            "name": "LINEKORA",
+            "description": "The secure marketplace for verified talent and tasks in Rwanda.",
+            "inLanguage": ["en", "rw", "fr", "sw"],
+            "publisher": { "@id": "https://linekora.com/#organization" }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://linekora.com/#webapp",
+            "name": "LINEKORA",
+            "url": "https://linekora.com/",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Any",
+            "browserRequirements": "Requires JavaScript",
+            "description": "A trusted marketplace for verified jobs and workers, featuring biometric verification, escrow payments, and real-time chat.",
+            "publisher": { "@id": "https://linekora.com/#organization" },
+            "offers": {
+              "@type": "AggregateOffer",
+              "priceCurrency": "RWF",
+              "lowPrice": "0",
+              "highPrice": "35000",
+              "offerCount": "4",
+              "seller": { "@id": "https://linekora.com/#organization" }
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      LINEKORA is a JavaScript application. Please enable JavaScript, or contact us on
+      <a href="https://wa.me/250783274084">WhatsApp +250 783 274 084</a> or email
+      <a href="mailto:ndivelabs@gmail.com">ndivelabs@gmail.com</a>.
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

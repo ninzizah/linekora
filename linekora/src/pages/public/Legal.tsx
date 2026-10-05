@@ -5,6 +5,7 @@ import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { motion } from 'motion/react';
 import { useLanguage } from '../../lib/LanguageContext';
+import Seo from '../../components/Seo';
 
 type LegalTab = 'privacy' | 'terms' | 'cookies' | 'refund';
 
@@ -36,6 +37,18 @@ export default function Legal() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-between">
+      {/* Canonical stays on /legal — the ?tab= variants are the same document */}
+      <Seo
+        path="/legal"
+        title="Legal, Privacy & Policies"
+        description="Read LINEKORA's privacy policy, terms of service, cookie policy, and refund policy."
+        jsonLd={{
+          '@type': 'WebPage',
+          name: 'LINEKORA Legal, Privacy & Policies',
+          url: 'https://linekora.com/legal',
+          isPartOf: { '@id': 'https://linekora.com/#website' },
+        }}
+      />
       <Navbar />
 
       <main className="flex-grow pt-32 pb-24">

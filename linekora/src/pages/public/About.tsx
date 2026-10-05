@@ -2,11 +2,23 @@ import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { Shield, Target, Users, Lock } from 'lucide-react';
 import { useLanguage } from '../../lib/LanguageContext';
+import Seo from '../../components/Seo';
 
 export default function About() {
   const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title="About Us"
+        description="Learn how LINEKORA works: our mission to connect Rwandan workers with verified employers through identity verification, escrow payments, and real-time chat."
+        jsonLd={{
+          '@type': 'AboutPage',
+          name: 'About LINEKORA',
+          url: 'https://linekora.com/about',
+          isPartOf: { '@id': 'https://linekora.com/#website' },
+          mainEntity: { '@id': 'https://linekora.com/#organization' },
+        }}
+      />
       <Navbar />
       <div className="mx-auto max-w-4xl px-4 py-24 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-black text-gray-900 font-sans tracking-tight mb-8">{t('our_mission')}</h1>

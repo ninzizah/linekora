@@ -2,11 +2,23 @@ import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { Phone, Mail, MapPin, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../../lib/LanguageContext';
+import Seo from '../../components/Seo';
 
 export default function Contact() {
   const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-white">
+      <Seo
+        title="Contact Us"
+        description="Get in touch with LINEKORA. WhatsApp +250 783 274 084, email ndivelabs@gmail.com, or visit our office in Kicukiro, Kigali."
+        jsonLd={{
+          '@type': 'ContactPage',
+          name: 'Contact LINEKORA',
+          url: 'https://linekora.com/contact',
+          isPartOf: { '@id': 'https://linekora.com/#website' },
+          mainEntity: { '@id': 'https://linekora.com/#organization' },
+        }}
+      />
       <Navbar />
       <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">

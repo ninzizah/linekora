@@ -1,0 +1,37 @@
+# LINEKORA — https://linekora.com
+# Last updated: 2026-10-05
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /pricing
+Allow: /contact
+Allow: /scams
+Allow: /legal
+
+# Signed-in application surface — no discoverable value, keeps crawl budget
+# pointed at the public pages. These routes are also noindex via meta robots.
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /login
+Disallow: /register
+Disallow: /select-role
+Disallow: /complete-contact
+
+# Explicitly allow the crawler assets it needs
+Allow: /assets/
+Allow: /linekora-logo.png
+Allow: /linekora-favicon.jpeg
+Allow: /site.webmanifest
+
+# AI crawlers may read the public pages for citation and attribution
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+Sitemap: https://linekora.com/sitemap.xml
