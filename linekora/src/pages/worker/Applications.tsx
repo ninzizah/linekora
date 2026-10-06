@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import { useLanguage } from '../../lib/LanguageContext';
+import { useEscapeToClose } from '../../lib/useEscapeToClose';
 import { getApplications, updateApplication, deleteApplication, createNotification, getContracts, createContract, updateContract, Application as ApiApplication } from '../../lib/api';
 
 interface Application {
@@ -47,9 +48,12 @@ export default function WorkerApplications() {
   const [selectedApp, setSelectedApp] = useState<any | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{ type: 'withdraw' | 'decline' | 'accept'; title: string; message: string } | null>(null);
-  const [confirmingAction, setConfirmingAction] = useState<'withdraw' | 'decline' | null>(null);
+  const [confirmingAction, setConfirmingAction] = useState<'withdraw' | 'decline' | 'accept' | 'approve' | null>(null);
   const [loading, setLoading] = useState(true);
   const [apps, setApps] = useState<any[]>([]);
+
+  // Escape backs out of the confirmation. Off while a request is in flight.
+  useEscapeToClose(() => setConfirmingAction(null), !!confirmingAction && !isProcessing);
 
   // Maps application id -> DB contract id so status updates hit the API correctly.
   const [dbContractMap, setDbContractMap] = useState<Record<number, number>>({});
@@ -277,6 +281,7 @@ export default function WorkerApplications() {
 
   const handleAcceptOffer = async (id: number) => {
     setIsProcessing(true);
+    setConfirmingAction(null);
     const acceptedApp = apps.find(ap => ap.id === id);
     if (acceptedApp?.apiApp) {
       try {
@@ -411,6 +416,7 @@ export default function WorkerApplications() {
 
   const handleApproveFinishJob = (id: number) => {
     setIsProcessing(true);
+    setConfirmingAction(null);
     const target = apps.find(ap => ap.id === id);
     setTimeout(async () => {
       // Persist to the DB contract, then to the cache
@@ -701,9 +707,10 @@ export default function WorkerApplications() {
                 <div className="py-6 font-sans">
                   <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-2">{t('are_you_sure')}</h3>
                   <p className="text-sm text-gray-550 mb-8 leading-relaxed">
-                    {confirmingAction === 'withdraw' 
-                      ? t('withdraw_confirm_message')
-                      : t('decline_confirm_message')
+                    {confirmingAction === 'withdraw' ? t('withdraw_confirm_message')
+                      : confirmingAction === 'decline' ? t('decline_confirm_message')
+                      : confirmingAction === 'accept' ? t('accept_offer_confirm_message')
+                      : t('approve_finish_job_confirm_message')
                     }
                   </p>
                   <div className="flex gap-3">
@@ -711,17 +718,23 @@ export default function WorkerApplications() {
                       onClick={() => {
                         if (confirmingAction === 'withdraw') {
                           handleWithdraw(selectedApp.id);
-                        } else {
+                        } else if (confirmingAction === 'decline') {
                           handleDeclineOrReject(selectedApp.id);
+                        } else if (confirmingAction === 'accept') {
+                          handleAcceptOffer(selectedApp.id);
+                        } else {
+                          handleApproveFinishJob(selectedApp.id);
                         }
                       }}
-                      className="flex-1 py-4 bg-red-650 hover:bg-red-700 text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg"
+                      disabled={isProcessing}
+                      className="flex-1 py-4 bg-red-650 hover:bg-red-700 text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('yes_confirm')}
                     </button>
                     <button
                       onClick={() => setConfirmingAction(null)}
-                      className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all border border-gray-200"
+                      disabled={isProcessing}
+                      className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-sans font-black uppercase tracking-widest text-[10px] text-center transition-all border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('cancel_action')}
                     </button>
@@ -786,7 +799,7 @@ export default function WorkerApplications() {
                       <div className="flex flex-col gap-3">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <button
-                            onClick={() => handleApproveFinishJob(selectedApp.id)}
+                            onClick={() => setConfirmingAction('approve')}
                             className="py-4 bg-gradient-to-r from-green-550 to-emerald-600 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-sans font-black uppercase text-[10px] sm:text-xs tracking-widest shadow-lg shadow-green-200 transition-all flex items-center justify-center gap-2"
                           >
                             <CheckCircle2 size={16} />
@@ -858,7 +871,7 @@ export default function WorkerApplications() {
                             {t('decline_offer')}
                           </button>
                           <button
-                            onClick={() => handleAcceptOffer(selectedApp.id)}
+                            onClick={() => setConfirmingAction('accept')}
                             className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-sans font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-200 transition-all"
                           >
                             {t('accept_offer')}

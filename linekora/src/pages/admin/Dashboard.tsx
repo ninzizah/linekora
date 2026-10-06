@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
+import { useEscapeToClose } from '../../lib/useEscapeToClose';
 import {
   getUsers, updateUser, getPendingVerifications, getJobs, updateJob,
   deleteJob, getApplications, createNotification, getStats, unlockAdmin,
@@ -118,6 +119,12 @@ export default function AdminDashboard() {
   const [deleteTarget, setDeleteTarget] = useState<Job | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Escape backs out of a destructive dialog. It is disabled while a request is
+  // in flight so the screen cannot be left disagreeing with the server.
+  useEscapeToClose(() => { setBanTarget(null); setBanReason(''); }, !!banTarget && !banLoading);
+  useEscapeToClose(() => { setSuspendTarget(null); setSuspendReason(''); }, !!suspendTarget && !suspendLoading);
+  useEscapeToClose(() => { setDeleteTarget(null); setDeleteReason(''); }, !!deleteTarget && !deleteLoading);
 
   // Reload after any action that should have produced a new entry. Kept separate
   // from the optimistic user list so the trail is whatever the server recorded.

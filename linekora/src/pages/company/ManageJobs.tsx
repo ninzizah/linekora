@@ -6,6 +6,7 @@ import {
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useLanguage } from '../../lib/LanguageContext';
+import { useEscapeToClose } from '../../lib/useEscapeToClose';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { getJobs, getApplications, updateJob, deleteJob } from '../../lib/api';
@@ -39,6 +40,11 @@ export default function CompanyManageJobs() {
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [editingJob, setEditingJob] = useState<JobItem | null>(null);
   const [showDeleteConfirmId, setShowDeleteConfirmId] = useState<number | null>(null);
+  const [deletingJobId, setDeletingJobId] = useState<number | null>(null);
+
+  // Escape backs out of the delete confirmation. Off while the delete is in
+  // flight, so the dialog cannot vanish mid-request.
+  useEscapeToClose(() => setShowDeleteConfirmId(null), showDeleteConfirmId !== null && deletingJobId === null);
 
   // Quick edit forms
   const [editTitle, setEditTitle] = useState('');
@@ -205,7 +211,7 @@ export default function CompanyManageJobs() {
   // Action: Delete Job Posting (persisted to DB + caches)
   const handleDeleteJob = async (id: number) => {
     const target = jobsList.find(j => j.id === id);
-    if (!target) return;
+    if (!target || deletingJobId !== null) return;
 
     // Save deleted job temporary to allow Undo
     const backupJob = { ...target };
@@ -213,18 +219,21 @@ export default function CompanyManageJobs() {
     setJobsList(prev => prev.filter(j => j.id !== id));
     setShowDeleteConfirmId(null);
     setActiveMenuId(null);
+    setDeletingJobId(id);
 
     try {
       await deleteJob(id);
       purgeJobFromCaches(id);
       addToast(
-        t('posting_deleted'), 
-        t('posting_deleted_msg', { title: backupJob.title }), 
+        t('posting_deleted'),
+        t('posting_deleted_msg', { title: backupJob.title }),
         'info'
       );
     } catch (err) {
       addToast(t('toast_publish_failed'), t('server_error_retry'), 'error');
       loadJobs();
+    } finally {
+      setDeletingJobId(null);
     }
   };
 
@@ -485,13 +494,15 @@ export default function CompanyManageJobs() {
               <div className="mt-8 grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => setShowDeleteConfirmId(null)}
-                  className="py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl font-sans font-black uppercase text-[9px] tracking-widest transition-all"
+                  disabled={deletingJobId !== null}
+                  className="py-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl font-sans font-black uppercase text-[9px] tracking-widest transition-all disabled:opacity-50"
                 >
                   {t('no_keep')}
                 </button>
                 <button 
                   onClick={() => handleDeleteJob(showDeleteConfirmId)}
-                  className="py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-sans font-black uppercase text-[9px] tracking-widest transition-all"
+                  disabled={deletingJobId !== null}
+                  className="py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-sans font-black uppercase text-[9px] tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t('yes_delete')}
                 </button>

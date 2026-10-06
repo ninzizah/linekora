@@ -8,6 +8,7 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { AnimatePresence, motion } from 'motion/react';
 import { useLanguage } from '../../lib/LanguageContext';
+import { useEscapeToClose } from '../../lib/useEscapeToClose';
 import { useAuth } from '../../lib/AuthContext';
 import { useLiveChat } from '../../lib/useLiveChat';
 import ChatAttachmentBubble from '../../components/ChatAttachmentBubble';
@@ -40,6 +41,11 @@ export default function CompanyMessages() {
   // UI Interactive States
   const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearingHistory, setClearingHistory] = useState(false);
+
+  // Escape backs out of the clear-history confirmation. Off while clearing.
+  useEscapeToClose(() => setShowClearConfirm(false), showClearConfirm && !clearingHistory);
   const [reportReason, setReportReason] = useState('spam');
   const [reportComments, setReportComments] = useState('');
   const [submittingReport, setSubmittingReport] = useState(false);
@@ -104,11 +110,20 @@ export default function CompanyMessages() {
     setIsHeaderDropdownOpen(false);
   };
 
-  // Action: Clear Chat Thread
-  const handleClearHistory = () => {
+  // Action: Clear Chat Thread. Clearing wipes the visible conversation with no
+  // undo, and the menu item sits in a full-width row next to other options, so
+  // it opens a confirmation instead of firing straight away.
+  const openClearHistoryConfirm = () => {
     if (activeChat === null) return;
+    setIsHeaderDropdownOpen(false);
+    setShowClearConfirm(true);
+  };
+
+  const confirmClearHistory = () => {
+    if (activeChat === null || clearingHistory) return;
     const targetChat = chatsList.find(c => c.id === activeChat);
-    
+
+    setClearingHistory(true);
     setThreads(prev => ({
       ...prev,
       [activeChat]: []
@@ -119,7 +134,8 @@ export default function CompanyMessages() {
       t('toast_purged_msg_company', { name: targetChat?.name }),
       'info'
     );
-    setIsHeaderDropdownOpen(false);
+    setShowClearConfirm(false);
+    setClearingHistory(false);
   };
 
   // Action: Submit Profile report (Fake moderation)
@@ -265,7 +281,7 @@ export default function CompanyMessages() {
                             </button>
 
                             <button 
-                              onClick={handleClearHistory}
+                              onClick={openClearHistoryConfirm}
                               className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-red-650 hover:bg-red-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <Trash size={14} className="text-red-400" />
@@ -366,6 +382,57 @@ export default function CompanyMessages() {
           )}
         </div>
       </div>
+
+      {/* CLEAR HISTORY CONFIRMATION — the thread cannot be brought back once
+          cleared, so the menu item only opens this dialog. */}
+      <AnimatePresence>
+        {showClearConfirm && currentChatObj && (
+          <div className="fixed inset-0 z-55 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gray-950/65 backdrop-blur-sm"
+              onClick={() => !clearingHistory && setShowClearConfirm(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-sm p-8 shadow-2xl relative border border-gray-100 z-10 text-center"
+            >
+              <div className="h-12 w-12 rounded-2xl bg-red-50 text-red-655 flex items-center justify-center mx-auto mb-4">
+                <Trash size={22} />
+              </div>
+
+              <h3 className="text-xl font-black text-gray-950 font-sans uppercase">{t('clear_history_title')}</h3>
+              <p className="text-xs text-gray-500 font-sans font-semibold leading-relaxed mt-2">
+                {t('clear_history_confirm_desc', { name: currentChatObj.name })}
+              </p>
+
+              <div className="mt-7 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowClearConfirm(false)}
+                  disabled={clearingHistory}
+                  className="py-3.5 bg-gray-50 hover:bg-gray-100 border border-gray-150 text-gray-650 rounded-xl font-sans font-black uppercase text-[10px] tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmClearHistory}
+                  disabled={clearingHistory}
+                  className="py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-sans font-black uppercase text-[10px] tracking-widest shadow-lg shadow-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Trash size={14} />
+                  <span>{t('clear_history')}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* DETAILED TALENT PROFILE REPORT MODAL */}
       <AnimatePresence>
