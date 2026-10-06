@@ -50,7 +50,7 @@ export default function Footer() {
               <li><Link to="/contact" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('help_center')}</Link></li>
               <li><Link to="/scams" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('safety_scams')}</Link></li>
               <li><Link to="/contact" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('contact')}</Link></li>
-              <li><Link to="/about" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('verification_fees')}</Link></li>
+              <li><Link to="/about" className="font-sans text-sm text-gray-600 hover:text-blue-600">{t('about')}</Link></li>
             </ul>
           </div>
 
