@@ -8,6 +8,7 @@ import {
   Clock, DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import Seo from '../../components/Seo';
@@ -23,6 +24,13 @@ export default function Pricing() {
   const { profile, user } = useAuth();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'worker' | 'company'>('worker');
+
+  // Prices are hidden for now. Employers were abandoning signup after seeing
+  // them, because the payment schedule was not settled — the figure implied a
+  // charge they had not agreed to. The amounts themselves are untouched in the
+  // tier data below; flip this back to true when pricing and billing timing are
+  // decided and every amount on this page returns in one change.
+  const SHOW_PRICES = false;
 
   // Persistence for user upgraded plans
   const [currentWorkerTier, setCurrentWorkerTier] = useState<string>(() => {
@@ -283,6 +291,19 @@ export default function Pricing() {
       addToast(
         t('toast_tier_maintained_title'), 
         t('toast_tier_maintained_body'), 
+        "info"
+      );
+      return;
+    }
+
+    // Paid checkout is closed while prices are hidden. It cannot state an
+    // amount, and the manual Mobile Money step asks the user to send a specific
+    // figure — reaching it with no price shown would be worse than the original
+    // problem, since the charge would land with nothing to agree to beforehand.
+    if (!SHOW_PRICES) {
+      addToast(
+        t('pricing_not_available_title'),
+        t('pricing_not_available_body'),
         "info"
       );
       return;
@@ -558,6 +579,56 @@ export default function Pricing() {
 
   const currentTiers = activeTab === 'worker' ? workerTiers : companyTiers;
 
+  // While pricing is unpublished the whole pricing surface is withheld, not just
+  // the amounts: employers were abandoning signup after seeing tier names, buttons
+  // and paid-plan language that implied a charge nobody had agreed to. Every hook
+  // above still runs so returning the full page later is a one-line change.
+  if (!SHOW_PRICES) {
+    return (
+      <div className="min-h-screen bg-white relative flex flex-col">
+        <Seo
+          title="Pricing"
+          description="LINEKORA membership pricing is under development. Nothing is charged at this time."
+        />
+        <Navbar />
+
+        <main className="flex-1 flex items-center justify-center px-4 py-24 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="w-full max-w-2xl text-center"
+          >
+            <div className="w-20 h-20 mx-auto bg-blue-50 border-2 border-blue-100 rounded-3xl flex items-center justify-center mb-8">
+              <Clock size={34} className="text-blue-600" />
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl font-black text-gray-900 font-sans uppercase tracking-tight">
+              {t('pricing_under_dev_title')}
+            </h1>
+
+            <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                to="/register"
+                className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-sans font-bold text-sm transition-all"
+              >
+                {t('create_account')}
+              </Link>
+              <Link
+                to="/contact"
+                className="px-8 py-4 bg-white border-2 border-gray-200 hover:border-blue-400 text-gray-700 rounded-2xl font-sans font-bold text-sm transition-all"
+              >
+                {t('contact')}
+              </Link>
+            </div>
+          </motion.div>
+        </main>
+
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white relative">
       <Seo
@@ -569,14 +640,10 @@ export default function Pricing() {
           description:
             'Membership plans for workers and companies on LINEKORA, the trusted job platform for Rwanda.',
           brand: { '@type': 'Brand', name: 'LINEKORA' },
-          offers: {
-            '@type': 'AggregateOffer',
-            priceCurrency: 'RWF',
-            lowPrice: '0',
-            highPrice: '35000',
-            offerCount: '4',
-            seller: { '@id': 'https://linekora.com/#organization' },
-          },
+          // No offers/price data while prices are hidden. Leaving it here would
+          // keep publishing "0 - 35000 RWF" to search engines even though the
+          // page no longer shows an amount.
+          seller: { '@id': 'https://linekora.com/#organization' },
         }}
       />
       <Navbar />
@@ -650,13 +717,19 @@ export default function Pricing() {
                     tier.color === 'blue' ? 'text-blue-600' : 
                     tier.color === 'indigo' ? 'text-indigo-600' : 'text-gray-900'
                   }`}>{tierLabel(tier.name)}</h3>
-                  <div className="mt-4 flex items-baseline gap-1">
-                    <span className="text-sm font-black text-gray-400 uppercase font-sans">RWF</span>
-                    <span className="text-5xl font-black text-gray-900 font-sans tracking-tighter">{tier.price}</span>
-                    <span className="text-gray-400 font-sans font-bold uppercase text-[10px] tracking-widest px-2">
-                      {subtextLabel(tier.subtext)}
-                    </span>
-                  </div>
+                  {SHOW_PRICES ? (
+                    <div className="mt-4 flex items-baseline gap-1">
+                      <span className="text-sm font-black text-gray-400 uppercase font-sans">RWF</span>
+                      <span className="text-5xl font-black text-gray-900 font-sans tracking-tighter">{tier.price}</span>
+                      <span className="text-gray-400 font-sans font-bold uppercase text-[10px] tracking-widest px-2">
+                        {subtextLabel(tier.subtext)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full">
+                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest font-sans">{t('pricing_coming_soon')}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1">
@@ -785,7 +858,7 @@ export default function Pricing() {
 
                       <div>
                         <h4 className="text-base font-black text-gray-905 font-sans">{t('verification_shield_upgrade', { tierName: tierLabel(req.tierName) })}</h4>
-                        <p className="text-xs text-gray-450 mt-0.5 font-sans font-medium">{t('payment_account_label')} <span className="font-mono text-gray-700">{req.paymentPhoneOrCard}</span> {t('review_fee_separator')} <strong className="text-blue-600 font-black font-sans">RWF {req.price}</strong></p>
+                        <p className="text-xs text-gray-450 mt-0.5 font-sans font-medium">{t('payment_account_label')} <span className="font-mono text-gray-700">{req.paymentPhoneOrCard}</span></p>
                       </div>
 
                       {/* Timeline flow */}
@@ -810,6 +883,14 @@ export default function Pricing() {
                         <button
                           type="button"
                           onClick={() => {
+                            if (!SHOW_PRICES) {
+                              addToast(
+                                t('pricing_not_available_title'),
+                                t('pricing_not_available_body'),
+                                "info"
+                              );
+                              return;
+                            }
                             setSelectedTier({ name: req.tierName, price: req.price });
                             setCheckoutMethod('momo');
                             setCheckoutPhone(req.paymentPhoneOrCard);
@@ -918,10 +999,12 @@ export default function Pricing() {
                           <span>{t('checkout_service')}</span>
                           <span className="text-gray-955 font-extrabold text-right">{t('checkout_service_value', { tierName: tierLabel(selectedTier.name) })}</span>
                         </div>
-                        <div className="flex justify-between border-t border-gray-200/60 pt-1.5">
-                          <span>{t('checkout_amount')}</span>
-                          <span className="text-amber-600 font-extrabold text-right">RWF {selectedTier.price}</span>
-                        </div>
+                        {SHOW_PRICES && (
+                          <div className="flex justify-between border-t border-gray-200/60 pt-1.5">
+                            <span>{t('checkout_amount')}</span>
+                            <span className="text-amber-600 font-extrabold text-right">RWF {selectedTier.price}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1039,10 +1122,12 @@ export default function Pricing() {
                         <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest">{t('selected_tier')}</p>
                         <p className="text-sm font-black text-gray-900 font-sans mt-0.5">{tierLabel(selectedTier.name)}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('review_fee')}</p>
-                        <p className="text-lg font-black text-blue-600 font-sans mt-0.5">RWF {selectedTier.price}</p>
-                      </div>
+                      {SHOW_PRICES && (
+                        <div className="text-right">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('review_fee')}</p>
+                          <p className="text-lg font-black text-blue-600 font-sans mt-0.5">RWF {selectedTier.price}</p>
+                        </div>
+                      )}
                     </div>
 
                     {checkoutError && (
@@ -1087,9 +1172,11 @@ export default function Pricing() {
                           <p className="font-extrabold text-[10px] uppercase tracking-wider text-amber-900 mb-1 flex items-center gap-1">
                             <span>{t('manual_momo_instructions')}</span>
                           </p>
-                          <p className="mb-2">
-                            {t('momo_send_exact_1')}<strong>RWF {selectedTier.price}</strong>{t('momo_send_exact_2')}
-                          </p>
+                          {SHOW_PRICES && (
+                            <p className="mb-2">
+                              {t('momo_send_exact_1')}<strong>RWF {selectedTier.price}</strong>{t('momo_send_exact_2')}
+                            </p>
+                          )}
                           <div className="bg-white/80 border border-amber-100 rounded-xl p-3 font-mono text-[11px] space-y-1">
                             <div><span className="text-gray-500">{t('momo_code')}</span> <strong className="text-gray-900">*182*8*1*+250783274084#</strong></div>
                             <div><span className="text-gray-500">{t('mtn_number')}</span> <strong className="text-gray-900">+250 783 274 084</strong></div>
