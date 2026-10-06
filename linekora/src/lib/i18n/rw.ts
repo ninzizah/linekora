@@ -1691,6 +1691,7 @@ const rw: Record<string, string> = {
     maybe_later: 'Ahari Nyuma',
     member: 'Umunyamuryango',
     membership_shield_level: 'Urwego rwa Shield rw\'Umunyamuryango',
+    pricing_under_dev_seo_desc: 'Ibiciro by’ubyirizamu kuri LINEKORA birakanguruka. Nta ikiguzi gishyurwa ubu.',
     pricing_under_dev_title: 'Igiciro gikiri gukanguruka',
     pricing_coming_soon: 'Igiciro gizira kugaruka',
     pricing_not_available_title: 'Biratangaye',

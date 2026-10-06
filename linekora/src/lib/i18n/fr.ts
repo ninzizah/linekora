@@ -1691,6 +1691,7 @@ const fr: Record<string, string> = {
     maybe_later: 'Peut-être plus tard',
     member: 'Membre',
     membership_shield_level: 'Niveau du bouclier d\'adhésion',
+    pricing_under_dev_seo_desc: "Les tarifs d'abonnement LINEKORA sont en cours de développement. Aucun paiement n'est prélevé pour le moment.",
     pricing_under_dev_title: 'Tarifs en cours de développement',
     pricing_coming_soon: 'Tarifs à venir',
     pricing_not_available_title: 'Pas encore disponible',

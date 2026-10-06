@@ -1691,6 +1691,7 @@ const en: Record<string, string> = {
     maybe_later: 'Maybe Later',
     member: 'Member',
     membership_shield_level: 'Membership Shield Level',
+    pricing_under_dev_seo_desc: 'LINEKORA membership pricing is under development. Nothing is charged at this time.',
     pricing_under_dev_title: 'Pricing Under Development',
     pricing_coming_soon: 'Pricing coming soon',
     pricing_not_available_title: 'Not available yet',

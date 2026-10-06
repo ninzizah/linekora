@@ -587,8 +587,8 @@ export default function Pricing() {
     return (
       <div className="min-h-screen bg-white relative flex flex-col">
         <Seo
-          title="Pricing"
-          description="LINEKORA membership pricing is under development. Nothing is charged at this time."
+          title={t('pricing')}
+          description={t('pricing_under_dev_seo_desc')}
         />
         <Navbar />
 

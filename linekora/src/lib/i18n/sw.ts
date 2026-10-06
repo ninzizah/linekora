@@ -1691,6 +1691,7 @@ const sw: Record<string, string> = {
     maybe_later: 'Labda Baadaye',
     member: 'Mwanachama',
     membership_shield_level: 'Kiwango cha Ngao ya Uanachama',
+    pricing_under_dev_seo_desc: 'Bei za ushiriki wa LINEKORA bado zinaendelea kubuniwa. Hakuna malipo yoyote yakati wa sasa.',
     pricing_under_dev_title: 'Bei Zinaendelea Kubuniwa',
     pricing_coming_soon: 'Bei za kuja',
     pricing_not_available_title: 'Bado haijasitishwa',
