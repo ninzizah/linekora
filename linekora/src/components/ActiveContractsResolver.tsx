@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../lib/AuthContext';
 import { useLanguage } from '../lib/LanguageContext';
 import { readScopedStorage, writeScopedStorage } from '../lib/userScopedStorage';
-import { getContracts, updateContract, createNotification, Contract as ApiContract } from '../lib/api';
+import { getContracts, updateContract, createNotification, createReview, Contract as ApiContract } from '../lib/api';
 
 interface Contract {
   id: number;
@@ -240,6 +240,17 @@ export default function ActiveContractsResolver() {
 
       // 5. Save everything and refresh states
       updateContractInDatabase(updatedContracts);
+
+      // 6. Persist the review to the Review table so it appears on the worker's profile
+      if (profile?.id && selectedContract.workerId) {
+        createReview({
+          reviewerId: profile.id,
+          targetId: selectedContract.workerId,
+          rating,
+          comment: reviewText || t('perfect_execution'),
+        }).catch((err) => console.error('Failed to save review', err));
+      }
+
       logSystemAlert(
         'success',
         t('contract_finalized_released'),
