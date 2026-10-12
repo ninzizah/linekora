@@ -22,7 +22,7 @@ import WorkerDashboard from './pages/worker/Dashboard';
 import WorkerVerification from './pages/worker/Verification';
 import BrowseJobs from './pages/worker/BrowseJobs';
 import WorkerWallet from './pages/worker/Wallet';
-import WorkerReviews from './pages/worker/Reviews';
+
 import WorkerApplications from './pages/worker/Applications';
 import WorkerMessages from './pages/worker/Messages';
 import WorkerSettings from './pages/worker/Settings';
@@ -215,7 +215,7 @@ export default function App() {
           <Route path="/dashboard/worker/verify" element={<RoleRoute allowedRoles={['WORKER']}><WorkerVerification /></RoleRoute>} />
           <Route path="/dashboard/worker/browse" element={<RoleRoute allowedRoles={['WORKER']}><BrowseJobs /></RoleRoute>} />
           <Route path="/dashboard/worker/wallet" element={<RoleRoute allowedRoles={['WORKER']}><WorkerWallet /></RoleRoute>} />
-          <Route path="/dashboard/worker/reviews" element={<RoleRoute allowedRoles={['WORKER']}><WorkerReviews /></RoleRoute>} />
+
           <Route path="/dashboard/worker/applications" element={<RoleRoute allowedRoles={['WORKER']}><WorkerApplications /></RoleRoute>} />
           <Route path="/dashboard/worker/messages" element={<RoleRoute allowedRoles={['WORKER']}><WorkerMessages /></RoleRoute>} />
           <Route path="/dashboard/worker/settings" element={<RoleRoute allowedRoles={['WORKER']}><WorkerSettings /></RoleRoute>} />
