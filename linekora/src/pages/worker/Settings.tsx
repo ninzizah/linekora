@@ -89,8 +89,10 @@ export default function WorkerSettings() {
     const avatarKey = `linekora_profile_picture_${uid}`;
     if (avatarUrl) {
       localStorage.setItem(avatarKey, avatarUrl);
+      localStorage.setItem(sk('worker_profile_picture'), avatarUrl);
     } else {
       localStorage.removeItem(avatarKey);
+      localStorage.removeItem(sk('worker_profile_picture'));
     }
 
     // Persist to DB

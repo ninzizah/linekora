@@ -361,7 +361,7 @@ export default function WorkerProfile() {
             <div className="relative">
               <div className="h-32 w-32 md:h-40 md:w-40 rounded-[3rem] overflow-hidden bg-blue-100 flex items-center justify-center text-blue-600 font-extrabold text-5xl border-8 border-white shadow-2xl uppercase">
                 {(() => {
-                  const avatar = localStorage.getItem(`linekora_profile_picture_${uid}`);
+                  const avatar = localStorage.getItem(`linekora_profile_picture_${uid}`) || localStorage.getItem(sk("worker_profile_picture"));
                   return avatar ? (
                     <img src={avatar} alt={nameOverride} className="h-full w-full object-cover" />
                   ) : (
