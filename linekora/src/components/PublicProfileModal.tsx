@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, ShieldCheck, MapPin, Star, Phone, Mail, Award, CheckCircle2, Briefcase, Zap, FileText
 } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
+import { getReviews, type Review } from '../lib/api';
 
 export interface PublicProfileUser {
   id?: string | number;
@@ -32,6 +33,20 @@ interface PublicProfileModalProps {
 
 export default function PublicProfileModal({ user, isOpen, onClose }: PublicProfileModalProps) {
   const { t } = useLanguage();
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !user?.id) return;
+    let cancelled = false;
+    setReviewsLoading(true);
+    getReviews(String(user.id))
+      .then((data) => { if (!cancelled) setReviews(data); })
+      .catch((err) => console.error('Failed to load reviews', err))
+      .finally(() => { if (!cancelled) setReviewsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, user?.id]);
+
   if (!isOpen || !user) return null;
 
   const displayName = user.displayName || user.name || t('user_profile');
@@ -155,6 +170,56 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
                     {t('call_direct')}
                   </a>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Ratings & Reviews */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Star size={12} className="text-yellow-500" />
+                {t('reviews_reputation')}
+              </h4>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                {reviews.length > 0
+                  ? `${(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)} / 5.0`
+                  : t('no_reviews_yet')}
+              </span>
+            </div>
+
+            {reviewsLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="h-6 w-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <p className="text-xs font-bold text-gray-400 font-sans">{t('no_reviews_yet')}</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {reviews.slice(0, 5).map((r) => (
+                  <div key={r.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-sans font-black text-gray-900 text-xs uppercase tracking-tight">
+                        {r.reviewer?.displayName || t('employer')}
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <Star
+                            key={n}
+                            size={12}
+                            className={n <= r.rating ? 'text-yellow-400 fill-current' : 'text-gray-200'}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    {r.comment && <p className="text-xs text-gray-600 font-sans italic">"{r.comment}"</p>}
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1.5">
+                      {new Date(r.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
           </div>

@@ -10,7 +10,7 @@ import { useLanguage } from '../../lib/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { openDataUrlInNewTab } from '../../lib/filePreview';
-import { updateUser } from '../../lib/api';
+import { updateUser, getReviews, type Review } from '../../lib/api';
 
 interface NotificationMsg {
   id: string;
@@ -172,7 +172,6 @@ export default function WorkerProfile() {
 
   // Notifications system state
   const [notifications, setNotifications] = useState<NotificationMsg[]>([]);
-
   const addNotification = (type: 'success' | 'info' | 'error' | 'heart', title: string, message: string) => {
     const id = Date.now().toString();
     const newNotification = { id, type, title, message };
@@ -181,6 +180,29 @@ export default function WorkerProfile() {
       setNotifications(prev => prev.filter(n => n.id !== id));
     }, 4000);
   };
+
+  // Reviews state
+  const [showReviewsModal, setShowReviewsModal] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
+  const loadReviews = async () => {
+    if (!profile?.id) return;
+    setReviewsLoading(true);
+    try {
+      const data = await getReviews(profile.id);
+      setReviews(data);
+    } catch (err) {
+      console.error('Failed to load reviews', err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showReviewsModal) loadReviews();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showReviewsModal, profile?.id]);
 
   // Profile Form Edit state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -412,6 +434,14 @@ export default function WorkerProfile() {
                     }`}
                   >
                     <Heart size={20} className={isFavorited ? 'fill-red-500' : ''} />
+                  </button>
+                  <button 
+                    id="worker-profile-reviews-btn"
+                    onClick={() => setShowReviewsModal(true)}
+                    className="px-6 py-3.5 bg-white text-gray-700 border border-gray-200 rounded-2xl font-sans font-black text-sm uppercase tracking-widest hover:bg-gray-50 transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+                  >
+                    <Star size={18} className="text-yellow-400 fill-current" />
+                    {t('reviews')}
                   </button>
                   <button 
                     id="worker-profile-edit-btn"
@@ -694,6 +724,98 @@ export default function WorkerProfile() {
         className="hidden" 
         onChange={handleCVFileChange} 
       />
+
+      {/* REVIEWS & RATINGS MODAL */}
+      <AnimatePresence>
+        {showReviewsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+              onClick={() => setShowReviewsModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-lg bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-gray-100 z-10 max-h-[90vh] overflow-y-auto"
+            >
+              <button
+                onClick={() => setShowReviewsModal(false)}
+                className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors bg-gray-50 flex items-center justify-center"
+              >
+                <X size={20} />
+              </button>
+
+              <h2 className="text-2xl font-black text-gray-950 font-sans mb-1 uppercase tracking-tight">{t('reviews_reputation')}</h2>
+              <p className="text-xs text-gray-400 font-sans italic mb-6 font-medium">{t('reviews_identity_subtitle')}</p>
+
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="bg-gray-50 rounded-2xl p-5 text-center border border-gray-100">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('average_rating')}</p>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-3xl font-black text-gray-900 font-sans">
+                      {reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '0.0'}
+                    </span>
+                    <Star size={22} className="text-yellow-400 fill-current" />
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-2xl p-5 text-center border border-gray-100">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('reviews')}</p>
+                  <span className="text-3xl font-black text-gray-900 font-sans">{reviews.length}</span>
+                </div>
+              </div>
+
+              <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">{t('recent_feedback')}</p>
+
+              {reviewsLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 size={28} className="animate-spin text-blue-600" />
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                  <Star size={28} className="text-gray-300 mb-3" />
+                  <p className="text-sm font-bold text-gray-400 font-sans">{t('no_reviews_yet')}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((r) => (
+                    <div key={r.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-600 font-black flex items-center justify-center uppercase">
+                            {(r.reviewer?.displayName || 'U')[0]}
+                          </div>
+                          <span className="font-sans font-black text-gray-900 text-sm uppercase tracking-tight">
+                            {r.reviewer?.displayName || t('employer')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star
+                              key={n}
+                              size={14}
+                              className={n <= r.rating ? 'text-yellow-400 fill-current' : 'text-gray-200'}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {r.comment && (
+                        <p className="text-sm text-gray-600 font-sans italic">"{r.comment}"</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">
+                        {new Date(r.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* EDIT PROFILE MODAL */}
       <AnimatePresence>
