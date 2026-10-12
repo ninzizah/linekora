@@ -280,7 +280,7 @@ export default function WorkerSettings() {
                     required
                     value={phone} 
                     onChange={(e) => { setPhone(e.target.value); setPhoneError(''); }}
-                    placeholder="+250 788 123 456"
+                    placeholder="+250 793 980 268"
                     className="w-full px-5 py-3.5 rounded-2xl bg-gray-50 border-2 border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all text-sm"
                   />
                   {phoneError && (

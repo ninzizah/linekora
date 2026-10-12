@@ -6,7 +6,7 @@ interface VerificationUnavailableProps {
   dashboardPath: string;
 }
 
-const WHATSAPP_URL = 'https://wa.me/250783274084';
+const WHATSAPP_URL = 'https://wa.me/250793980268';
 
 export default function VerificationUnavailable({ dashboardPath }: VerificationUnavailableProps) {
   const { t } = useLanguage();
@@ -47,9 +47,9 @@ export default function VerificationUnavailable({ dashboardPath }: VerificationU
               <Mail size={14} />
               Ndivelabs@gmail.com
             </a>
-            <a href="https://wa.me/250783274084" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold hover:text-blue-600 transition-colors">
+            <a href="https://wa.me/250793980268" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold hover:text-blue-600 transition-colors">
               <MessageCircle size={14} />
-              WhatsApp 0783 274 084
+              WhatsApp 0793 980 268
             </a>
           </div>
         </div>

@@ -88,7 +88,7 @@ export default function WorkerWallet() {
   // Withdrawal form state
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawType, setWithdrawType] = useState<'mtn' | 'airtel' | 'bank'>('mtn');
-  const [withdrawPhone, setWithdrawPhone] = useState('+250 788 300 120');
+  const [withdrawPhone, setWithdrawPhone] = useState('+250 793 980 268');
   const [withdrawBankAcc, setWithdrawBankAcc] = useState('00010-2342412-22');
   const [withdrawIsLoading, setWithdrawIsLoading] = useState(false);
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
@@ -472,7 +472,7 @@ export default function WorkerWallet() {
                           disabled={withdrawIsLoading}
                           value={withdrawPhone}
                           onChange={(e) => setWithdrawPhone(e.target.value)}
-                          placeholder="+250 788 000 000"
+                          placeholder="+250 793 980 268"
                           className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900"
                         />
                       </div>

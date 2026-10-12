@@ -641,7 +641,7 @@ export default function EmployerVerification() {
                     </p>
                     <div className="bg-white border border-red-100 rounded-2xl p-4 text-center">
                       <p className="text-[9px] uppercase font-black tracking-widest text-gray-400">{t('admin_phone_number')}</p>
-                      <p className="text-lg font-black text-red-600 tracking-tight font-mono">+250 783 274 084</p>
+                      <p className="text-lg font-black text-red-600 tracking-tight font-mono">+250 793 980 268</p>
                       <p className="text-[9px] text-gray-500 font-bold italic mt-1">{t('admin_whatsapp_hint')}</p>
                     </div>
                   </div>

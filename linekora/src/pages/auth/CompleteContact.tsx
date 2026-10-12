@@ -90,7 +90,7 @@ export default function CompleteContact() {
                 autoFocus
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+250 788 123 456"
+                placeholder="+250 793 980 268"
                 className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-white/5 border border-white/10 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none font-sans text-white placeholder-white/20 transition-all"
               />
             </div>

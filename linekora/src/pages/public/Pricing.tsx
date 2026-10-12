@@ -57,7 +57,7 @@ export default function Pricing() {
         tierName: "Verified Bronze",
         price: "15,000",
         method: "momo",
-        paymentPhoneOrCard: "+250 788 112 345",
+        paymentPhoneOrCard: "+250 793 980 268",
         status: "paid_awaiting_admin",
         steps: [
           { title: "Billing request sent to device", date: "2 hours ago", done: true },
@@ -104,7 +104,7 @@ export default function Pricing() {
   const [selectedTier, setSelectedTier] = useState<any>(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutMethod, setCheckoutMethod] = useState<'momo' | 'card'>('momo');
-  const [checkoutPhone, setCheckoutPhone] = useState('+250 788 300 120');
+  const [checkoutPhone, setCheckoutPhone] = useState('+250 793 980 268');
   const [checkoutCardNum, setCheckoutCardNum] = useState('4128 9011 2341 8802');
   const [checkoutCardExp, setCheckoutCardExp] = useState('11/29');
   const [checkoutCardCvc, setCheckoutCardCvc] = useState('515');
@@ -1178,15 +1178,15 @@ export default function Pricing() {
                             </p>
                           )}
                           <div className="bg-white/80 border border-amber-100 rounded-xl p-3 font-mono text-[11px] space-y-1">
-                            <div><span className="text-gray-500">{t('momo_code')}</span> <strong className="text-gray-900">*182*8*1*+250783274084#</strong></div>
-                            <div><span className="text-gray-500">{t('mtn_number')}</span> <strong className="text-gray-900">+250 783 274 084</strong></div>
+                            <div><span className="text-gray-500">{t('momo_code')}</span> <strong className="text-gray-900">*182*1*1*+250793980268#</strong></div>
+                            <div><span className="text-gray-500">{t('mtn_number')}</span> <strong className="text-gray-900">+250 793 980 268</strong></div>
                             <div><span className="text-gray-500">{t('account_name')}</span> <strong className="text-gray-900">Ndivelabs Ltd</strong></div>
                             <div><span className="text-gray-500">{t('support_email')}</span> <strong className="text-gray-900">ndivelabs@gmail.com</strong></div>
                           </div>
                           
                           <div className="mt-3.5 bg-red-50 border border-red-200 text-red-950 p-3 rounded-xl text-[10.5px] font-sans font-bold leading-normal flex flex-col gap-1">
                             <span className="text-red-750 font-black uppercase text-[9px] tracking-wider">{t('action_required_call_admin')}</span>
-                            <p>{t('call_admin_body_1')}<strong className="text-red-700 underline font-mono text-[11px]">+250 783 274 084</strong>{t('call_admin_body_2')}</p>
+                            <p>{t('call_admin_body_1')}<strong className="text-red-700 underline font-mono text-[11px]">+250 793 980 268</strong>{t('call_admin_body_2')}</p>
                           </div>
 
                           <p className="mt-3 text-[10px] text-amber-805">
@@ -1201,7 +1201,7 @@ export default function Pricing() {
                             disabled={checkoutLoading}
                             value={checkoutPhone}
                             onChange={(e) => setCheckoutPhone(e.target.value)}
-                            placeholder="+250 783 274 084"
+                            placeholder="+250 793 980 268"
                             className="w-full p-3.5 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-650 text-gray-950 font-mono"
                           />
                         </div>
@@ -1283,7 +1283,7 @@ export default function Pricing() {
                     {t('status_awaiting_admin_approval')}
                   </p>
                   <p className="text-sm font-sans text-gray-500 leading-relaxed max-w-sm mx-auto mb-6">
-                    {t('payment_logged_body_1')}<strong>+250 783 274 084</strong>{t('payment_logged_body_2')}<strong>{tierLabel(selectedTier?.name)}</strong>{t('payment_logged_body_3')}<strong>ndivelabs@gmail.com</strong>{t('payment_logged_body_4')}
+                    {t('payment_logged_body_1')}<strong>+250 793 980 268</strong>{t('payment_logged_body_2')}<strong>{tierLabel(selectedTier?.name)}</strong>{t('payment_logged_body_3')}<strong>ndivelabs@gmail.com</strong>{t('payment_logged_body_4')}
                   </p>
 
                   <div className="bg-red-50 border border-red-200 text-red-950 rounded-2xl p-4.5 text-xs text-left font-sans leading-relaxed mb-6">
@@ -1295,7 +1295,7 @@ export default function Pricing() {
                     </p>
                     <div className="bg-white border border-red-100 rounded-xl p-3 text-center space-y-1">
                       <p className="text-[10px] uppercase font-black tracking-widest text-gray-400">{t('admin_phone_to_call')}</p>
-                      <p className="text-lg font-black text-red-650 tracking-tight font-mono">+250 783 274 084</p>
+                      <p className="text-lg font-black text-red-650 tracking-tight font-mono">+250 793 980 268</p>
                       <p className="text-[9px] text-gray-500 font-bold italic">{t('call_now_activate')}</p>
                     </div>
                   </div>
@@ -1361,7 +1361,7 @@ export default function Pricing() {
                   <div className="mb-6 p-4 bg-indigo-50/50 border border-indigo-105 rounded-2xl space-y-2 text-[10px] font-sans font-black uppercase tracking-widest text-indigo-900">
                     <div className="flex items-center justify-between">
                       <span>{t('phone_whatsapp_label')}</span>
-                      <a href="https://wa.me/250783274084" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-extrabold">+250 783 274 084</a>
+                      <a href="https://wa.me/250793980268" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-extrabold">+250 793 980 268</a>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>{t('office_location_label')}</span>

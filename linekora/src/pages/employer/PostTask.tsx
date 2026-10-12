@@ -422,7 +422,7 @@ export default function EmployerPostTask() {
                           type="tel" 
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
-                          placeholder="e.g. +250 788 123 456" 
+                          placeholder="e.g. +250 793 980 268" 
                           className="w-full pl-11 pr-4 py-4 rounded-xl bg-gray-50 border border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all"
                         />
                       </div>

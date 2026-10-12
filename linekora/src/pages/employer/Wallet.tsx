@@ -31,7 +31,7 @@ export default function EmployerWallet() {
   const [showDeposit, setShowDeposit] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [depositMethod, setDepositMethod] = useState<'momo' | 'airtel' | 'card'>('momo');
-  const [depositPhone, setDepositPhone] = useState('+250 788 300 120');
+  const [depositPhone, setDepositPhone] = useState('+250 793 980 268');
   const [depositIsLoading, setDepositIsLoading] = useState(false);
   const [depositSuccess, setDepositSuccess] = useState(false);
   const [depositErrorMsg, setDepositErrorMsg] = useState('');
@@ -346,7 +346,7 @@ export default function EmployerWallet() {
                           disabled={depositIsLoading}
                           value={depositPhone}
                           onChange={(e) => setDepositPhone(e.target.value)}
-                          placeholder="+250 788 000 000"
+                          placeholder="+250 793 980 268"
                           className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900"
                         />
                       </div>

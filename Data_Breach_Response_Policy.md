@@ -51,7 +51,7 @@ Under Rwanda's PDPB, LINEKORA must:
 > - DPO Phone: [FILL IN]
 > - DPO Email: [FILL IN]
 > - Developer Lead: [FILL IN]
-> - NDIVE LABS LTD Director: Ndizeye Yves — 0783274084
+> - NDIVE LABS LTD Director: Ndizeye Yves — 0793980268
 
 ---
 

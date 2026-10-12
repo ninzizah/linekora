@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Search, Filter, Star, 
   CheckCircle2, XCircle, MessageSquare, ChevronRight,
-  Shield, MapPin, Info, X, Briefcase, Award, Loader2, RefreshCw
+  Shield, MapPin, Info, X, Briefcase, Award, Loader2, RefreshCw, User
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { getApplications, updateApplication, createNotification, sendMessage } from '../../lib/api';
+import PublicProfileModal from '../../components/PublicProfileModal';
+import type { PublicProfileUser } from '../../components/PublicProfileModal';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -34,6 +36,7 @@ export default function CompanyApplicants() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'accepted' | 'rejected' | 'shortlisted'>('all');
   const [selectedApplicant, setSelectedApplicant] = useState<any | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<PublicProfileUser | null>(null);
   const [applicants, setApplicants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<number | null>(null);
@@ -88,6 +91,24 @@ export default function CompanyApplicants() {
     } finally {
       setProcessingId(null);
     }
+  };
+
+  // Open the full worker profile (same modal employers see in Browse Workers)
+  const openWorkerProfile = (applicant: any) => {
+    const workerName = applicant.worker?.displayName || applicant.name || 'Worker';
+    setViewingProfile({
+      id: applicant.workerId || applicant.worker?.id,
+      name: workerName,
+      displayName: workerName,
+      role: t('role_worker'),
+      location: applicant.worker?.location || applicant.location || 'Kigali',
+      trustScore: applicant.worker?.trustScore || applicant.trustScore || 0,
+      verificationStatus: applicant.worker?.verificationStatus || (applicant.verified ? 'verified' : 'unverified'),
+      tier: applicant.worker?.tier,
+      bio: applicant.worker?.bio,
+      phone: applicant.worker?.phone || applicant.phone,
+      avatarUrl: applicant.worker?.avatarUrl,
+    });
   };
 
   // Start a live chat with the applicant (worker) from the backend
@@ -197,7 +218,10 @@ export default function CompanyApplicants() {
                 className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all group"
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div className="flex items-center gap-6">
+                  <div
+                    className="flex items-center gap-6 cursor-pointer"
+                    onClick={() => openWorkerProfile(applicant)}
+                  >
                     <div className="relative">
                       {applicant.worker?.avatarUrl ? (
                         <div className="h-16 w-16 rounded-[1.5rem] overflow-hidden">
@@ -250,10 +274,18 @@ export default function CompanyApplicants() {
                       {t('send_message')}
                     </button>
                     <button 
-                      onClick={() => setSelectedApplicant(applicant)}
-                      className="px-5 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-sans font-black text-xs uppercase tracking-widest transition-all"
+                      onClick={() => openWorkerProfile(applicant)}
+                      className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-sans font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 transition-all flex items-center gap-2"
                     >
-                      {t('view_details')}
+                      <User size={16} />
+                      {t('view_profile')}
+                    </button>
+                    <button 
+                      onClick={() => setSelectedApplicant(applicant)}
+                      title={t('view_details')}
+                      className="p-3 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl transition-all"
+                    >
+                      <Info size={16} />
                     </button>
                     {applicant.status === 'pending' && (
                       <>
@@ -463,6 +495,13 @@ export default function CompanyApplicants() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Full Worker Profile Modal */}
+      <PublicProfileModal
+        user={viewingProfile}
+        isOpen={!!viewingProfile}
+        onClose={() => setViewingProfile(null)}
+      />
 
       {/* Toast */}
       <AnimatePresence>

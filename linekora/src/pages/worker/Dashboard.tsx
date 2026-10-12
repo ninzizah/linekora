@@ -788,7 +788,7 @@ export default function WorkerDashboard() {
                       <span className="text-[10px] uppercase font-black tracking-widest text-gray-400 block mb-2">{t('contact_channel')}</span>
                       <div className="flex items-center gap-2 text-xs font-bold text-gray-805 bg-blue-50/50 p-3 rounded-xl border border-blue-50 font-sans">
                         <Phone size={14} className="text-blue-500" />
-                        <span>{selectedJob.phone || '+250 788 300 120'}</span>
+                        <span>{selectedJob.phone || '+250 793 980 268'}</span>
                       </div>
                     </div>
                   </div>

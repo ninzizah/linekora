@@ -10,7 +10,7 @@ export default function Contact() {
     <div className="min-h-screen bg-white">
       <Seo
         title="Contact Us"
-        description="Get in touch with LINEKORA. WhatsApp +250 783 274 084, email ndivelabs@gmail.com, or visit our office in Kicukiro, Kigali."
+        description="Get in touch with LINEKORA. WhatsApp +250 793 980 268, email ndivelabs@gmail.com, or visit our office in Kicukiro, Kigali."
         jsonLd={{
           '@type': 'ContactPage',
           name: 'Contact LINEKORA',
@@ -36,7 +36,7 @@ export default function Contact() {
                 <div>
                   <p className="text-sm font-bold text-gray-400 uppercase tracking-widest font-sans">{t('phone_whatsapp')}</p>
                   <p className="text-lg font-bold text-gray-900 font-sans">
-                    <a href="https://wa.me/250783274084" target="_blank" rel="noopener noreferrer" className="hover:underline">+250 783 274 084</a>
+                    <a href="https://wa.me/250793980268" target="_blank" rel="noopener noreferrer" className="hover:underline">+250 793 980 268</a>
                   </p>
                 </div>
               </div>

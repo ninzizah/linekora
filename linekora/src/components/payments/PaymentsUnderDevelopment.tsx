@@ -5,7 +5,7 @@ interface PaymentsUnderDevelopmentProps {
   compact?: boolean;
 }
 
-const WHATSAPP_URL = 'https://wa.me/250783274084';
+const WHATSAPP_URL = 'https://wa.me/250793980268';
 
 export default function PaymentsUnderDevelopment({ compact }: PaymentsUnderDevelopmentProps) {
   const { t } = useLanguage();

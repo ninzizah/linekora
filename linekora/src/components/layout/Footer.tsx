@@ -16,7 +16,7 @@ export default function Footer() {
               {t('footer_tagline')}
             </p>
             <div className="mt-6 flex gap-4">
-              <a href="https://www.facebook.com/share/18uH4qiqLt/" target="_blank" rel="noopener noreferrer" title="Facebook">
+              <a href="https://www.facebook.com/share/1DYHjJF7Gi/" target="_blank" rel="noopener noreferrer" title="Facebook">
                 <Facebook size={20} className="text-gray-400 hover:text-blue-600 cursor-pointer" />
               </a>
               <a href="https://x.com/NdiveLabsLtd" target="_blank" rel="noopener noreferrer" title="Twitter / X">

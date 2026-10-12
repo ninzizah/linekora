@@ -109,7 +109,7 @@ export default function Legal() {
                   {t('need_assistance_desc')}
                 </p>
                 <a 
-                  href="https://wa.me/250783274084" 
+                  href="https://wa.me/250793980268" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="mt-4 block w-full py-3 bg-white hover:bg-blue-50 border border-blue-200 rounded-xl text-[9px] font-black uppercase tracking-widest text-blue-600 transition-all text-center"

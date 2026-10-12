@@ -1031,7 +1031,7 @@ app.get('/api/applications', async (req, res) => {
       where,
       include: {
         job: { include: { employer: { select: { displayName: true, email: true } } } },
-        worker: { select: { id: true, displayName: true, trustScore: true, verificationStatus: true, phone: true, avatarUrl: true } },
+        worker: { select: { id: true, displayName: true, role: true, trustScore: true, verificationStatus: true, phone: true, avatarUrl: true, bio: true, location: true, tier: true, skills: true } },
         team: { select: { id: true, name: true, teamCode: true } },
       },
       orderBy: { createdAt: 'desc' },

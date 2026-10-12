@@ -642,7 +642,7 @@ export default function WorkerVerification() {
                   
                   <div className="bg-white border border-red-100 rounded-2xl p-4 text-center space-y-1">
                     <p className="text-[9px] uppercase font-black tracking-widest text-gray-400">{t('admin_phone_to_call')}</p>
-                    <p className="text-lg font-black text-red-600 tracking-tight font-mono">+250 783 274 084</p>
+                    <p className="text-lg font-black text-red-600 tracking-tight font-mono">+250 793 980 268</p>
                     <p className="text-[9px] text-gray-500 font-bold italic">{t('admin_phone_hint')}</p>
                   </div>
                 </div>
