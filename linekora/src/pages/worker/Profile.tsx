@@ -205,7 +205,6 @@ export default function WorkerProfile() {
     certificates: certificatesList,
     portfolio: portfolioList,
     rating: 0,
-    reviewsCount: 0,
     jobsCompleted: 0,
     tier: profile?.tier || t('free_account')
   };
@@ -391,10 +390,7 @@ export default function WorkerProfile() {
                       <MapPin size={16} className="text-blue-600" />
                       {locationOverride}
                     </span>
-                    <span className="flex items-center gap-1 text-sm font-bold text-gray-500 font-sans uppercase tracking-widest">
-                      <Star size={16} className="text-yellow-400" />
-                      {profileDetails.rating} ({profileDetails.reviewsCount} {t('reviews')})
-                    </span>
+
                   </div>
                 </div>
                 
