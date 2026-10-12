@@ -566,7 +566,6 @@ const en: Record<string, string> = {
     yes: 'Yes',
     update: 'Update',
     remove: 'Remove',
-    delete: 'Delete',
     active: 'Active',
     no_cv_uploaded: 'No CV uploaded yet',
     upload_cv: 'Upload CV',
@@ -2276,6 +2275,12 @@ const en: Record<string, string> = {
     no_team_applications_desc: 'Apply to jobs as a team and they will appear here for member assignments.',
     assign_members: 'Assign Members',
     assign_selected: 'Assign Selected ({count})',
-};
+
+    add_rating: 'Add rating',
+    add_rating_reviews: 'Add rating/reviews',
+    view_more: 'View more',
+    finish_work: 'Finish work',
+    delete: 'Delete',
+  };
 
 export default en;

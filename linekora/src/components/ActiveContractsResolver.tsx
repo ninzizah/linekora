@@ -362,7 +362,7 @@ export default function ActiveContractsResolver() {
               )}
 
               {/* ACTION COMMAND CENTER */}
-              <div className="pt-4 border-t border-gray-100/60 flex flex-col sm:flex-row gap-3">
+              <div className="pt-4 border-t border-gray-100/60 flex flex-col gap-3">
                 {contract.status === 'completion_requested' ? (
                   <>
                     <button
@@ -391,9 +391,37 @@ export default function ActiveContractsResolver() {
                     </button>
                   </>
                 ) : (
-                  <div className="flex items-center gap-2 text-xs font-bold text-gray-400 italic">
-                    <Clock size={12} />
-                    {t('shift_contract_progress')}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedContract(contract);
+                        setShowReviewForm(true);
+                      }}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black uppercase tracking-widest text-[10px] transition-all"
+                    >
+                      {t('add_rating')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedContract(contract);
+                        setShowReviewForm(true);
+                      }}
+                      className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black uppercase tracking-widest text-[10px] transition-all"
+                    >
+                      {t('add_rating_reviews')}
+                    </button>
+                    <button
+                      onClick={() => handleActionClick(contract.id, 'completed')}
+                      className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-black uppercase tracking-widest text-[10px] transition-all"
+                    >
+                      {t('finish_work')}
+                    </button>
+                    <button
+                      onClick={() => handleActionClick(contract.id, 'not_trusted')}
+                      className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-black uppercase tracking-widest text-[10px] transition-all"
+                    >
+                      {t('delete')}
+                    </button>
                   </div>
                 )}
               </div>

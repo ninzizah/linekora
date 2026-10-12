@@ -566,7 +566,6 @@ const fr: Record<string, string> = {
     yes: 'Oui',
     update: 'Mettre à jour',
     remove: 'Supprimer',
-    delete: 'Supprimer',
     active: 'Actif',
     no_cv_uploaded: 'Aucun CV téléchargé',
     upload_cv: 'Télécharger le CV',
@@ -2276,6 +2275,11 @@ const fr: Record<string, string> = {
     no_team_applications_desc: 'Postulez à des emplois en équipe et ils apparaîtront ici pour les affectations.',
     assign_members: 'Affecter les Membres',
     assign_selected: 'Affecter les Sélectionnés ({count})',
-};
+    add_rating: 'Add rating',
+    add_rating_reviews: 'Add rating/reviews',
+    view_more: 'View more',
+    finish_work: 'Finish work',
+    delete: 'Delete',
+  };
 
 export default fr;

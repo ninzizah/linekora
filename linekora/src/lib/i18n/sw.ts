@@ -566,7 +566,6 @@ const sw: Record<string, string> = {
     yes: 'Ndiyo',
     update: 'Sasisha',
     remove: 'Ondoa',
-    delete: 'Futa',
     active: 'Inayotumika',
     no_cv_uploaded: 'Hakuna CV iliyopakiwa bado',
     upload_cv: 'Pakia CV',
@@ -2276,6 +2275,11 @@ const sw: Record<string, string> = {
     no_team_applications_desc: 'Omba kazi kama timu na zitaonekana hapa kwa kugawiwa kwa wanachama.',
     assign_members: 'Gawa Wanachama',
     assign_selected: 'Gawa Waliochaguliwa ({count})',
-};
+    add_rating: 'Add rating',
+    add_rating_reviews: 'Add rating/reviews',
+    view_more: 'View more',
+    finish_work: 'Finish work',
+    delete: 'Delete',
+  };
 
 export default sw;

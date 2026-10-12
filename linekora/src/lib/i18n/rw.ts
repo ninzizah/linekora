@@ -566,7 +566,6 @@ const rw: Record<string, string> = {
     yes: 'Yego',
     update: 'Vugurura',
     remove: 'Kuraho',
-    delete: 'Siba',
     active: 'Birimo gukorera',
     no_cv_uploaded: 'Nta CV watanzwe',
     upload_cv: 'Shyiramo CV',
@@ -2276,6 +2275,11 @@ const rw: Record<string, string> = {
     no_team_applications_desc: 'Saba akazi nka itsinda kandi buzaboneka hano kugira ngo abanyamuryango bahabwe.',
     assign_members: 'Gutegura Abanyamuryango',
     assign_selected: 'Gutegura Abahisemo ({count})',
-};
+    add_rating: 'Add rating',
+    add_rating_reviews: 'Add rating/reviews',
+    view_more: 'View more',
+    finish_work: 'Finish work',
+    delete: 'Delete',
+  };
 
 export default rw;
