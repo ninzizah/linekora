@@ -2,17 +2,19 @@
 # NeonDB — LINEKORA
 
 **Between:**
-- **Data Controller:** LINEKORA (hereinafter "the Company")
+- **Data Controller:** NDIVE LABS LTD (registered in Rwanda), trading as LINEKORA (hereinafter "the Company")
 - **Data Processor:** Neon (NeonDB Inc.) (hereinafter "Neon")
 
 **Effective Date:** _______________
 **Agreement Reference:** LINEKORA-DPA-NEONDB-2026
 
+> **IMPORTANT — READ FIRST:** This document is LINEKORA's **internal reference copy**. The **binding contract** is Neon's official Data Processing Agreement, accepted under Neon's Terms of Service, available at https://neon.tech/legal. Download and keep that official DPA for the Rwanda DPO. Do not present this template to Neon for signature.
+
 ---
 
 ## 1. PURPOSE
 
-This DPA sets out the terms that apply when Personal Data is processed by Neon on behalf of LINEKORA in the course of providing database hosting services. This DPA is required for compliance with the **Rwanda Data Protection Law No. 3/2021** and authorization for international storage.
+This DPA sets out the terms that apply when Personal Data is processed by Neon on behalf of LINEKORA in the course of providing database hosting services. This DPA is required for compliance with the **Rwanda Data Protection Law No. 058/2021 of 13/10/2021** and authorization for international storage.
 
 ---
 
@@ -86,7 +88,9 @@ Neon maintains a list of sub-processors. LINEKORA must be notified of any change
 
 | Processor | Location | Data Stored | Transfer Mechanism |
 |-----------|----------|-------------|-------------------|
-| NeonDB | US / EU (multi-region) | All PII, Task data, Transactions | Standard Contractual Clauses (SCCs) |
+| NeonDB (Neon) | **AWS us-east-1, N. Virginia, USA** (confirmed) | All PII, Task data, Transactions | Standard Contractual Clauses (SCCs) |
+
+> **Confirmed (Sept 14, 2026):** Production database is Neon at `ep-tiny-lab-at67jz3u.c-9.us-east-1.aws.neon.tech`, database `neondb`, connection uses `sslmode=require` (TLS enforced).
 
 ### 4.2 Safeguards
 
@@ -126,7 +130,7 @@ LINEKORA (or its authorized auditor) shall have the right to:
 
 ## 7. SIGNATURES
 
-### Data Controller: LINEKORA
+### Data Controller: NDIVE LABS LTD (LINEKORA)
 
 | Field | Details |
 |-------|---------|
@@ -147,4 +151,4 @@ LINEKORA (or its authorized auditor) shall have the right to:
 ---
 
 *Document prepared for LINEKORA Data Protection Compliance*
-*Pursuant to Rwanda Data Protection Law No. 3/2021*
+*Pursuant to Rwanda Data Protection Law No. 058/2021 of 13/10/2021*

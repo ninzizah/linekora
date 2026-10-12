@@ -1,0 +1,42 @@
+digraph LinekoraDataFlow {
+  graph[rankdir=TB, splines=polyline, nodesep=0.55, ranksep=0.75, fontname="Helvetica-Arial", label=<<b>LINEKORA — Data Flow Map (Confirmed Production Architecture)</b><br/>N<SUB>e</SUB>PD: Workers/Employers → LINEKORA → Vercel → Neon · Firebase Auth · Sept 14, 2026>]
+  node[fontname="Helvetica-Arial", fontsize=12, style="rounded,filled", fillcolor="white"]
+  edge[fontname="Helvetica-Arial", fontsize=10, color="#33557a"]
+
+  subgraph cluster_subjects {
+    graph[label="DATA SUBJECTS — RWANDA", style="filled,rounded", color="#2f6fb2", fillcolor="#eaf3fb"]
+    Worker [shape=box, fillcolor="#cfe3f7", label="WORKER\n(Iyi Truka)", margin="0.25,0.15"]
+    Employer [shape=box, fillcolor="#cfe3f7", label="EMPLOYER /\nCOMPANY", margin="0.25,0.15"]
+    Admin [shape=box, fillcolor="#cfe3f7", label="ADMIN\n(staff)", margin="0.25,0.15"]
+  }
+
+  subgraph cluster_platform {
+    graph[label="LINEKORA PLATFORM", style="filled,rounded", color="#b8860b", fillcolor="#fff6df"]
+    WebApp [shape=box3d, fillcolor="#ffe9a8", label="LINEKORA Web App\n+ Backend API\n(Vercel)", margin="0.25,0.15"]
+  }
+
+  subgraph cluster_processors {
+    graph[label="PROCESSORS — USA (storage & processing)", style="filled,rounded", color="#2e7d32", fillcolor="#eaf7ea"]
+    Neon [shape=cylinder, fillcolor="#d5efd5", label="NEON — PostgreSQL\n\nAll PII · KYC docs (base64)\nTasks · Messages · Notifications\n\nAWS us-east-1, N. Virginia\nTLS: sslmode=require", margin="0.3,0.2"]
+    Firebase [shape=component, fillcolor="#d5efd5", label="FIREBASE AUTH\n(Google)\n\nUID · Email · Session\nEmail/password only", margin="0.3,0.2"]
+  }
+
+  subgraph cluster_planned {
+    graph[label="PLANNED — NOT ACTIVE (no data flows today)", style="dashed,rounded", color="#c0392b", fillcolor="#fdeaea"]
+    Payment [shape=box, fillcolor="#fbd8d8", label="Payment provider\n(MoMo / Airtel / card)\nNOT integrated", margin="0.25,0.15"]
+    SMS [shape=box, fillcolor="#fbd8d8", label="SMS / Email\nNOT integrated", margin="0.25,0.15"]
+  }
+
+  edge[style=solid, arrowhead=normal]
+  Worker   -> WebApp [label="register · KYC verify"]
+  Employer -> WebApp [label="register · post jobs"]
+  Admin    -> WebApp [label="manage · review KYC"]
+
+  WebApp -> Firebase [label="login (email / password)"]
+  WebApp -> Neon [label="store / read all personal data"]
+  Firebase -> Neon [style=dotted, arrowhead=none, label="user reference"]
+
+  edge[style=dashed, color="#c0392b"]
+  WebApp -> Payment [label="future"]
+  WebApp -> SMS [label="future"]
+}

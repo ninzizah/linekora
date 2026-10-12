@@ -693,6 +693,8 @@ const fr: Record<string, string> = {
     notif_removed_bookmark_msg: 'Le profil du travailleur a été retiré de votre collection de favoris.',
     notif_url_copied: 'URL publique copiée 🔗',
     notif_url_copied_msg: 'Lien de profil partageable chargé en toute sécurité dans votre presse-papiers.',
+    link_copied: 'Link copied',
+    share: 'Share',
     notif_public_link: 'Lien de profil public',
     notif_public_link_msg: 'Le lien public est prêt. Utilisez les outils de partage pour envoyer des badges.',
     notif_profile_updated: 'Profil mis à jour 🚀',

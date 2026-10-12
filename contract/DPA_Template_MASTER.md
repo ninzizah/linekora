@@ -2,11 +2,13 @@
 # Master Template — LINEKORA
 
 **Between:**
-- **Data Controller:** LINEKORA (hereinafter "the Company")
+- **Data Controller:** NDIVE LABS LTD (registered in Rwanda), trading as LINEKORA (hereinafter "the Company")
 - **Data Processor:** [PROCESSOR NAME] (hereinafter "the Processor")
 
 **Effective Date:** _______________
 **Agreement Reference:** LINEKORA-DPA-[PROCESSOR]-[YEAR]
+
+> **IMPORTANT — READ FIRST:** This is LINEKORA's **internal master template** used to build internal reference records. The **binding contract** for any cloud processor (Vercel, Neon, Google/Firebase, Stripe, Twilio, etc.) is that provider's **official DPA**, accepted under their Terms of Service. Always download and keep the provider's official DPA for the Rwanda DPO; never present custom templates to providers for signature.
 
 ---
 
@@ -14,7 +16,7 @@
 
 This Data Protection Agreement ("DPA") sets out the terms that apply when Personal Data is processed by the Processor on behalf of the Data Controller in the course of providing services. This DPA supplements and forms part of the main service agreement between the parties.
 
-This DPA is required for compliance with the **Rwanda Data Protection Law No. 3/2021** and the **Personal Data Protection Policy (PDPB)** issued by the Rwanda Data Protection Authority (DPA).
+This DPA is required for compliance with the **Rwanda Data Protection Law No. 058/2021 of 13/10/2021** and the **Personal Data Protection Policy (PDPB)** issued by the Rwanda Data Protection Authority (DPA).
 
 ---
 
@@ -24,7 +26,7 @@ This DPA is required for compliance with the **Rwanda Data Protection Law No. 3/
 |------|------------|
 | **Personal Data** | Any information relating to an identified or identifiable natural person |
 | **Processing** | Any operation performed on Personal Data (collection, storage, use, transmission, deletion) |
-| **Data Controller** | LINEKORA — determines the purposes and means of processing |
+| **Data Controller** | NDIVE LABS LTD (LINEKORA) — determines the purposes and means of processing |
 | **Data Processor** | [PROCESSOR NAME] — processes data on behalf of the Controller |
 | **Data Subject** | The individual whose data is processed (Worker, Employer, or Company representative) |
 | **DPO** | Data Protection Officer of LINEKORA |
@@ -213,7 +215,7 @@ The obligations under Sections 4 (Confidentiality), 6 (Data Retention), 8 (Liabi
 ### 10.1 Governing Law
 
 This DPA shall be governed by and construed in accordance with the laws of the **Republic of Rwanda**, including:
-- Law No. 3/2021 on the Protection of Personal Data
+- Law No. 058/2021 of 13/10/2021 on the Protection of Personal Data
 - Personal Data Protection Policy (PDPB) No. 3/2021
 - Any regulations issued by the Rwanda Data Protection Authority
 
@@ -228,7 +230,7 @@ Any dispute arising out of or in connection with this DPA shall be resolved thro
 
 ## 11. SIGNATURES
 
-### Data Controller: LINEKORA
+### Data Controller: NDIVE LABS LTD (LINEKORA)
 
 | Field | Details |
 |-------|---------|
@@ -295,4 +297,4 @@ The Processor shall implement the following security measures:
 ---
 
 *Document prepared for LINEKORA Data Protection Compliance*
-*Pursuant to Rwanda Data Protection Law No. 3/2021*
+*Pursuant to Rwanda Data Protection Law No. 058/2021 of 13/10/2021*

@@ -2,17 +2,19 @@
 # Firebase — LINEKORA
 
 **Between:**
-- **Data Controller:** LINEKORA (hereinafter "the Company")
-- **Data Processor:** Google LLC (Firebase) (hereinafter "Firebase")
+- **Data Controller:** NDIVE LABS LTD (registered in Rwanda), trading as LINEKORA (hereinafter "the Company")
+- **Data Processor:** Google LLC (Firebase) / Google Cloud (hereinafter "Firebase")
 
 **Effective Date:** _______________
 **Agreement Reference:** LINEKORA-DPA-FIREBASE-2026
+
+> **IMPORTANT — READ FIRST:** This document is LINEKORA's **internal reference copy**. The **binding contract** is Google's official Data Processing Addendum (DPA) / Google Cloud Data Processing Terms, which are incorporated into Google Cloud's Terms of Service, available at https://cloud.google.com/terms/data-processing-addendum. Download and keep that official DPA for the Rwanda DPO. Do not present this template to Google for signature.
 
 ---
 
 ## 1. PURPOSE
 
-This DPA sets out the terms that apply when Personal Data is processed by Firebase on behalf of LINEKORA in the course of providing authentication and session management services. This DPA is required for compliance with the **Rwanda Data Protection Law No. 3/2021**.
+This DPA sets out the terms that apply when Personal Data is processed by Firebase on behalf of LINEKORA in the course of providing authentication and session management services. This DPA is required for compliance with the **Rwanda Data Protection Law No. 058/2021 of 13/10/2021**.
 
 ---
 
@@ -125,7 +127,7 @@ LINEKORA (or its authorized auditor) shall have the right to:
 
 ## 7. SIGNATURES
 
-### Data Controller: LINEKORA
+### Data Controller: NDIVE LABS LTD (LINEKORA)
 
 | Field | Details |
 |-------|---------|
@@ -146,4 +148,4 @@ LINEKORA (or its authorized auditor) shall have the right to:
 ---
 
 *Document prepared for LINEKORA Data Protection Compliance*
-*Pursuant to Rwanda Data Protection Law No. 3/2021*
+*Pursuant to Rwanda Data Protection Law No. 058/2021 of 13/10/2021*

@@ -936,6 +936,37 @@ app.delete('/api/jobs/:id', async (req, res) => {
   }
 });
 
+// Get single job by ID (public)
+app.get('/api/jobs/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid job id' });
+    }
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: {
+        employer: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+    });
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    res.json(job);
+  } catch (err) {
+    console.error('Get job by id error:', err);
+    res.status(500).json({ error: 'Failed to fetch job' });
+  }
+});
+
+
 // Apply to a job (worker claiming)
 app.post('/api/jobs/:id/apply', async (req, res) => {
   try {

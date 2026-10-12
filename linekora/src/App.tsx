@@ -61,6 +61,7 @@ import Register from './pages/auth/Register';
 import Login from './pages/auth/Login';
 import RoleSelection from './pages/auth/RoleSelection';
 import CompleteContact from './pages/auth/CompleteContact';
+import JobDetails from './pages/public/JobDetails';
 
 
 // Dashboard Layouts
@@ -204,6 +205,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/select-role" element={<RoleSelection />} />
           <Route path="/complete-contact" element={<CompleteContactRoute />} />
+          <Route path="/jobs/:id" element={<JobDetails />} />
 
           {/* Dashboard Entry */}
           <Route path="/dashboard" element={<DashboardRedirect />} />

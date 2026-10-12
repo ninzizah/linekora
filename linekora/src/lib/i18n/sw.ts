@@ -693,6 +693,8 @@ const sw: Record<string, string> = {
     notif_removed_bookmark_msg: 'Wasifu wa mfanyakazi umeondolewa kwenye vipendwa vyako.',
     notif_url_copied: 'URL ya Umma Imenigwa 🔗',
     notif_url_copied_msg: 'Kiungo cha wasifu kinachoshirikiwa kimepakwa kwenye ubao wako kwa usalama.',
+    link_copied: 'Link copied',
+    share: 'Share',
     notif_public_link: 'Kiungo cha Wasifu wa Umma',
     notif_public_link_msg: 'Kiungo cha umma kiko tayari. Tumia zana za kushiriki kutuma beji.',
     notif_profile_updated: 'Wasifu Umesasishwa 🚀',

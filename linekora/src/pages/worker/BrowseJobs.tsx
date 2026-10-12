@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { 
   Search, Filter, MapPin, DollarSign, Clock, 
   CheckCircle2, ChevronRight, Bookmark, AlertCircle, Briefcase, 
-  Loader2, RefreshCw
+  Loader2, RefreshCw, Share2
 } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
@@ -415,6 +415,22 @@ export default function BrowseJobs() {
                       )}
                     </button>
                     <div className="flex gap-2">
+                      <button 
+                        onClick={() => {
+                          const url = `${window.location.origin}/jobs/${job.id}`;
+                          if (navigator.share) {
+                            navigator.share({ title: job.title, text: job.title, url }).catch(() => {});
+                          } else {
+                            navigator.clipboard.writeText(url).then(() => {
+                              showToast(t('link_copied') || 'Link copied', 'success');
+                            }).catch(() => {});
+                          }
+                        }}
+                        className="p-3 rounded-xl border border-gray-100 text-gray-400 hover:text-blue-600 hover:border-blue-100 transition-all"
+                        title={t('share') || 'Share'}
+                      >
+                        <Share2 size={18} />
+                      </button>
                       <button 
                         onClick={() => handleSave(job.id)}
                         className={`p-3 rounded-xl border transition-all ${

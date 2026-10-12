@@ -693,6 +693,8 @@ const en: Record<string, string> = {
     notif_removed_bookmark_msg: 'Worker profile removed from your favorites collection.',
     notif_url_copied: 'Public URL Copied 🔗',
     notif_url_copied_msg: 'Shareable profile link securely loaded to your clipboard.',
+    link_copied: 'Link copied',
+    share: 'Share',
     notif_public_link: 'Public Profile Link',
     notif_public_link_msg: 'Public link is ready. Use share tools to send badges.',
     notif_profile_updated: 'Profile Updated 🚀',

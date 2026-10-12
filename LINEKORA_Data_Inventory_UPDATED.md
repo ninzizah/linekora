@@ -1,6 +1,6 @@
 # LINEKORA — Data Inventory & International Data Flow Map
 
-*UPDATED: September 8, 2026 — Added Company as Data Subject*
+*UPDATED: September 14, 2026 — Corrected to reflect the confirmed production architecture (verified from production config files)*
 
 ---
 
@@ -8,204 +8,196 @@
 
 | Field | Details |
 |-------|---------|
-| **Data Controller Name** | LINEKORA |
+| **Data Controller Name (Legal Entity)** | NDIVE LABS LTD |
+| **Platform (trading name)** | LINEKORA |
 | **Registration Number (RDB)** | [RDB CERTIFICATE NUMBER] |
 | **Date of Registration** | [DATE] |
 | **DPO Name** | [DPO Name] |
 | **DPO Contact** | [DPO Email / Phone] |
-| **Legal Status** | Company registered in Rwanda |
+| **Legal Status** | Private company registered in Rwanda |
 
 ---
 
-## 2. DATA SUBJECTS & PERSONAL DATA INVENTORY
+## 2. CONFIRMED PRODUCTION ARCHITECTURE (VERIFIED SEPT 14, 2026)
 
-### 2.1 Worker (Individual — "Iyi Truka")
+| Component | Provider | Confirmed detail |
+|-----------|----------|------------------|
+| Frontend (Web App) | **Vercel** | `linekora/vercel.json`, SPA on Vercel |
+| Backend / API | **Vercel** | `linekora-backend/vercel.json` (`@vercel/node`); API at `linekora-backend.vercel.app/api` |
+| Database (PostgreSQL) | **Neon** | Host `ep-tiny-lab-at67jz3u.c-9.us-east-1.aws.neon.tech`, database `neondb` — **AWS us-east-1, N. Virginia, USA** |
+| Database connection security | **Neon** | `sslmode=require` (TLS in transit) confirmed |
+| Authentication | **Firebase / Google** | Project `linekora-7dd3e` — email/password auth only |
+| File/storage of uploads (ID images, selfies, CVs, photos, attachments) | **Neon (PostgreSQL)** | Stored as base64 strings inside PostgreSQL columns (`verificationData`, `cvFile`, `avatarUrl`, `Message.attachments`, `Job.photos`) |
+| SMS / Email provider | **None** | No SMS or email service integrated. Notifications are in-app (Neon `Notification` table) |
+| Payment provider | **None** | Wallet is a local simulation (`localStorage`); MTN MoMo / Airtel / card are planned, not integrated |
 
-| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
-|---|---|---|---|---|---|
-| Full Name | Identity | Direct (Worker) | Registration, Identification, KYC | Vercel → NeonDB | Consent |
-| Phone Number | Identity | Direct (Worker) | Contact, SMS notifications, Verification | Vercel → NeonDB, Twilio | Consent |
-| Gender | Descriptive | Direct (Worker) | Demographics, Service matching | Vercel → NeonDB | Consent |
-| District | Address | Direct (Worker) | Task localization, Service matching | Vercel → NeonDB | Consent |
-| Sector | Address | Direct (Worker) | Task localization, Service matching | Vercel → NeonDB | Consent |
-| Village | Address | Direct (Worker) | Task localization, Service matching | Vercel → NeonDB | Consent |
-| National ID Number | ID Document | Direct (Worker) | KYC verification | Vercel → NeonDB | Consent + Legal Obligation |
-| Photo | Biometric | Direct (Worker) | Identification, Profile | Vercel → NeonDB | Consent |
-| Skills/Qualifications | Occupational | Direct (Worker) | Task matching | Vercel → NeonDB | Consent |
-
-### 2.2 Employer (Individual/Entity)
-
-| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
-|---|---|---|---|---|---|
-| Full Name | Identity | Direct (Employer) | Registration, Identification | Vercel → NeonDB | Consent |
-| Phone Number | Identity | Direct (Employer) | Contact, SMS notifications | Vercel → NeonDB, Twilio | Consent |
-| Company Name | Organizational | Direct (Employer) | Profile, Invoicing | Vercel → NeonDB | Consent |
-| Company Location | Address | Direct (Employer) | Service delivery | Vercel → NeonDB | Consent |
-| Payment Details | Financial | Direct (Employer) | Payment processing | Vercel → Stripe | Contractual Necessity |
-| Card Details | Financial | Direct (Employer) | Payments | Stripe | Contractual Necessity |
-| Billing Info | Financial | Direct (Employer) | Invoicing | Vercel → NeonDB | Contractual Necessity |
-
-### 2.3 Company (LINEKORA as Data Subject / Controller Entity) — NEW
-
-| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
-|---|---|---|---|---|---|
-| RDB Registration Certificate | Official Document | RDB | Legal registration, Data controller compliance | LINEKORA Records | Legal Obligation |
-| DPO Appointment | Official Document | DPO | Data protection compliance | LINEKORA Records | Legal Obligation |
-| Data Controller Registration | Official Document | RDB | Regulatory compliance | LINEKORA Records | Legal Obligation |
-| Beneficial Owner Information | Identity | Company | Corporate governance | LINEKORA Records | Legal Obligation |
-| Business Registration Details | Administrative | RDB | Legal compliance | LINEKORA Records | Legal Obligation |
-| Data Processing Agreements | Contractual | Company/Processors | Processor compliance | LINEKORA Records | Contractual Necessity |
-| DPIA Documentation | Compliance | DPO | Risk assessment | LINEKORA Records | Legal Obligation |
-
-### 2.4 User Activity Data (Auto-collected)
-
-| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
-|---|---|---|---|---|---|
-| IP Address | Technical | Auto-collected | Security, Fraud prevention | Vercel Logs | Legitimate Interest |
-| Device ID | Technical | Auto-collected | Session management, Security | Vercel Logs | Legitimate Interest |
-| Geolocation | Technical | Auto-collected | Task localization | Vercel → NeonDB | Legitimate Interest |
-| Browser/OS Info | Technical | Auto-collected | UX optimization | Vercel Logs | Legitimate Interest |
-| Usage Patterns | Behavioral | Auto-collected | Analytics, Service improvement | Vercel → NeonDB | Legitimate Interest |
-
-### 2.5 Service Notifications
-
-| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
-|---|---|---|---|---|---|
-| Phone Number | Identity | Worker/Employer | SMS alerts | Vercel → Twilio | Contractual Necessity |
-| Transaction ID | Financial | LINEKORA | Transaction confirmation | Vercel → Twilio | Contractual Necessity |
-| Notification Content | Behavioral | LINEKORA | Service updates | Twilio Logs | Contractual Necessity |
-
-### 2.6 Support Requests
-
-| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
-|---|---|---|---|---|---|
-| Full Name | Identity | Direct (User) | Support resolution | LINEKORA Email | Consent |
-| Phone Number | Identity | Direct (User) | Support contact | LINEKORA Email | Consent |
-| Issue Description | Behavioral | Direct (User) | Support resolution | LINEKORA Email | Consent |
-
-### 2.7 Authentication Data (Firebase)
-
-| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
-|---|---|---|---|---|---|
-| UID | Technical | Auto-generated | Unique user identification | Firebase Auth | Contractual Necessity |
-| Phone Number | Identity | Direct (User) | Phone-based authentication | Firebase Auth | Contractual Necessity |
-| Role | Technical | LINEKORA | Access control | Firebase Auth | Contractual Necessity |
-| Auth Token | Technical | Auto-generated | Session management | Firebase Auth | Contractual Necessity |
+> **Stripe and Twilio are NOT integrated. Do NOT list them as data processors.** This document only lists services that actually process personal data today.
 
 ---
 
-## 3. PROCESSORS & ROLES
+## 3. DATA SUBJECTS & PERSONAL DATA INVENTORY
 
-| Processor | Location | Role | Data Processed | Type of Agreement |
-|-----------|----------|------|----------------|-------------------|
-| Vercel | US/EU | Web hosting, CDN | Activity logs, IP, Device ID | DPA Required — [Status] |
-| NeonDB | US | Primary database | All PII, Task data, Transactions | DPA Required — [Status] |
-| Firebase (Google) | US | Authentication | UID, Phone, Role, Token | DPA Required — [Status] |
-| Stripe | US | Payment processing | Card details, Billing | DPA Required — [Status] |
-| Twilio | US | SMS notifications | Phone, Transaction ID | DPA Required — [Status] |
+### 3.1 Worker (Individual — "Iyi Truka")
+
+| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
+|---|---|---|---|---|---|
+| Full Name | Identity | Direct (Worker) | Registration, Identification, KYC | Neon (AWS us-east-1) | Consent |
+| Email | Identity | Direct (Worker) | Login, account | Firebase Auth + Neon | Consent |
+| Phone Number | Identity | Direct (Worker) | Contact, notifications | Neon | Consent |
+| Gender | Descriptive | Direct (Worker) | Demographics, service matching | Neon | Consent |
+| District / Sector / Village | Address | Direct (Worker) | Task localization, service matching | Neon | Consent |
+| National ID Number | ID Document | Direct (Worker) | KYC verification | Neon (sensitive) | Consent + Legal Obligation |
+| National ID front image | ID Document | Direct (Worker) | KYC verification | Neon (base64) (sensitive) | Consent |
+| National ID back image | ID Document | Direct (Worker) | KYC verification | Neon (base64) (sensitive) | Consent |
+| Selfie (biometric) | Biometric | Direct (Worker) | KYC — matches identity | Neon (base64) (sensitive) | Consent |
+| Profile photo | Visual | Direct (Worker) | Profile display | Neon (base64) | Consent |
+| Skills / experience / education / CV / certificates | Occupational | Direct (Worker) | Task matching, recruitment | Neon | Consent |
+
+### 3.2 Employer / Company (Individual/Entity)
+
+| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
+|---|---|---|---|---|---|
+| Full Name | Identity | Direct (Employer) | Registration, Identification | Neon | Consent |
+| Email | Identity | Direct (Employer) | Login, account | Firebase Auth + Neon | Consent |
+| Phone Number | Identity | Direct (Employer) | Contact | Neon | Consent |
+| Company Name | Organizational | Direct (Employer) | Profile, invoicing | Neon | Consent |
+| Company Location | Address | Direct (Employer) | Service delivery | Neon | Consent |
+| TIN / Reg. Number | Official | Direct (Employer) | Verification (where collected) | Neon | Consent + Legal Obligation |
+| Business registration documents | Official | Direct (Employer) | Company verification (where collected) | Neon (base64) | Consent |
+| Payment details (planned) | Financial | — | Not yet collected (no payment integration) | — | — |
+
+### 3.3 Admin / Staff — Platform Administration
+
+| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
+|---|---|---|---|---|---|
+| Name | Identity | Direct (Admin) | Platform administration | Neon | Contractual necessity |
+| Email | Identity | Direct (Admin) | Admin authentication | Firebase Auth + Neon | Contractual necessity |
+
+### 3.4 User Activity Data (auto-collected)
+
+| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
+|---|---|---|---|---|---|
+| IP Address | Technical | Auto-collected | Security, fraud prevention | Vercel access logs | Legitimate Interest |
+| Browser/OS info | Technical | Auto-collected | Analytics | Vercel access logs | Legitimate Interest |
+| Usage patterns | Behavioral | Auto-collected | Service improvement | Neon | Legitimate Interest |
+| Auth tokens / session | Technical | Auto-generated | Session management | Firebase Auth | Contractual Necessity |
+
+### 3.5 Communications & Notifications (in-app only — no SMS)
+
+| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
+|---|---|---|---|---|---|
+| Message content | Behavioral | Worker/Employer | In-app chat | Neon | Contractual Necessity |
+| Message attachments (images/PDF, base64) | User content | Worker/Employer | In-app chat | Neon | Contractual Necessity |
+| Notification records | Behavioral | LINEKORA | In-app alerts | Neon | Contractual Necessity |
+
+> **No SMS/email service is used.** When an SMS or email provider is integrated, this inventory must be updated before it processes personal data.
+
+### 3.6 Support Requests
+
+| Data Element | Data Category | Source | Purpose | Storage Location | Lawful Basis |
+|---|---|---|---|---|---|
+| Name | Identity | Direct (User) | Support resolution | LINEKORA Email / Neon | Consent |
+| Phone Number | Identity | Direct (User) | Support contact | LINEKORA Email / Neon | Consent |
+| Issue Description | Behavioral | Direct (User) | Support resolution | LINEKORA Email / Neon | Consent |
 
 ---
 
-## 4. INTERNATIONAL DATA FLOW MAP
+## 4. PROCESSORS & ROLES (ACTUAL — NO OTHERS)
 
-```
- Workers/Employers/Company
-           │
-           ▼
- ┌────────────────┐    ┌────────────────┐    ┌────────────────┐
- │   LINEKORA     │───►│    VERCEL      │───►│    NEONDB      │
- │   Web App      │    │ (Hosting/CDN)  │    │ (Database)     │
- │   (Next.js)    │    │                │    │                │
- └───────┬────────┘    └────────────────┘    └───────┬────────┘
-         │                                           │
-         │        ┌────────────────┐                 │
-         ├───────►│   FIREBASE     │─────────────────┤
-         │        │    (Auth)      │                 │
-         │        └────────────────┘                 │
-         │                                           │
-         ├────────────────────────────────────────────┤
-         ▼                                           ▼
- ┌────────────────┐                          ┌────────────────┐
- │     STRIPE     │                          │    TWILIO      │
- │  (Payments)    │                          │ (SMS/Notify)   │
- └────────────────┘                          └────────────────┘
+| Processor | Confirmed Location | Role | Data Processed | Agreement |
+|-----------|--------------------|------|----------------|-----------|
+| **Neon** (NeonDB Inc.) | AWS **us-east-1, N. Virginia, USA** | Primary PostgreSQL database — all PII, KYC documents, base64 uploads | All personal data, transaction records | Neon official DPA — [SAVE ON FILE] |
+| **Vercel** Inc. | USA (global edge, data centers in US) | Frontend hosting + serverless backend/API | App code, API traffic, access logs (IP, browser info) | Vercel official DPA — [SAVE ON FILE] |
+| **Google LLC / Firebase** | USA | Authentication (email/password) | UID, email, auth session data | Google Cloud DPA — [SAVE ON FILE] |
 
- Data Origin: Rwanda
- Data Storage: US/EU (International — requires DPO approval)
-```
+> **⚠️ Stripe and Twilio are NOT processors today.** They must NOT be listed in the DPO registration form or the outside-Rwanda authorization. They are planned integrations only.
+
+---
+
+## 5. INTERNATIONAL DATA FLOW MAP (CONFIRMED)
+
+![LINEKORA Data Flow Map](diagrams/data_flow_map.png)
+
+![LINEKORA International Data Flow](diagrams/international_data_flow.png)
+
+**Origin:** Rwanda → **Storage/Processing:** USA (AWS us-east-1 & Vercel/Google US).
+⚠️ **Payment, SMS and Email services are planned only — NO data flows to them today.**
+
+> Diagram sources (re-generate with `dot -Tpng ...`): `diagrams/data_flow_map.dot`, `diagrams/international_data_flow.dot`
 
 ### International Transfer Justification
 
 | Destination | Data | Lawful Basis for Transfer | Safeguards |
 |-------------|------|---------------------------|------------|
-| US (Vercel) | Activity logs | Legitimate Interest | SCCs + Encryption |
-| US (NeonDB) | All PII | Consent + Contract | SCCs + Encryption |
-| US (Firebase) | Auth data | Contractual Necessity | SCCs + Encryption |
-| US (Stripe) | Payment data | Contractual Necessity | SCCs + PCI DSS |
-| US (Twilio) | SMS data | Contractual Necessity | SCCs + Encryption |
-
----
-
-## 5. DATA RETENTION SCHEDULE
-
-| Data Category | Retention Period | Deletion Method |
-|---------------|------------------|-----------------|
-| Worker PII | Active account + 2 years | Secure deletion |
-| Employer PII | Active account + 2 years | Secure deletion |
-| Company Records | Business lifetime | Archive |
-| Transaction Records | 7 years (legal) | Archive then delete |
-| Support Tickets | Resolution + 1 year | Secure deletion |
-| Analytics Data | 1 year | Automatic purge |
-| Auth Tokens | Session end | Automatic expiry |
-| SMS Logs | 30 days | Automatic purge |
+| USA — Neon (AWS us-east-1) | All PII, KYC docs, messages | Consent + Contract | Neon DPA + Encryption (TLS `sslmode=require`) |
+| USA — Vercel | App traffic, access logs | Legitimate Interest | Vercel DPA + Transmission encryption |
+| USA — Google/Firebase | Auth data | Contractual Necessity | Google Cloud DPA |
 
 ---
 
 ## 6. DATA SUBJECT RIGHTS
 
-LINEKORA shall ensure data subjects (Workers, Employers, and Company representatives) can exercise:
+LINEKORA shall ensure data subjects (Workers, Employers, Admin staff) can exercise:
 
 | Right | Description | Implementation |
 |-------|-------------|----------------|
-| Access | View collected data | Account dashboard + request |
+| Access | View collected data | Account dashboard + DPO request (`Data_Subject_Rights_Policy.md`) |
 | Rectification | Correct inaccurate data | Profile editing |
-| Erasure | Request deletion | Support ticket / DPO contact |
+| Erasure | Request deletion | Account deletion endpoint + DPO request |
 | Restrict | Limit processing | DPO request |
-| Portability | Export data | Data export feature |
+| Portability | Export data | Data export (planned) |
 | Object | Object to processing | DPO request |
+| Not subject to automated decisions | Trust score does not produce legal effects | Policy + DPIA |
 
 ---
 
-## 7. SECURITY MEASURES
+## 7. DATA RETENTION SCHEDULE (SUMMARY)
 
-- [x] Encryption at rest (AES-256) — NeonDB, Firebase
-- [x] Encryption in transit (TLS 1.2+) — All connections
-- [x] Access controls — Role-based (RBAC)
-- [x] Audit logging — All data access logged
-- [x] Incident response — 72-hour breach notification
-- [ ] Data Protection Agreements — PENDING (Vercel, NeonDB, Firebase, Stripe, Twilio)
-- [x] DPO oversight — Regular compliance reviews
+| Data Category | Retention Period | Deletion Method |
+|---------------|------------------|-----------------|
+| Worker/Employer PII | Active account + 2 years | Secure deletion |
+| National ID images + selfie (sensitive) | Active account + 2 years | Secure deletion (account deletion endpoint) |
+| Messages & attachments | Account deletion + 2 years | Secure deletion |
+| Job/application data | 7 years (legal) | Archive then delete |
+| Transaction records | 7 years (legal) | Archive then delete |
+| Support tickets | Resolution + 1 year | Secure deletion |
+| Vercel access logs | 1 year | Automatic purge |
+| Firebase sessions/auth tokens | Session end | Automatic expiry |
+| Notifications | Account deletion + 2 years | Secure deletion |
+
+*Full policy: `Data_Retention_and_Deletion_Policy.md`*
 
 ---
 
-## 8. COMPLIANCE STATUS — MILESTONE TRACKER
+## 8. SECURITY MEASURES (CURRENT STATUS)
+
+| Measure | Status |
+|---------|--------|
+| Encryption in transit (TLS) — DB confirmed (`sslmode=require`); Vercel HTTPS | ✅ Confirmed |
+| Access controls — role checks (`WORKER/COMPANY/EMPLOYER/ADMIN`); verification docs admin-only | ✅ In code |
+| Data Protection Agreements on file | ⏳ Pending — download official DPAs (Neon, Vercel, Google) |
+| Encryption at rest (AES-256) — confirm Neon/Google settings | ⏳ To confirm in dashboards |
+| Audit logging of data access | ⚠️ Not implemented — action required |
+| Incident response / 72-hour breach notification | ⏳ Policy drafted (`Data_Breach_Response_Policy.md`) — build contact list |
+
+---
+
+## 9. COMPLIANCE STATUS — MILESTONE TRACKER
 
 | # | Milestone | Status | Target Date | Notes |
 |---|-----------|--------|-------------|-------|
-| 1 | Data Controller Registration (RDB) | ✅ Completed | — | Certificate obtained, pickup pending |
-| 2 | Data Inventory & Flow Map | ✅ Completed | — | Updated with Company as data subject |
-| 3 | DPIA (Personal Data Impact Assessment) | ⏳ In Progress | — | Form prepared from PDPB No. 3/2021 |
-| 4 | DPA — Vercel | ⏳ Pending | — | Template ready |
-| 5 | DPA — NeonDB | ⏳ Pending | — | Template ready |
-| 6 | DPA — Firebase | ⏳ Pending | — | Template ready |
-| 7 | DPA — Stripe | ⏳ Pending | — | Template ready |
-| 8 | DPA — Twilio | ⏳ Pending | — | Template ready |
-| 9 | DPO Approval — International Storage | ⏳ Blocked | — | Requires DPAs (#4-8) first |
-| 10 | Storage License Outside Rwanda | ⏳ Pending | — | Requires DPO approval (#9) |
+| 1 | Data Controller Registration (RDB/NCSA) | ✅ Completed | — | Certificate obtained |
+| 2 | Data Inventory & Flow Map (real architecture) | ✅ Completed | — | Verified from production config (Sept 14, 2026) |
+| 3 | DPIA | ⏳ Draft complete | — | `DPIA_LINEKORA.md` — needs DPO sign-off |
+| 4 | DPA — Neon (official, on file) | ⏳ Pending | — | Download from Neon |
+| 5 | DPA — Vercel (official, on file) | ⏳ Pending | — | Download from Vercel |
+| 6 | DPA — Google/Firebase (official, on file) | ⏳ Pending | — | Download from Google Cloud |
+| 7 | DPO Authorization — transfer outside Rwanda | ⏳ Blocked | — | Requires DPAs (#4-6) + current inventory |
+| 8 | DPO Authorization — storage outside Rwanda | ⏳ Blocked | — | Requires DPO Authorization (#7) |
 
 ---
 
-## 9. STATUS LEGEND
+## 10. STATUS LEGEND
 
 | Status | Meaning |
 |--------|---------|
@@ -217,5 +209,6 @@ LINEKORA shall ensure data subjects (Workers, Employers, and Company representat
 ---
 
 *Document prepared for LINEKORA Data Protection Compliance*
-*Pursuant to Rwanda's Data Protection Law No. 3/2021 & PDPB No. 3/2021*
-*Last Updated: September 8, 2026*
+*Pursuant to Rwanda's Data Protection Law No. 058/2021 of 13/10/2021 & PDPB No. 3/2021*
+*Last Updated: September 14, 2026*
+*Verified against: `linekora-backend/.env` (Neon us-east-1), `linekora-backend/vercel.json` (Vercel backend), `linekora/firebase-applet-config.json` (Firebase), `linekora/vercel.json` (Vercel frontend)*

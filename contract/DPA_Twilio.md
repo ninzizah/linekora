@@ -1,18 +1,25 @@
 # DATA PROTECTION AGREEMENT (DPA)
 # Twilio — LINEKORA
 
+> ## ⚠️ NOT ACTIVE IN PRODUCTION
+> **Twilio is NOT currently integrated into the LINEKORA platform.** Verification from the production codebase: authentication is Firebase email/password (no phone OTP) and there is no SMS service in the code. Notifications are in-app only. **Do NOT list Twilio as a data processor in the DPO registration form or the outside-Rwanda authorization.**
+> When a real SMS/OTP provider is integrated, update the Data Inventory and apply for the DPO authorization that covers it.
+> Until then, this document is retained only as a **template for the future**.
+
 **Between:**
-- **Data Controller:** LINEKORA (hereinafter "the Company")
+- **Data Controller:** NDIVE LABS LTD (registered in Rwanda), trading as LINEKORA (hereinafter "the Company")
 - **Data Processor:** Twilio Inc. (hereinafter "Twilio")
 
 **Effective Date:** _______________
 **Agreement Reference:** LINEKORA-DPA-TWILIO-2026
 
+> **IMPORTANT — READ FIRST:** This document is LINEKORA's **internal reference copy**. The **binding contract** is Twilio's official Data Protection Addendum, accepted under the Twilio Services Agreement, available at https://www.twilio.com/legal/dpa. Download and keep that official DPA for the Rwanda DPO. Do not present this template to Twilio for signature.
+
 ---
 
 ## 1. PURPOSE
 
-This DPA sets out the terms that apply when Personal Data is processed by Twilio on behalf of LINEKORA in the course of providing SMS and notification services. This DPA is required for compliance with the **Rwanda Data Protection Law No. 3/2021**.
+This DPA sets out the terms that apply when Personal Data is processed by Twilio on behalf of LINEKORA in the course of providing SMS and notification services. This DPA is required for compliance with the **Rwanda Data Protection Law No. 058/2021 of 13/10/2021**.
 
 ---
 
@@ -124,7 +131,7 @@ LINEKORA (or its authorized auditor) shall have the right to:
 
 ## 7. SIGNATURES
 
-### Data Controller: LINEKORA
+### Data Controller: NDIVE LABS LTD (LINEKORA)
 
 | Field | Details |
 |-------|---------|
@@ -145,4 +152,4 @@ LINEKORA (or its authorized auditor) shall have the right to:
 ---
 
 *Document prepared for LINEKORA Data Protection Compliance*
-*Pursuant to Rwanda Data Protection Law No. 3/2021*
+*Pursuant to Rwanda Data Protection Law No. 058/2021 of 13/10/2021*

@@ -546,7 +546,7 @@ export default function SettingsHub({ role, accountSection }: SettingsHubProps) 
                   </RowCard>
                   <RowCard title={t('whatsapp_support')} desc={t('whatsapp_support_desc')}>
                     <a
-                      href="https://wa.me/250788345612"
+                      href="https://wa.me/250793980268"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-5 py-2.5 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-green-700 transition-all cursor-pointer"

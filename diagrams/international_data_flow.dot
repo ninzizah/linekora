@@ -1,0 +1,23 @@
+digraph InternationalFlow {
+  graph[rankdir=LR, splines=polyline, nodesep=0.6, ranksep=1.0, fontname="Helvetica-Arial", label=<<b>LINEKORA — International Data Flow (Confirmed)</b><br/>Rwanda → USA · safeguarded by DPAs + SCCs + encryption'>]
+  node[fontname="Helvetica-Arial", fontsize=12, style="rounded,filled", fillcolor="white"]
+  edge[fontname="Helvetica-Arial", fontsize=10, color="#33557a"]
+
+  subgraph cluster_rw {
+    graph[label="RWANDA — Origin", style="filled,rounded", color="#2f6fb2", fillcolor="#eaf3fb"]
+    Origin [shape=box, fillcolor="#cfe3f7", label="WORKERS · EMPLOYERS · ADMIN\n\nNames · Emails · Phones · NID\n· ID photos · Selfies (biometric)\nLocation · Skills · Messages", margin="0.3,0.2"]
+  }
+
+  subgraph cluster_usa {
+    graph[label="USA — Storage & Processing", style="filled,rounded", color="#2e7d32", fillcolor="#eaf7ea"]
+    Neon [shape=cylinder, fillcolor="#d5efd5", label="NEON\nPostgreSQL\nAll PII + KYC", margin="0.3,0.2"]
+    Vercel [shape=box3d, fillcolor="#d5efd5", label="VERCEL\nFrontend + API\nAccess logs (IP/UA)", margin="0.3,0.2"]
+    Firebase [shape=component, fillcolor="#d5efd5", label="FIREBASE (Google)\nAuth — UID · email", margin="0.3,0.2"]
+  }
+
+  Origin -> Neon     [label="DPA + SCCs · TLS"]
+  Origin -> Vercel   [label="DPA · HTTPS"]
+  Origin -> Firebase [label="DPA · HTTPS"]
+
+  { rank=same; Neon; Vercel; Firebase }
+}

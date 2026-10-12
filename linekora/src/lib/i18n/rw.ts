@@ -693,6 +693,8 @@ const rw: Record<string, string> = {
     notif_removed_bookmark_msg: 'Umwirondoro w\'umukozi wakuwe kurutonde rwawe.',
     notif_url_copied: 'Ihuza Rikopishijwe 🔗',
     notif_url_copied_msg: 'Ihuza ry\'umwirondoro ryatsinditswe neza.',
+    link_copied: 'Link copied',
+    share: 'Share',
     notif_public_link: 'Ihuza ry\'Umwirondoro Ku Ruhararwe',
     notif_public_link_msg: 'Ihuza ryiteguye. Koresha ibikoresho byo kugabana kugira ngo wohereze ibiranga.',
     notif_profile_updated: 'Umwirondoro Wavuguruwe 🚀',

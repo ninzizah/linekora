@@ -262,6 +262,9 @@ export const deleteJob = (id: number, reason?: string) =>
     body: JSON.stringify({ reason }),
   });
 
+export const getJobById = (id: number) =>
+  request<Job>(`/jobs/${id}`);
+
 export const applyToJob = (jobId: number, workerId: string) =>
   request<any>(`/jobs/${jobId}/apply`, { method: 'POST', body: JSON.stringify({ workerId }) });
 

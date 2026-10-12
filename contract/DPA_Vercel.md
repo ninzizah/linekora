@@ -2,17 +2,19 @@
 # Vercel — LINEKORA
 
 **Between:**
-- **Data Controller:** LINEKORA (hereinafter "the Company")
+- **Data Controller:** NDIVE LABS LTD (registered in Rwanda), trading as LINEKORA (hereinafter "the Company")
 - **Data Processor:** Vercel Inc. (hereinafter "Vercel")
 
 **Effective Date:** _______________
 **Agreement Reference:** LINEKORA-DPA-VERCEL-2026
 
+> **IMPORTANT — READ FIRST:** This document is LINEKORA's **internal reference copy**. The **binding contract** is Vercel's official Data Processing Agreement (DPA), which is accepted under the Vercel Customer Terms of Service, available at https://vercel.com/legal/dpa. Download and keep that official DPA for the Rwanda DPO. Do not present this template to Vercel for signature.
+
 ---
 
 ## 1. PURPOSE
 
-This DPA sets out the terms that apply when Personal Data is processed by Vercel on behalf of LINEKORA in the course of providing web hosting, CDN, and analytics services. This DPA is required for compliance with the **Rwanda Data Protection Law No. 3/2021**.
+This DPA sets out the terms that apply when Personal Data is processed by Vercel on behalf of LINEKORA in the course of providing web hosting, CDN, and analytics services. This DPA is required for compliance with the **Rwanda Data Protection Law No. 058/2021 of 13/10/2021**.
 
 ---
 
@@ -123,7 +125,7 @@ LINEKORA (or its authorized auditor) shall have the right to:
 
 ## 7. SIGNATURES
 
-### Data Controller: LINEKORA
+### Data Controller: NDIVE LABS LTD (LINEKORA)
 
 | Field | Details |
 |-------|---------|
@@ -144,4 +146,4 @@ LINEKORA (or its authorized auditor) shall have the right to:
 ---
 
 *Document prepared for LINEKORA Data Protection Compliance*
-*Pursuant to Rwanda Data Protection Law No. 3/2021*
+*Pursuant to Rwanda Data Protection Law No. 058/2021 of 13/10/2021*
