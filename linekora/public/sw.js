@@ -1,10 +1,13 @@
-const CACHE = 'linekora-v1';
+const CACHE = 'linekora-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/site.webmanifest',
   '/linekora-logo.png',
   '/linekora-favicon.jpeg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
 ];
 
 self.addEventListener('install', (event) => {
