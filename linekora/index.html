@@ -11,6 +11,21 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
+    <!-- Capture the install prompt as early as possible; Chrome can fire it
+         before the React bundle mounts. -->
+    <script>
+      window.__linekoraInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (event) {
+        event.preventDefault();
+        window.__linekoraInstallPrompt = event;
+        window.dispatchEvent(new Event('linekora-install-available'));
+      });
+      window.addEventListener('appinstalled', function () {
+        window.__linekoraInstallPrompt = null;
+        window.dispatchEvent(new Event('linekora-installed'));
+      });
+    </script>
+
     <!-- Google Search Console domain verification (HTML-tag fallback for the DNS TXT record) -->
     <meta name="google-site-verification" content="2RUETjH_MYpncgO8isg5nBQQ8E-RCsh55xrIF606H2g" />
 

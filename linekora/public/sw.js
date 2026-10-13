@@ -1,4 +1,4 @@
-const CACHE = 'linekora-v2';
+const CACHE = 'linekora-v3';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -8,6 +8,8 @@ const APP_SHELL = [
   '/icon-192.png',
   '/icon-512.png',
   '/icon-maskable-512.png',
+  '/screenshot-wide.png',
+  '/screenshot-narrow.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,6 +33,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
+
+  // Never serve a stale manifest from cache — an outdated manifest breaks
+  // installability (icons/screenshots can report as failed to load).
+  if (new URL(request.url).pathname === '/site.webmanifest') return;
 
   // Network-first for navigations so the SPA stays fresh, cached shell for offline use.
   if (request.mode === 'navigate') {

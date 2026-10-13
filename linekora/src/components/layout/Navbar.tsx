@@ -1,30 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Menu, X, User, Download } from 'lucide-react';
+import { Shield, Menu, X, User } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../lib/AuthContext';
 
 import { useLanguage, Language } from '../../lib/LanguageContext';
-import { useInstallPrompt } from '../../lib/useInstallPrompt';
+import InstallAppButton from '../InstallAppButton';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
-  const { canInstall, isIOS, promptInstall } = useInstallPrompt();
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setLanguage(e.target.value as Language);
-  };
-
-  // canInstall is only true when the browser offers a native prompt (or iOS,
-  // where the Share sheet is the only path). So a click always installs directly.
-  const handleInstall = async () => {
-    if (isIOS) {
-      window.alert(t('download_app_ios_hint'));
-      return;
-    }
-    await promptInstall();
   };
 
   return (
@@ -73,16 +62,10 @@ export default function Navbar() {
             ) : (
               <div className="flex items-center gap-3">
                 <Link to="/login" className="font-sans text-sm font-medium text-gray-600 hover:text-blue-600">{t('login')}</Link>
-                {canInstall && (
-                  <button
-                    type="button"
-                    onClick={handleInstall}
-                    className="flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2.5 font-sans text-sm font-semibold text-gray-700 transition-all hover:border-blue-300 hover:text-blue-600"
-                  >
-                    <Download size={16} />
-                    {t('download_app')}
-                  </button>
-                )}
+                <InstallAppButton
+                  iconSize={16}
+                  className="flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2.5 font-sans text-sm font-semibold text-gray-700 transition-all hover:border-blue-300 hover:text-blue-600"
+                />
                 <Link to="/register" className="rounded-full bg-blue-600 px-6 py-2.5 font-sans text-sm font-semibold text-white transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200">
                   {t('join')}
                 </Link>
@@ -131,16 +114,10 @@ export default function Navbar() {
             ) : (
               <>
                 <Link to="/login" className="font-sans text-base font-medium text-gray-600">{t('login')}</Link>
-                {canInstall && (
-                  <button
-                    type="button"
-                    onClick={handleInstall}
-                    className="flex items-center justify-center gap-2 rounded-full border border-gray-200 px-6 py-3 font-sans text-base font-semibold text-gray-700"
-                  >
-                    <Download size={18} />
-                    {t('download_app')}
-                  </button>
-                )}
+                <InstallAppButton
+                  iconSize={18}
+                  className="flex items-center justify-center gap-2 rounded-full border border-gray-200 px-6 py-3 font-sans text-base font-semibold text-gray-700"
+                />
                 <Link to="/register" className="rounded-full bg-blue-600 px-6 py-3 text-center font-sans text-base font-bold text-white shadow-lg shadow-blue-200">
                   {t('join')}
                 </Link>
