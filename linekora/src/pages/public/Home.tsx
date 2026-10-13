@@ -11,18 +11,14 @@ import Seo from '../../components/Seo';
 
 export default function Home() {
   const { t } = useLanguage();
-  const { hasPrompt, isStandalone, isIOS, promptInstall } = useInstallPrompt();
+  const { canInstall, isIOS, promptInstall } = useInstallPrompt();
 
   const handleInstall = async () => {
     if (isIOS) {
       window.alert(t('download_app_ios_hint'));
       return;
     }
-    if (hasPrompt) {
-      await promptInstall();
-      return;
-    }
-    window.alert(t('download_app_hint'));
+    await promptInstall();
   };
 
   // Platform stats are real figures from /api/stats. They must never be
@@ -126,7 +122,7 @@ export default function Home() {
                 <Link to="/register" className="flex items-center justify-center gap-2 rounded-2xl bg-white border-2 border-gray-100 px-8 py-4 font-sans text-lg font-bold text-gray-900 transition-all hover:border-blue-600 hover:text-blue-600">
                   {t('hire_workers')}
                 </Link>
-                {!isStandalone && (
+                {canInstall && (
                   <button
                     type="button"
                     onClick={handleInstall}

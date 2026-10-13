@@ -112,7 +112,6 @@ const rw: Record<string, string> = {
     join: 'Fatanya na LINEKORA',
     download_app: 'Pakua App',
     download_app_ios_hint: 'Kwinjiza LINEKORA: kanda aikoni ya Share, hanyuma uhitemo "Add to Home Screen".',
-    download_app_hint: 'Fungura menu ya mushakisha (⋮) uhitemo "Install app" cyangwa "Add to Home Screen".',
     dashboard: 'Imbonerahamwe',
     post_job: 'Shyiraho Akazi',
     post_task: 'Shyiraho Igikorwa',

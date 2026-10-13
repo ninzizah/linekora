@@ -11,22 +11,20 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth();
   const { language, setLanguage, t } = useLanguage();
-  const { hasPrompt, isStandalone, isIOS, promptInstall } = useInstallPrompt();
+  const { canInstall, isIOS, promptInstall } = useInstallPrompt();
 
   const handleLangChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setLanguage(e.target.value as Language);
   };
 
+  // canInstall is only true when the browser offers a native prompt (or iOS,
+  // where the Share sheet is the only path). So a click always installs directly.
   const handleInstall = async () => {
     if (isIOS) {
       window.alert(t('download_app_ios_hint'));
       return;
     }
-    if (hasPrompt) {
-      await promptInstall();
-      return;
-    }
-    window.alert(t('download_app_hint'));
+    await promptInstall();
   };
 
   return (
@@ -75,7 +73,7 @@ export default function Navbar() {
             ) : (
               <div className="flex items-center gap-3">
                 <Link to="/login" className="font-sans text-sm font-medium text-gray-600 hover:text-blue-600">{t('login')}</Link>
-                {!isStandalone && (
+                {canInstall && (
                   <button
                     type="button"
                     onClick={handleInstall}
@@ -133,7 +131,7 @@ export default function Navbar() {
             ) : (
               <>
                 <Link to="/login" className="font-sans text-base font-medium text-gray-600">{t('login')}</Link>
-                {!isStandalone && (
+                {canInstall && (
                   <button
                     type="button"
                     onClick={handleInstall}

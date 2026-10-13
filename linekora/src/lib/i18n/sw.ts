@@ -113,7 +113,6 @@ const sw: Record<string, string> = {
     join: 'Jiunge na LINEKORA',
     download_app: 'Pakua App',
     download_app_ios_hint: 'Ili kusakinisha LINEKORA: gusa aikoni ya Shiriki, kisha uchague "Add to Home Screen".',
-    download_app_hint: 'Fungua menyu ya kivinjari chako (⋮) na uchague "Install app" au "Add to Home Screen".',
     dashboard: 'Dashibodi',
     post_job: 'Tuma Kazi',
     post_task: 'Tuma Kazi Ndogo',
