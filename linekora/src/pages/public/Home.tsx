@@ -1,15 +1,29 @@
-import { Shield, ChevronRight, CheckCircle, Users, Building, Briefcase, Handshake, MapPin, Search } from 'lucide-react';
+import { Shield, ChevronRight, CheckCircle, Users, Building, Briefcase, Handshake, MapPin, Search, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import { useLanguage } from '../../lib/LanguageContext';
+import { useInstallPrompt } from '../../lib/useInstallPrompt';
 import { getStats } from '../../lib/api';
 import Seo from '../../components/Seo';
 
 export default function Home() {
   const { t } = useLanguage();
+  const { hasPrompt, isStandalone, isIOS, promptInstall } = useInstallPrompt();
+
+  const handleInstall = async () => {
+    if (isIOS) {
+      window.alert(t('download_app_ios_hint'));
+      return;
+    }
+    if (hasPrompt) {
+      await promptInstall();
+      return;
+    }
+    window.alert(t('download_app_hint'));
+  };
 
   // Platform stats are real figures from /api/stats. They must never be
   // replaced by invented numbers: showing "8,500 verified workers" when the API
@@ -112,6 +126,16 @@ export default function Home() {
                 <Link to="/register" className="flex items-center justify-center gap-2 rounded-2xl bg-white border-2 border-gray-100 px-8 py-4 font-sans text-lg font-bold text-gray-900 transition-all hover:border-blue-600 hover:text-blue-600">
                   {t('hire_workers')}
                 </Link>
+                {!isStandalone && (
+                  <button
+                    type="button"
+                    onClick={handleInstall}
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-blue-50 border-2 border-blue-100 px-8 py-4 font-sans text-lg font-bold text-blue-700 transition-all hover:bg-blue-100 md:hidden"
+                  >
+                    <Download size={20} />
+                    {t('download_app')}
+                  </button>
+                )}
               </div>
               {stats.length > 0 && (
                 <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
