@@ -265,6 +265,59 @@ app.get('/api/users/workers', async (_req, res) => {
   }
 });
 
+// Full public profile — what employers see when they open "view profile".
+// Profile extras (CV, experience, education, skills, portfolio, certificates)
+// are included; moderation flags, emails and verification documents are not.
+app.get('/api/users/public/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ id }, { firebaseUid: id }] },
+      select: {
+        id: true,
+        displayName: true,
+        role: true,
+        location: true,
+        avatarUrl: true,
+        bio: true,
+        skills: true,
+        experience: true,
+        education: true,
+        certificates: true,
+        portfolio: true,
+        cvFile: true,
+        cvFilename: true,
+        trustScore: true,
+        tier: true,
+        verificationStatus: true,
+        phone: true,
+        createdAt: true,
+        reviewsReceived: {
+          select: { rating: true },
+          orderBy: { createdAt: 'desc' },
+          take: 100,
+        },
+        contractsAsWorker: {
+          where: { status: 'completed' },
+          select: { id: true },
+        },
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const ratings = user.reviewsReceived.map((r) => r.rating);
+    const avgRating = ratings.length
+      ? Math.round((ratings.reduce((s, r) => s + r, 0) / ratings.length) * 10) / 10
+      : null;
+    const completedJobsCount = user.contractsAsWorker.length;
+    const { reviewsReceived: _reviews, contractsAsWorker: _contracts, ...profile } = user;
+    res.json({ ...profile, avgRating, completedJobsCount });
+  } catch (error: any) {
+    console.error('Failed to fetch public profile:', error);
+    res.status(500).json({ error: 'Failed to fetch public profile' });
+  }
+});
+
 app.get('/api/users/:firebaseUid', async (req, res) => {
   try {
     if (req.params.firebaseUid !== req.user?.uid) {

@@ -221,6 +221,17 @@ export const unlockAdmin = (username: string, passkey: string) =>
 export const getWorkers = () =>
   request<Partial<UserProfile>[]>('/users/workers');
 
+// Full public profile (bio, skills, experience, education, certificates,
+// portfolio, CV) backing the "view profile" modal employers open from
+// Browse Workers and Applicants. Never includes moderation or verification data.
+export interface PublicProfileDetails extends Partial<UserProfile> {
+  avgRating?: number | null;
+  completedJobsCount?: number;
+}
+
+export const getPublicProfile = (id: string) =>
+  request<PublicProfileDetails>(`/users/public/${encodeURIComponent(id)}`);
+
 // ─── JOBS ─────────────────────────────────────────────────────────────────────
 
 export interface Job {

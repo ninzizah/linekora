@@ -26,6 +26,7 @@ interface WorkerItem {
   trustScore: number;
   experience: string;
   avatarUrl?: string;
+  bio?: string;
 }
 
 interface Toast {
@@ -74,6 +75,7 @@ export default function BrowseWorkers() {
               trustScore: u.trustScore,
               experience: '',
               avatarUrl: u.avatarUrl,
+              bio: u.bio || undefined,
             };
           });
         // Set real workers
@@ -456,6 +458,8 @@ export default function BrowseWorkers() {
                       rating: worker.rating,
                       completedJobsCount: worker.jobs,
                       avatarUrl: worker.avatarUrl,
+                      bio: worker.bio,
+                      skills: worker.skills,
                     })}>
                       {/* Avatar */}
                       <div className="relative h-14 w-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 border border-gray-100 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors overflow-hidden">
