@@ -7,6 +7,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { updateUser } from '../../lib/api';
 import SettingsHub from '../../components/settings/SettingsHub';
+import ImageLightbox from '../../components/ImageLightbox';
 
 export default function EmployerSettings() {
   const { profile } = useAuth();
@@ -19,6 +20,7 @@ export default function EmployerSettings() {
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [phoneError, setPhoneError] = useState('');
 
@@ -56,7 +58,7 @@ export default function EmployerSettings() {
     const empUid = profile?.firebaseUid || profile?.id || 'guest';
     const avatarKey = `linekora_profile_picture_${empUid}`;
     const saved = localStorage.getItem(avatarKey);
-    if (saved) setAvatarUrl(saved);
+    setAvatarUrl(saved || profile?.avatarUrl || '');
   }, [profile]);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,7 +126,8 @@ export default function EmployerSettings() {
   };
 
   return (
-    <SettingsHub role="EMPLOYER" accountSection={
+    <>
+      <SettingsHub role="EMPLOYER" accountSection={
       <div className="space-y-10 font-sans">
 
         {/* AVATAR / LOGO UPLOAD */}
@@ -135,15 +138,21 @@ export default function EmployerSettings() {
           </h3>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div className="relative">
-              <div className="h-24 w-24 rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-blue-50 shrink-0">
+              <button
+                type="button"
+                onClick={() => avatarUrl && setShowPhotoViewer(true)}
+                className={`h-24 w-24 rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-blue-50 shrink-0 group ${avatarUrl ? 'cursor-zoom-in' : 'cursor-default'}`}
+                aria-label={avatarUrl ? t('view_photo') : displayName}
+                title={avatarUrl ? t('view_photo') : undefined}
+              >
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                  <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
                     <User size={36} className="text-blue-400" />
                   </div>
                 )}
-              </div>
+              </button>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -305,5 +314,13 @@ export default function EmployerSettings() {
         </div>
       </div>
     } />
+
+    <ImageLightbox
+      src={avatarUrl}
+      alt={displayName}
+      isOpen={showPhotoViewer}
+      onClose={() => setShowPhotoViewer(false)}
+    />
+    </>
   );
 }

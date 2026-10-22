@@ -7,6 +7,8 @@ import {
 import { useLanguage } from '../lib/LanguageContext';
 import { getReviews, getPublicProfile, type Review, type PublicProfileDetails } from '../lib/api';
 import { openDataUrlInNewTab } from '../lib/filePreview';
+import { parsePortfolio, type PortfolioItem } from '../lib/portfolio';
+import ImageLightbox from './ImageLightbox';
 
 export interface ExperienceEntry { role: string; company: string; period?: string; desc?: string; }
 export interface EducationEntry { degree: string; school: string; }
@@ -28,7 +30,7 @@ export interface PublicProfileUser {
   experience?: string | ExperienceEntry[];
   education?: string | EducationEntry[];
   certificates?: string | string[];
-  portfolio?: string | string[];
+  portfolio?: string | PortfolioItem[];
   cvFile?: string;
   cvFilename?: string;
   rating?: number;
@@ -117,6 +119,7 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [details, setDetails] = useState<PublicProfileDetails | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !user?.id) return;
@@ -159,18 +162,15 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
   const experienceList = parseExperience(details?.experience ?? user.experience);
   const educationList = parseEducation(details?.education ?? user.education);
   const certificatesList = parseStrings(details?.certificates ?? user.certificates);
-  const portfolioList = parseStrings(details?.portfolio ?? user.portfolio);
+  const portfolioList = parsePortfolio(details?.portfolio ?? user.portfolio);
   const cvFile = details?.cvFile || user.cvFile;
   const cvName = details?.cvFilename || user.cvFilename || '';
   const initial = displayName.charAt(0).toUpperCase();
 
-  const openPortfolioItem = (item: string) => {
-    if (/^https?:\/\//i.test(item)) window.open(item, '_blank', 'noopener,noreferrer');
-  };
-
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <>
+      <AnimatePresence>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -196,13 +196,19 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
           {/* Header */}
           <div className="flex flex-col items-center text-center mb-8">
             <div className="relative mb-4">
-              <div className="h-24 w-24 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-[2rem] flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-blue-200 border-4 border-white overflow-hidden">
+              <button
+                type="button"
+                onClick={() => avatarUrl && setShowAvatarViewer(true)}
+                className={`h-24 w-24 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-[2rem] flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-blue-200 border-4 border-white overflow-hidden group ${avatarUrl ? 'cursor-zoom-in' : 'cursor-default'}`}
+                aria-label={avatarUrl ? t('view_photo') : displayName}
+                title={avatarUrl ? t('view_photo') : undefined}
+              >
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                  <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
                 ) : (
                   <span>{initial}</span>
                 )}
-              </div>
+              </button>
               {isVerified && (
                 <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-1.5 rounded-xl border-2 border-white shadow-md" title={t('verified_profile')}>
                   <ShieldCheck size={16} />
@@ -356,14 +362,51 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
               <EmptyState icon={<FileText size={22} />} text={t('no_portfolio_added')} />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {portfolioList.map((item, i) => (
-                  <div
-                    key={i}
-                    onClick={() => openPortfolioItem(item)}
-                    className={`group bg-gray-50 rounded-2xl p-3.5 border border-gray-100 hover:border-blue-600 transition-all flex items-center justify-between gap-2 ${/^https?:\/\//i.test(item) ? 'cursor-pointer' : ''}`}
-                  >
-                    <p className="font-sans font-black text-gray-900 text-xs break-words">{item}</p>
-                    {/^https?:\/\//i.test(item) && <ExternalLink size={14} className="text-gray-400 group-hover:text-blue-600 shrink-0" />}
+                {portfolioList.map((item) => (
+                  <div key={item.id} className="group bg-gray-50 rounded-2xl border border-gray-100 hover:border-blue-600 overflow-hidden transition-all">
+                    <div className="aspect-video bg-gray-200 relative flex items-center justify-center overflow-hidden">
+                      {item.photos[0] ? (
+                        <img
+                          src={item.photos[0].dataUrl}
+                          alt={item.title}
+                          onClick={() => openDataUrlInNewTab(item.photos[0].dataUrl)}
+                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                        />
+                      ) : (
+                        <FileText size={26} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
+                      )}
+                      {item.photos.length > 0 && (
+                        <span className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-md">
+                          {t('portfolio_photos_count', { count: item.photos.length })}
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-3.5">
+                      <p className="font-sans font-black text-gray-900 text-xs mb-2.5 break-words">{item.title}</p>
+                      {(item.photos.length > 1 || item.docs.length > 0) && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {item.photos.slice(1).map((photo, pi) => (
+                            <img
+                              key={`ph-${pi}`}
+                              src={photo.dataUrl}
+                              alt={item.title}
+                              onClick={() => openDataUrlInNewTab(photo.dataUrl)}
+                              className="h-9 w-9 rounded-lg object-cover border border-gray-200 hover:border-blue-600 transition-all cursor-pointer"
+                            />
+                          ))}
+                          {item.docs.map((doc, di) => (
+                            <button
+                              key={`doc-${di}`}
+                              onClick={() => openDataUrlInNewTab(doc.dataUrl)}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-gray-200 hover:border-blue-600 hover:text-blue-600 text-gray-600 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                            >
+                              <FileText size={10} />
+                              {t('view_document')}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -472,6 +515,14 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
           </button>
         </motion.div>
       </div>
-    </AnimatePresence>
+      </AnimatePresence>
+
+      <ImageLightbox
+        src={avatarUrl}
+        alt={displayName}
+        isOpen={showAvatarViewer}
+        onClose={() => setShowAvatarViewer(false)}
+      />
+    </>
   );
 }

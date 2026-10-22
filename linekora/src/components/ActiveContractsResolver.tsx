@@ -408,15 +408,6 @@ export default function ActiveContractsResolver() {
                         setSelectedContract(contract);
                         setShowReviewForm(true);
                       }}
-                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black uppercase tracking-widest text-[10px] transition-all"
-                    >
-                      {t('add_rating')}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedContract(contract);
-                        setShowReviewForm(true);
-                      }}
                       className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-black uppercase tracking-widest text-[10px] transition-all"
                     >
                       {t('add_rating_reviews')}

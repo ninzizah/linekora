@@ -184,7 +184,7 @@ export default function CompanyMessages() {
                 className={`w-full p-4 flex gap-4 hover:bg-gray-50 transition-colors relative ${activeChat === chat.id ? 'bg-blue-50/50' : ''}`}
               >
                 <div className="relative">
-                  <div className="h-12 w-12 rounded-full bg-blue-105 text-blue-700 font-black font-sans text-sm flex items-center justify-center border border-blue-100 shadow-sm">
+                  <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-700 font-black font-sans text-sm flex items-center justify-center border border-blue-100 shadow-sm">
                     {chat.avatar}
                   </div>
                   {chat.online && <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-white" />}
@@ -194,7 +194,7 @@ export default function CompanyMessages() {
                     <p className="font-sans font-black text-gray-900 text-sm truncate flex items-center gap-1">
                       {chat.name}
                       {chat.pinned && <Pin size={10} className="text-blue-600 rotate-45" />}
-                      {chat.muted && <VolumeX size={10} className="text-gray-405" />}
+                      {chat.muted && <VolumeX size={10} className="text-gray-400" />}
                     </p>
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest shrink-0">{chat.time}</span>
                   </div>
@@ -225,7 +225,7 @@ export default function CompanyMessages() {
                   >
                     <ArrowLeft size={20} />
                   </button>
-                  <div className="h-10 w-10 rounded-full bg-blue-105 text-blue-700 font-sans font-black text-xs flex items-center justify-center border border-blue-200">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 font-sans font-black text-xs flex items-center justify-center border border-blue-200">
                     {currentChatObj.avatar}
                   </div>
                   <div>
@@ -248,7 +248,7 @@ export default function CompanyMessages() {
                   <div className="relative">
                     <button 
                       onClick={() => setIsHeaderDropdownOpen(!isHeaderDropdownOpen)}
-                      className={`p-2.5 rounded-xl transition-all ${isHeaderDropdownOpen ? 'bg-gray-955 text-white shadow-lg' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}
+                      className={`p-2.5 rounded-xl transition-all ${isHeaderDropdownOpen ? 'bg-gray-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}
                     >
                       <MoreVertical size={18} />
                     </button>
@@ -262,7 +262,7 @@ export default function CompanyMessages() {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 5 }}
                             transition={{ duration: 0.12 }}
-                            className="absolute right-0 mt-2 w-52 bg-white rounded-2xl border border-gray-150 shadow-2xl z-40 p-2 overflow-hidden text-left"
+                            className="absolute right-0 mt-2 w-52 bg-white rounded-2xl border border-gray-200 shadow-2xl z-40 p-2 overflow-hidden text-left"
                           >
                             <button 
                               onClick={handleTogglePin}
@@ -274,7 +274,7 @@ export default function CompanyMessages() {
 
                             <button 
                               onClick={handleToggleMute}
-                              className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-indigo-650 hover:bg-indigo-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
+                              className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <VolumeX size={14} className="text-indigo-500" />
                               <span>{currentChatObj.muted ? t('unmute_alerts') : t('mute_alerts')}</span>
@@ -282,7 +282,7 @@ export default function CompanyMessages() {
 
                             <button 
                               onClick={openClearHistoryConfirm}
-                              className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-red-650 hover:bg-red-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
+                              className="w-full text-left px-4 py-3 text-xs font-black text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all flex items-center gap-2.5 uppercase tracking-wider"
                             >
                               <Trash size={14} className="text-red-400" />
                               <span>{t('clear_history')}</span>
@@ -333,7 +333,7 @@ export default function CompanyMessages() {
                         </div>
                         <div className={`flex items-center gap-1.5 mt-2 px-1 ${msg.sent ? 'justify-end' : 'justify-start'}`}>
                           <span className="text-[10px] font-black text-gray-400 uppercase">{msg.time}</span>
-                          {msg.sent && <CheckCheck size={12} className="text-blue-650" />}
+                          {msg.sent && <CheckCheck size={12} className="text-blue-600" />}
                         </div>
                       </div>
                     </div>
@@ -361,7 +361,7 @@ export default function CompanyMessages() {
                     />
                     <button 
                       onClick={handleSendMessage}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-105 hover:bg-blue-700 transition-all flex items-center justify-center cursor-pointer"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center cursor-pointer"
                     >
                       <Send size={16} />
                     </button>
@@ -371,7 +371,7 @@ export default function CompanyMessages() {
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <div className="h-20 w-20 bg-gray-105 rounded-[2rem] flex items-center justify-center text-gray-300 mb-6">
+              <div className="h-20 w-20 bg-gray-100 rounded-[2rem] flex items-center justify-center text-gray-300 mb-6">
                 <Users size={32} />
               </div>
               <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight">{t('hire_verified_talent')}</h3>
@@ -401,7 +401,7 @@ export default function CompanyMessages() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-[2.5rem] w-full max-w-sm p-8 shadow-2xl relative border border-gray-100 z-10 text-center"
             >
-              <div className="h-12 w-12 rounded-2xl bg-red-50 text-red-655 flex items-center justify-center mx-auto mb-4">
+              <div className="h-12 w-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
                 <Trash size={22} />
               </div>
 
@@ -415,7 +415,7 @@ export default function CompanyMessages() {
                   type="button"
                   onClick={() => setShowClearConfirm(false)}
                   disabled={clearingHistory}
-                  className="py-3.5 bg-gray-50 hover:bg-gray-100 border border-gray-150 text-gray-650 rounded-xl font-sans font-black uppercase text-[10px] tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="py-3.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-xl font-sans font-black uppercase text-[10px] tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t('cancel')}
                 </button>
@@ -453,16 +453,16 @@ export default function CompanyMessages() {
             >
               <button 
                 onClick={() => setShowReportModal(false)}
-                className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-55 text-gray-400 bg-gray-50 flex items-center justify-center border border-gray-150"
+                className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 text-gray-400 bg-gray-50 flex items-center justify-center border border-gray-200"
               >
                 <X size={20} />
               </button>
 
-              <div className="h-12 w-12 rounded-2xl bg-red-50 text-red-655 flex items-center justify-center mb-4">
+              <div className="h-12 w-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4">
                 <AlertTriangle size={24} />
               </div>
 
-              <h3 className="text-xl font-black text-gray-955 font-sans uppercase">{t('report_user_title', { name: currentChatObj.name })}</h3>
+              <h3 className="text-xl font-black text-gray-900 font-sans uppercase">{t('report_user_title', { name: currentChatObj.name })}</h3>
               <p className="text-xs text-gray-400 font-sans italic mt-1 mb-8">{t('incident_files_recorded')}</p>
 
               <form onSubmit={handleSubmitReport} className="space-y-6">
@@ -494,7 +494,7 @@ export default function CompanyMessages() {
                   <button 
                     type="button" 
                     onClick={() => setShowReportModal(false)}
-                    className="py-3.5 bg-gray-50 hover:bg-gray-105 border border-gray-150 text-gray-650 rounded-xl font-sans font-black uppercase text-[10px] tracking-widest transition-all"
+                    className="py-3.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-xl font-sans font-black uppercase text-[10px] tracking-widest transition-all"
                   >
                     {t('cancel')}
                   </button>
@@ -529,15 +529,15 @@ export default function CompanyMessages() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
               transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              className="pointer-events-auto w-full bg-white rounded-3xl border border-gray-150 p-5 shadow-2xl flex items-start gap-4 relative overflow-hidden"
+              className="pointer-events-auto w-full bg-white rounded-3xl border border-gray-200 p-5 shadow-2xl flex items-start gap-4 relative overflow-hidden"
             >
               <div className={`absolute top-0 bottom-0 left-0 w-2 shrink-0 ${
-                t.type === 'error' ? 'bg-red-550' : t.type === 'info' ? 'bg-indigo-550' : 'bg-green-500'
+                t.type === 'error' ? 'bg-red-500' : t.type === 'info' ? 'bg-indigo-500' : 'bg-green-500'
               }`} />
               
               <div className="flex-1 pl-1">
                 <p className="font-sans font-black uppercase tracking-[0.1em] text-[10px] text-gray-400 mb-0.5">{t.title}</p>
-                <p className="font-sans text-[11.5px] font-bold text-gray-850 leading-normal">{t.message}</p>
+                <p className="font-sans text-[11.5px] font-bold text-gray-800 leading-normal">{t.message}</p>
               </div>
               <button 
                 onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}

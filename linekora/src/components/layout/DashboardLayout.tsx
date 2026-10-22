@@ -499,7 +499,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value as Language)}
-              className="bg-gray-50 border border-gray-255 text-gray-700 text-xs font-bold py-1.5 px-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans cursor-pointer"
+              className="bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold py-1.5 px-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans cursor-pointer"
             >
               <option value="en">English (EN)</option>
               <option value="rw">Kinyarwanda (RW)</option>
@@ -547,7 +547,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -10 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }}
-                    className="fixed md:absolute right-0 left-0 md:left-auto bottom-0 md:bottom-auto top-auto md:top-full md:mt-3 w-full md:w-96 max-w-[calc(100vw-1rem)] bg-white md:rounded-3xl rounded-t-3xl border border-gray-150 shadow-2xl z-[200] overflow-hidden"
+                    className="fixed md:absolute right-0 left-0 md:left-auto bottom-0 md:bottom-auto top-auto md:top-full md:mt-3 w-full md:w-96 max-w-[calc(100vw-1rem)] bg-white md:rounded-3xl rounded-t-3xl border border-gray-200 shadow-2xl z-[200] overflow-hidden"
                   >
                     <div className="p-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3 bg-gray-50/50">
                       <div className="min-w-0 flex-1">
@@ -573,13 +573,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <div className="flex border-b border-gray-100 bg-white">
                       <button 
                         onClick={() => setActiveTab('alerts')}
-                        className={`flex-1 min-w-0 px-2 py-3 text-center text-[10px] font-black uppercase tracking-wide border-b-2 transition-all truncate ${activeTab === 'alerts' ? 'text-blue-650 border-blue-600 bg-blue-50/15' : 'text-gray-405 border-transparent hover:text-gray-900 bg-white'}`}
+                        className={`flex-1 min-w-0 px-2 py-3 text-center text-[10px] font-black uppercase tracking-wide border-b-2 transition-all truncate ${activeTab === 'alerts' ? 'text-blue-600 border-blue-600 bg-blue-50/15' : 'text-gray-400 border-transparent hover:text-gray-900 bg-white'}`}
                       >
                         {t('system_alerts_count', { count: unreadAlertsCount })}
                       </button>
                       <button 
                         onClick={() => setActiveTab('messages')}
-                        className={`flex-1 min-w-0 px-2 py-3 text-center text-[10px] font-black uppercase tracking-wide border-b-2 transition-all truncate ${activeTab === 'messages' ? 'text-blue-650 border-blue-600 bg-blue-50/15' : 'text-gray-405 border-transparent hover:text-gray-900 bg-white'}`}
+                        className={`flex-1 min-w-0 px-2 py-3 text-center text-[10px] font-black uppercase tracking-wide border-b-2 transition-all truncate ${activeTab === 'messages' ? 'text-blue-600 border-blue-600 bg-blue-50/15' : 'text-gray-400 border-transparent hover:text-gray-900 bg-white'}`}
                       >
                         {t('unread_chats_count', { count: unreadChatsCount })}
                       </button>
@@ -605,7 +605,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 <span className="absolute left-1.5 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-blue-600" />
                               )}
                               <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${
-                                alert.category === 'urgent' ? 'bg-red-50 text-red-655' : 
+                                alert.category === 'urgent' ? 'bg-red-50 text-red-600' : 
                                 alert.category === 'success' ? 'bg-green-50 text-green-600' :
                                 alert.category === 'alert' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-500'
                               }`}>
@@ -645,13 +645,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                               {chat.unread && (
                                 <span className="absolute left-1.5 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
                               )}
-                              <div className="h-9 w-9 rounded-full bg-blue-105 text-blue-700 flex items-center justify-center font-sans font-black text-xs shrink-0 border border-blue-200">
+                              <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-sans font-black text-xs shrink-0 border border-blue-200">
                                 {chat.sender[0]}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between">
                                   <h5 className="font-sans font-black text-xs text-gray-950 leading-none">{chat.sender}</h5>
-                                  <span className="text-[8px] text-gray-405 font-black uppercase tracking-widest shrink-0">{chat.time}</span>
+                                  <span className="text-[8px] text-gray-400 font-black uppercase tracking-widest shrink-0">{chat.time}</span>
                                 </div>
                                 <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-0.5 leading-none">{chat.role}</p>
                                 <p className="text-[11px] text-gray-500 mt-1 truncate font-sans font-medium">{chat.body}</p>
@@ -681,7 +681,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                           };
                           navigate(routes[roleKey] || '/dashboard/employer/messages');
                         }}
-                        className="text-[10px] font-black text-blue-600 hover:text-blue-750 uppercase tracking-widest flex items-center gap-1 transition-all font-sans"
+                        className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest flex items-center gap-1 transition-all font-sans"
                       >
                         {t('open_active_chat_center')}
                         <ChevronRight size={12} />

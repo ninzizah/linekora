@@ -7,6 +7,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { updateUser } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
 import SettingsHub from '../../components/settings/SettingsHub';
+import ImageLightbox from '../../components/ImageLightbox';
 
 export default function CompanySettings() {
   const { profile } = useAuth();
@@ -20,6 +21,7 @@ export default function CompanySettings() {
   const [phone, setPhone] = useState('');
   const [headquarters, setHeadquarters] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('');
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [isSaved, setIsSaved] = useState(false);
@@ -37,7 +39,7 @@ export default function CompanySettings() {
       setHeadquarters(localStorage.getItem(storageKey('company_location')) || profile.location || '');
       setStrictHiring(localStorage.getItem(storageKey('company_strict_hiring')) === 'true');
       setSelectedAvatar(
-        localStorage.getItem(`linekora_profile_picture_${companyUid}`) || ''
+        localStorage.getItem(`linekora_profile_picture_${companyUid}`) || profile.avatarUrl || ''
       );
     }
   }, [profile?.id]);
@@ -95,22 +97,29 @@ export default function CompanySettings() {
   };
 
   return (
-    <SettingsHub role="COMPANY" accountSection={
+    <>
+      <SettingsHub role="COMPANY" accountSection={
       <form onSubmit={handleSave} className="space-y-12 font-sans">
 
         {/* Avatar Upload */}
         <section className="space-y-6">
           <h3 className="text-xl font-black text-gray-900 font-sans tracking-tight flex items-center gap-3">
             <div className="relative">
-              <div className="h-20 w-20 rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-blue-50 shrink-0">
+              <button
+                type="button"
+                onClick={() => selectedAvatar && setShowPhotoViewer(true)}
+                className={`h-20 w-20 rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-blue-50 shrink-0 group ${selectedAvatar ? 'cursor-zoom-in' : 'cursor-default'}`}
+                aria-label={selectedAvatar ? t('view_photo') : t('company_avatar')}
+                title={selectedAvatar ? t('view_photo') : undefined}
+              >
                 {selectedAvatar ? (
-                  <img src={selectedAvatar} alt={t('company_avatar')} className="h-full w-full object-cover" />
+                  <img src={selectedAvatar} alt={t('company_avatar')} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
                     <User size={32} className="text-blue-400" />
                   </div>
                 )}
-              </div>
+              </button>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -245,5 +254,13 @@ export default function CompanySettings() {
         </div>
       </form>
     } />
+
+    <ImageLightbox
+      src={selectedAvatar}
+      alt={companyName || t('company_avatar')}
+      isOpen={showPhotoViewer}
+      onClose={() => setShowPhotoViewer(false)}
+    />
+    </>
   );
 }

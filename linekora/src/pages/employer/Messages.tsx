@@ -73,7 +73,7 @@ export default function EmployerMessages() {
                   <p className="text-xs text-gray-500 truncate font-sans font-medium">{chat.lastMsg}</p>
                 </div>
                 {chat.unread > 0 && (
-                  <div className="absolute right-4 bottom-4 h-5 w-5 bg-blue-650 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-lg">
+                  <div className="absolute right-4 bottom-4 h-5 w-5 bg-blue-600 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow-lg">
                     {chat.unread}
                   </div>
                 )}

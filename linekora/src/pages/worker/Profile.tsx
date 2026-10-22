@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, MapPin, Star, Zap, Shield, FileText,
-  Briefcase, GraduationCap, Award, ExternalLink,
-  MessageSquare, Heart, Share2, CheckCircle2, X, AlertCircle, Loader2, ArrowRight
+  Briefcase, GraduationCap, Award, ExternalLink, Camera,
+  MessageSquare, Heart, Share2, CheckCircle2, X, AlertCircle, Loader2, ArrowRight, Plus
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
@@ -10,7 +10,13 @@ import { useLanguage } from '../../lib/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { openDataUrlInNewTab } from '../../lib/filePreview';
+import ImageLightbox from '../../components/ImageLightbox';
 import { updateUser, getReviews, type Review } from '../../lib/api';
+import {
+  parsePortfolio, compressPhoto, readPortfolioFile, newPortfolioId,
+  PORTFOLIO_MAX_PHOTOS, PORTFOLIO_MAX_DOCS, PORTFOLIO_MAX_DOC_BYTES, PORTFOLIO_MAX_PHOTO_BYTES,
+  type PortfolioItem, type PortfolioFile,
+} from '../../lib/portfolio';
 
 interface NotificationMsg {
   id: string;
@@ -34,6 +40,8 @@ export default function WorkerProfile() {
   const [locationOverride, setLocationOverride] = useState<string>(() => {
     return localStorage.getItem(sk('worker_profile_location')) || profile?.location || '';
   });
+
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
 
   const [bio, setBio] = useState<string>(() => {
     return localStorage.getItem(sk('worker_profile_bio')) || '';
@@ -69,13 +77,8 @@ export default function WorkerProfile() {
     return localStorage.getItem(sk('worker_profile_cv_filename')) || '';
   });
 
-  const [portfolioList, setPortfolioList] = useState<string[]>(() => {
-    const saved = localStorage.getItem(sk('worker_profile_portfolio'));
-    if (saved) {
-      try { return JSON.parse(saved); } catch(e) {}
-    }
-    return [];
-  });
+  const [portfolioList, setPortfolioList] = useState<PortfolioItem[]>(() =>
+    parsePortfolio(localStorage.getItem(sk('worker_profile_portfolio'))));
 
   const [isFavorited, setIsFavorited] = useState<boolean>(() => {
     return localStorage.getItem(sk('worker_profile_is_favorited')) === 'true';
@@ -119,7 +122,7 @@ export default function WorkerProfile() {
         setCertificatesList(JSON.parse(profile.certificates));
       }
       if (profile?.portfolio && !localStorage.getItem(sk('worker_profile_portfolio'))) {
-        setPortfolioList(JSON.parse(profile.portfolio));
+        setPortfolioList(parsePortfolio(profile.portfolio));
       }
       if (profile?.cvFile && !localStorage.getItem(sk('worker_cv_data'))) {
         setCvFile({ name: profile?.cvFilename || 'resume.pdf', size: '', dataUrl: profile?.cvFile || '', date: '' });
@@ -147,7 +150,12 @@ export default function WorkerProfile() {
       localStorage.removeItem(sk('worker_profile_cv_data'));
     }
   }, [cvFile]);
-  useEffect(() => { localStorage.setItem(sk('worker_profile_portfolio'), JSON.stringify(portfolioList)); }, [portfolioList]);
+  // Photos/documents can push a project past the localStorage quota — the DB
+  // sync below is the real source of truth, so ignore local write failures.
+  useEffect(() => {
+    try { localStorage.setItem(sk('worker_profile_portfolio'), JSON.stringify(portfolioList)); }
+    catch (e) { console.warn('Portfolio too large for localStorage; DB copy kept', e); }
+  }, [portfolioList]);
   useEffect(() => { localStorage.setItem(sk('worker_profile_is_favorited'), isFavorited.toString()); }, [isFavorited]);
   useEffect(() => { localStorage.setItem(sk('worker_profile_experience'), JSON.stringify(experienceList)); }, [experienceList]);
   useEffect(() => { localStorage.setItem(sk('worker_profile_education'), JSON.stringify(educationList)); }, [educationList]);
@@ -210,7 +218,15 @@ export default function WorkerProfile() {
   const [editBio, setEditBio] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [editSkills, setEditSkills] = useState('');
-  const [editPortfolio, setEditPortfolio] = useState('');
+  // Portfolio editor: full entries (title + photos + documents), edited as a
+  // working copy and committed on "Save Changes".
+  const [editPortfolioItems, setEditPortfolioItems] = useState<PortfolioItem[]>([]);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftPhotos, setDraftPhotos] = useState<PortfolioFile[]>([]);
+  const [draftDocs, setDraftDocs] = useState<PortfolioFile[]>([]);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const photoPickerRef = useRef<HTMLInputElement>(null);
+  const docPickerRef = useRef<HTMLInputElement>(null);
   const [editExperience, setEditExperience] = useState('');
   const [editEducation, setEditEducation] = useState('');
   const [editCertificates, setEditCertificates] = useState('');
@@ -264,11 +280,7 @@ export default function WorkerProfile() {
       .filter(Boolean);
     setSkillsList(parsedSkills);
 
-    const parsedPortfolio = editPortfolio
-      .split(',')
-      .map(p => p.trim())
-      .filter(Boolean);
-    setPortfolioList(parsedPortfolio);
+    setPortfolioList(editPortfolioItems);
 
     // Experience: one line per entry → "Role @ Company | Period | Description"
     const parsedExperience = editExperience
@@ -306,6 +318,72 @@ export default function WorkerProfile() {
     addNotification('success', t('notif_profile_updated'), t('notif_profile_updated_msg'));
   };
 
+  // Portfolio draft (inside the edit modal): photos + proof documents per project
+  const handleDraftPhotoPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    if (draftPhotos.length + files.length > PORTFOLIO_MAX_PHOTOS) {
+      addNotification('info', t('add_photos'), t('portfolio_limits_hint'));
+      return;
+    }
+    setDraftBusy(true);
+    try {
+      const added: PortfolioFile[] = [];
+      for (const file of files) {
+        if (file.size > PORTFOLIO_MAX_PHOTO_BYTES) {
+          addNotification('error', t('add_photos'), t('portfolio_file_too_large', { name: file.name }));
+          continue;
+        }
+        added.push(await compressPhoto(file));
+      }
+      if (added.length) setDraftPhotos(prev => [...prev, ...added]);
+    } catch (err) {
+      addNotification('error', t('add_photos'), t('portfolio_file_too_large', { name: files[0]?.name || '' }));
+    } finally {
+      setDraftBusy(false);
+    }
+  };
+
+  const handleDraftDocPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files: File[] = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    if (draftDocs.length + files.length > PORTFOLIO_MAX_DOCS) {
+      addNotification('info', t('add_document'), t('portfolio_limits_hint'));
+      return;
+    }
+    setDraftBusy(true);
+    try {
+      const added: PortfolioFile[] = [];
+      for (const file of files) {
+        if (file.size > PORTFOLIO_MAX_DOC_BYTES) {
+          addNotification('error', t('add_document'), t('portfolio_file_too_large', { name: file.name }));
+          continue;
+        }
+        added.push(await readPortfolioFile(file));
+      }
+      if (added.length) setDraftDocs(prev => [...prev, ...added]);
+    } catch (err) {
+      addNotification('error', t('add_document'), t('portfolio_file_too_large', { name: files[0]?.name || '' }));
+    } finally {
+      setDraftBusy(false);
+    }
+  };
+
+  const handleAddProject = () => {
+    const title = draftTitle.trim();
+    if (!title) {
+      addNotification('error', t('project_title'), t('portfolio_title_required'));
+      return;
+    }
+    setEditPortfolioItems(prev => [...prev, { id: newPortfolioId(), title, photos: draftPhotos, docs: draftDocs }]);
+    setDraftTitle('');
+    setDraftPhotos([]);
+    setDraftDocs([]);
+    addNotification('success', t('add_project'), title);
+  };
+
   // Real device file selection for CV
   const handleCVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -340,6 +418,22 @@ export default function WorkerProfile() {
     input?.click();
   };
 
+  // Open the profile editor with the latest saved values
+  const openEditProfile = () => {
+    setEditName(nameOverride);
+    setEditBio(bio);
+    setEditLocation(locationOverride);
+    setEditSkills(skillsList.join(', '));
+    setEditPortfolioItems(portfolioList);
+    setDraftTitle('');
+    setDraftPhotos([]);
+    setDraftDocs([]);
+    setEditExperience(experienceList.map(e => `${e.role}${e.company ? ` @ ${e.company}` : ''}${e.desc ? ` | ${e.desc}` : ''}`).join('\n'));
+    setEditEducation(educationList.map(e => `${e.degree}${e.school ? ` @ ${e.school}` : ''}`).join('\n'));
+    setEditCertificates(certificatesList.join(', '));
+    setShowEditModal(true);
+  };
+
   // Remove CV
   const handleRemoveCV = () => {
     setCvName('');
@@ -357,10 +451,6 @@ export default function WorkerProfile() {
   };
 
   // Portfolio click notifications
-  const handlePortfolioClick = (project: string) => {
-    addNotification('info', t('notif_showcase'), t('notif_showcase_msg', { name: project }));
-  };
-
   // Certification badge click
   const handleCertClick = (cert: string) => {
     addNotification('success', t('notif_validation'), t('notif_validation_msg', { name: cert }));
@@ -369,6 +459,38 @@ export default function WorkerProfile() {
   // Education click
   const handleEduClick = (edu: string) => {
     addNotification('info', t('notif_credential'), t('notif_credential_msg', { name: edu }));
+  };
+
+  // Profile completion meter (numbers only, no emoji)
+  const hasProfilePhoto = Boolean(
+    localStorage.getItem(`linekora_profile_picture_${uid}`) ||
+    localStorage.getItem(sk('worker_profile_picture')) ||
+    profile?.avatarUrl
+  );
+  const completionChecks = [
+    { key: 'photo', labelKey: 'profile_photo_logo', done: hasProfilePhoto },
+    { key: 'bio', labelKey: 'professional_bio', done: bio.trim().length > 0 },
+    { key: 'location', labelKey: 'location', done: locationOverride.trim().length > 0 },
+    { key: 'skills', labelKey: 'main_skills', done: skillsList.length > 0 },
+    { key: 'experience', labelKey: 'work_experience', done: experienceList.length > 0 },
+    { key: 'education', labelKey: 'education', done: educationList.length > 0 },
+    { key: 'certificates', labelKey: 'certifications', done: certificatesList.length > 0 },
+    { key: 'cv', labelKey: 'upload_cv', done: Boolean(cvFile || cvName) },
+    { key: 'portfolio', labelKey: 'project_portfolio', done: portfolioList.length > 0 },
+  ];
+  const completedSections = completionChecks.filter((c) => c.done).length;
+  const completionPercent = Math.round((completedSections / completionChecks.length) * 100);
+  const missingSections = completionChecks.filter((c) => !c.done);
+  const handleCompletionAction = (key: string) => {
+    if (key === 'photo') {
+      navigate('/dashboard/worker/settings');
+      return;
+    }
+    if (key === 'cv') {
+      handleUploadCVClick();
+      return;
+    }
+    openEditProfile();
   };
 
   return (
@@ -381,16 +503,24 @@ export default function WorkerProfile() {
           
           <div className="bg-white rounded-[3rem] p-8 md:p-12 border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-end gap-8">
             <div className="relative">
-              <div className="h-32 w-32 md:h-40 md:w-40 rounded-[3rem] overflow-hidden bg-blue-100 flex items-center justify-center text-blue-600 font-extrabold text-5xl border-8 border-white shadow-2xl uppercase">
-                {(() => {
-                  const avatar = localStorage.getItem(`linekora_profile_picture_${uid}`) || localStorage.getItem(sk("worker_profile_picture"));
-                  return avatar ? (
-                    <img src={avatar} alt={nameOverride} className="h-full w-full object-cover" />
-                  ) : (
-                    nameOverride?.[0] || 'U'
-                  );
-                })()}
-              </div>
+              {(() => {
+                const avatar = localStorage.getItem(`linekora_profile_picture_${uid}`) || localStorage.getItem(sk("worker_profile_picture")) || profile?.avatarUrl;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => avatar && setShowPhotoViewer(true)}
+                    className={`h-32 w-32 md:h-40 md:w-40 rounded-[3rem] overflow-hidden bg-blue-100 flex items-center justify-center text-blue-600 font-extrabold text-5xl border-8 border-white shadow-2xl uppercase group ${avatar ? 'cursor-zoom-in' : 'cursor-default'}`}
+                    aria-label={avatar ? t('view_photo') : nameOverride}
+                    title={avatar ? t('view_photo') : undefined}
+                  >
+                    {avatar ? (
+                      <img src={avatar} alt={nameOverride} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                    ) : (
+                      nameOverride?.[0] || 'U'
+                    )}
+                  </button>
+                );
+              })()}
               <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-2 rounded-2xl shadow-lg border-4 border-white">
                 <CheckCircle2 size={24} />
               </div>
@@ -445,17 +575,7 @@ export default function WorkerProfile() {
                   </button>
                   <button 
                     id="worker-profile-edit-btn"
-                    onClick={() => {
-                      setEditName(nameOverride);
-                      setEditBio(bio);
-                      setEditLocation(locationOverride);
-                      setEditSkills(skillsList.join(', '));
-                      setEditPortfolio(portfolioList.join(', '));
-                      setEditExperience(experienceList.map(e => `${e.role}${e.company ? ` @ ${e.company}` : ''}${e.desc ? ` | ${e.desc}` : ''}`).join('\n'));
-                      setEditEducation(educationList.map(e => `${e.degree}${e.school ? ` @ ${e.school}` : ''}`).join('\n'));
-                      setEditCertificates(certificatesList.join(', '));
-                      setShowEditModal(true);
-                    }}
+                    onClick={openEditProfile}
                     className="px-8 py-3.5 bg-blue-600 text-white border border-transparent rounded-2xl font-sans font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 cursor-pointer"
                   >
                     {t('edit_profile')}
@@ -485,6 +605,45 @@ export default function WorkerProfile() {
                     <span className="text-lg font-black text-gray-900 font-sans">{profile?.verificationStatus === 'verified' ? t('verified') : t('unverified')}</span>
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('profile_completion')}</p>
+                  <span className="text-sm font-black text-gray-900 font-sans tabular-nums">{completionPercent}/100</span>
+                </div>
+                <div className="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${completionPercent >= 100 ? 'bg-green-500' : 'bg-blue-600'}`}
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                    {t('profile_completion_hint', { completed: completedSections, total: completionChecks.length })}
+                  </p>
+                  <p className="text-[10px] font-black text-blue-600 tabular-nums">{completionPercent}%</p>
+                </div>
+                {missingSections.length > 0 ? (
+                  <div className="mt-4">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('profile_completion_missing')}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {missingSections.map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => handleCompletionAction(item.key)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 text-[9px] font-black uppercase tracking-wider hover:bg-blue-100 transition-colors cursor-pointer"
+                        >
+                          <Plus size={11} />
+                          {t(item.labelKey)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-[10px] font-black text-green-600 uppercase tracking-widest">{t('profile_completion_done')}</p>
+                )}
               </div>
             </div>
           </div>
@@ -532,20 +691,61 @@ export default function WorkerProfile() {
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-xl font-black text-gray-900 font-sans uppercase tracking-tight">{t('project_portfolio')}</h2>
               </div>
+              {profileDetails.portfolio.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-10 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                  <FileText size={28} className="text-gray-300 mb-3" />
+                  <p className="text-sm font-bold text-gray-400 font-sans">{t('no_portfolio_added')}</p>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {profileDetails.portfolio.map((item, i) => (
+                {profileDetails.portfolio.map((item) => (
                   <div 
-                    key={i} 
-                    onClick={() => handlePortfolioClick(item)}
-                    className="group bg-gray-50 rounded-3xl p-1 border-2 border-transparent hover:border-blue-600 transition-all cursor-pointer"
+                    key={item.id} 
+                    className="group bg-gray-50 rounded-3xl p-1 border-2 border-transparent hover:border-blue-600 transition-all"
                   >
                     <div className="aspect-video bg-gray-200 rounded-[1.4rem] overflow-hidden relative flex items-center justify-center">
-                      <FileText size={32} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
+                      {item.photos[0] ? (
+                        <img
+                          src={item.photos[0].dataUrl}
+                          alt={item.title}
+                          onClick={() => openDataUrlInNewTab(item.photos[0].dataUrl)}
+                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                        />
+                      ) : (
+                        <FileText size={32} className="text-gray-400 group-hover:text-blue-600 transition-colors" />
+                      )}
                       <div className="absolute inset-0 bg-blue-600 opacity-0 group-hover:opacity-5 transition-opacity" />
+                      {item.photos.length > 0 && (
+                        <span className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg">
+                          {t('portfolio_photos_count', { count: item.photos.length })}
+                        </span>
+                      )}
                     </div>
-                    <div className="p-4 flex items-center justify-between">
-                      <p className="font-sans font-black text-gray-900 text-sm">{item}</p>
-                      <ExternalLink size={16} className="text-gray-400 group-hover:text-blue-600" />
+                    <div className="p-4">
+                      <p className="font-sans font-black text-gray-900 text-sm mb-3">{item.title}</p>
+                      {(item.photos.length > 1 || item.docs.length > 0) && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {item.photos.slice(1).map((photo, pi) => (
+                            <img
+                              key={`photo-${pi}`}
+                              src={photo.dataUrl}
+                              alt={item.title}
+                              onClick={() => openDataUrlInNewTab(photo.dataUrl)}
+                              className="h-10 w-10 rounded-xl object-cover border border-gray-200 hover:border-blue-600 transition-all cursor-pointer"
+                            />
+                          ))}
+                          {item.docs.map((doc, di) => (
+                            <button
+                              key={`doc-${di}`}
+                              onClick={() => openDataUrlInNewTab(doc.dataUrl)}
+                              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:border-blue-600 hover:text-blue-600 text-gray-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                            >
+                              <FileText size={11} />
+                              {t('view_document')}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -888,15 +1088,150 @@ export default function WorkerProfile() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('portfolio_comma_separated')}</label>
-                  <input 
-                    type="text" 
-                    value={editPortfolio}
-                    onChange={(e) => setEditPortfolio(e.target.value)}
-                    placeholder={t('portfolio_placeholder')}
-                    className="w-full p-4 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-gray-50 focus:bg-white focus:border-blue-600 text-gray-900" 
+                  <label className="block text-xs font-black text-gray-400 uppercase tracking-widest font-sans mb-2">{t('project_portfolio')}</label>
+
+                  <div className="space-y-3">
+                    {editPortfolioItems.length === 0 && (
+                      <p className="text-xs font-bold text-gray-400 font-sans">{t('no_portfolio_added')}</p>
+                    )}
+                    {editPortfolioItems.map((item) => (
+                      <div key={item.id} className="bg-gray-50 border border-gray-100 rounded-2xl p-3.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-gray-900 font-sans truncate">{item.title}</p>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                              {t('portfolio_photos_count', { count: item.photos.length })} • {t('portfolio_docs_count', { count: item.docs.length })}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setEditPortfolioItems(prev => prev.filter(p => p.id !== item.id))}
+                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0 cursor-pointer"
+                            title={t('remove')}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        {(item.photos.length > 0 || item.docs.length > 0) && (
+                          <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                            {item.photos.map((photo, pi) => (
+                              <img
+                                key={`ph-${pi}`}
+                                src={photo.dataUrl}
+                                alt={item.title}
+                                onClick={() => openDataUrlInNewTab(photo.dataUrl)}
+                                className="h-10 w-10 rounded-xl object-cover border border-gray-200 hover:border-blue-600 transition-all cursor-pointer"
+                              />
+                            ))}
+                            {item.docs.map((doc, di) => (
+                              <button
+                                key={`doc-${di}`}
+                                onClick={() => openDataUrlInNewTab(doc.dataUrl)}
+                                className="flex items-center gap-1.5 px-2.5 py-2 bg-white border border-gray-200 hover:border-blue-600 hover:text-blue-600 text-gray-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                              >
+                                <FileText size={10} />
+                                {t('view_document')}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Draft: build the next project entry */}
+                    <div className="border border-dashed border-blue-200 bg-blue-50/40 rounded-2xl p-3.5 space-y-3">
+                      <input
+                        type="text"
+                        value={draftTitle}
+                        onChange={(e) => setDraftTitle(e.target.value)}
+                        placeholder={t('project_title_placeholder')}
+                        className="w-full p-3 rounded-xl border border-gray-200 outline-none font-sans font-bold text-sm bg-white focus:border-blue-600 text-gray-900"
+                      />
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => photoPickerRef.current?.click()}
+                          disabled={draftBusy || draftPhotos.length >= PORTFOLIO_MAX_PHOTOS}
+                          className="px-3 py-2 bg-white border border-gray-200 hover:border-blue-600 hover:text-blue-600 text-gray-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Camera size={11} />
+                          {t('add_photos')} ({draftPhotos.length}/{PORTFOLIO_MAX_PHOTOS})
+                        </button>
+                        <button
+                          onClick={() => docPickerRef.current?.click()}
+                          disabled={draftBusy || draftDocs.length >= PORTFOLIO_MAX_DOCS}
+                          className="px-3 py-2 bg-white border border-gray-200 hover:border-blue-600 hover:text-blue-600 text-gray-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                        >
+                          <FileText size={11} />
+                          {t('add_document')} ({draftDocs.length}/{PORTFOLIO_MAX_DOCS})
+                        </button>
+                      </div>
+
+                      {draftBusy && (
+                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
+                          <Loader2 size={12} className="animate-spin" />
+                          {t('processing_photo')}
+                        </p>
+                      )}
+
+                      {draftPhotos.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {draftPhotos.map((photo, pi) => (
+                            <div key={`dph-${pi}`} className="relative">
+                              <img src={photo.dataUrl} alt={photo.name} className="h-12 w-12 rounded-xl object-cover border border-gray-200" />
+                              <button
+                                onClick={() => setDraftPhotos(prev => prev.filter((_, i) => i !== pi))}
+                                className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 shadow cursor-pointer"
+                              >
+                                <X size={8} strokeWidth={3} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {draftDocs.length > 0 && (
+                        <div className="space-y-1.5">
+                          {draftDocs.map((doc, di) => (
+                            <div key={`ddoc-${di}`} className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
+                              <span className="text-[10px] font-bold text-gray-600 font-sans truncate">{doc.name}</span>
+                              <button
+                                onClick={() => setDraftDocs(prev => prev.filter((_, i) => i !== di))}
+                                className="text-red-400 hover:text-red-600 shrink-0 cursor-pointer"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <button
+                        onClick={handleAddProject}
+                        disabled={draftBusy}
+                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-sans font-black uppercase tracking-widest text-[10px] transition-all shadow-md shadow-blue-100 disabled:opacity-50 cursor-pointer"
+                      >
+                        {t('add_project')}
+                      </button>
+                      <p className="text-[10px] text-gray-400 font-sans leading-relaxed">{t('portfolio_limits_hint')}</p>
+                    </div>
+                  </div>
+
+                  <input
+                    ref={photoPickerRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleDraftPhotoPick}
                   />
-                  <p className="text-[10px] text-gray-400 mt-1.5 font-sans leading-relaxed">{t('portfolio_combine_hint')}</p>
+                  <input
+                    ref={docPickerRef}
+                    type="file"
+                    accept="application/pdf"
+                    multiple
+                    className="hidden"
+                    onChange={handleDraftDocPick}
+                  />
                 </div>
 
                 <div>
@@ -995,6 +1330,13 @@ export default function WorkerProfile() {
           ))}
         </AnimatePresence>
       </div>
+
+      <ImageLightbox
+        src={localStorage.getItem(`linekora_profile_picture_${uid}`) || localStorage.getItem(sk('worker_profile_picture')) || profile?.avatarUrl}
+        alt={nameOverride}
+        isOpen={showPhotoViewer}
+        onClose={() => setShowPhotoViewer(false)}
+      />
     </DashboardLayout>
   );
 }

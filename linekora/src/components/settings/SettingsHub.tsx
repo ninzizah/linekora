@@ -8,7 +8,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { signOut, sendPasswordResetEmail, fetchSignInMethodsForEmail, deleteUser } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { deleteUserRecord, createNotification } from '../../lib/api';
-import { applyThemePrefs } from '../../lib/theme';
+import { applyThemePrefs, getDarkMode, setDarkMode as setDarkModePref } from '../../lib/theme';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../layout/DashboardLayout';
 
@@ -74,7 +74,7 @@ export default function SettingsHub({ role, accountSection }: SettingsHubProps) 
   });
 
   // Appearance prefs
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem(`linekora_dark_${roleKey}`) === 'true');
+  const [darkMode, setDarkMode] = useState(() => getDarkMode(roleKey));
   const [reduceMotion, setReduceMotion] = useState(() => localStorage.getItem(`linekora_motion_${roleKey}`) === 'true');
 
   useEffect(() => {
@@ -454,8 +454,7 @@ export default function SettingsHub({ role, accountSection }: SettingsHubProps) 
                         onClick={() => {
                           const next = !darkMode;
                           setDarkMode(next);
-                          localStorage.setItem(`linekora_dark_${roleKey}`, String(next));
-                          applyThemePrefs(roleKey);
+                          setDarkModePref(next, roleKey);
                           addToast(t('settings_appearance'), t('section_saved'), 'success');
                         }}
                       />

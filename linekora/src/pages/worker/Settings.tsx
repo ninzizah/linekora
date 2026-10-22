@@ -7,6 +7,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { updateUser } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
 import SettingsHub from '../../components/settings/SettingsHub';
+import ImageLightbox from '../../components/ImageLightbox';
 
 export default function WorkerSettings() {
   const { t } = useLanguage();
@@ -24,6 +25,7 @@ export default function WorkerSettings() {
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [phoneError, setPhoneError] = useState('');
@@ -47,7 +49,7 @@ export default function WorkerSettings() {
       setPhone(profile.phone || '');
       setBio(localStorage.getItem(sk('worker_profile_bio')) || '');
       setAvatarUrl(
-        localStorage.getItem(`linekora_profile_picture_${uid}`) || ''
+        localStorage.getItem(`linekora_profile_picture_${uid}`) || profile.avatarUrl || ''
       );
     }
   }, [profile?.id]);
@@ -163,7 +165,8 @@ export default function WorkerSettings() {
   ];
 
   return (
-    <SettingsHub role="WORKER" accountSection={
+    <>
+      <SettingsHub role="WORKER" accountSection={
       <div>
         {/* Sub Tab Bar — horizontal scroll on mobile */}
         <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
@@ -189,19 +192,25 @@ export default function WorkerSettings() {
               {/* Avatar Upload */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-6">
                 <div className="relative self-start sm:self-auto">
-                  <div className="h-24 w-24 rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-blue-50 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => avatarUrl && setShowPhotoViewer(true)}
+                    className={`h-24 w-24 rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-blue-50 shrink-0 group ${avatarUrl ? 'cursor-zoom-in' : 'cursor-default'}`}
+                    aria-label={avatarUrl ? t('view_photo') : displayName}
+                    title={avatarUrl ? t('view_photo') : undefined}
+                  >
                     {avatarUrl ? (
                       <img 
                         src={avatarUrl} 
                         alt={displayName} 
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
                       />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200">
                         <User size={36} className="text-blue-400" />
                       </div>
                     )}
-                  </div>
+                  </button>
                   {/* Camera button */}
                   <button
                     type="button"
@@ -412,5 +421,13 @@ export default function WorkerSettings() {
           )}
         </div>
       } />
+
+      <ImageLightbox
+        src={avatarUrl}
+        alt={displayName}
+        isOpen={showPhotoViewer}
+        onClose={() => setShowPhotoViewer(false)}
+      />
+    </>
   );
 }

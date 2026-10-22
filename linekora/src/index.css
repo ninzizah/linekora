@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
-/* ===== Dark Mode (theme preference) ===== */
+/* =====================================================================
+   DARK MODE
+   The app uses Tailwind utility classes with many shades (including
+   extended/invalid ones such as text-gray-950, text-gray-905, bg-blue-105).
+   These overrides make every surface, text colour and tint readable when
+   the "Dark Mode" preference is enabled from Settings → Appearance.
+   ===================================================================== */
 html.dark {
   color-scheme: dark;
   background-color: #0b1220;
@@ -11,6 +17,7 @@ html.dark body {
   color: #e2e8f0;
 }
 
+/* ---------- Surfaces ---------- */
 html.dark .bg-white {
   background-color: #131c31 !important;
 }
@@ -31,40 +38,373 @@ html.dark .bg-gray-300 {
   background-color: #27365a !important;
 }
 
-html.dark .text-gray-900 {
-  color: #f1f5f9 !important;
+/* Translucent surfaces (cards, chat area, toolbars) */
+html.dark .bg-white\/60,
+html.dark .bg-white\/70,
+html.dark .bg-white\/80 {
+  background-color: rgba(19, 28, 49, 0.9) !important;
 }
 
-html.dark .text-gray-800 {
+html.dark [class*="bg-gray-50/"] {
+  background-color: rgba(22, 32, 58, 0.6) !important;
+}
+
+html.dark [class*="bg-gray-100/"] {
+  background-color: rgba(22, 32, 58, 0.8) !important;
+}
+
+html.dark [class*="bg-gray-200/"] {
+  background-color: rgba(29, 42, 69, 0.85) !important;
+}
+
+/* ---------- Hover / focus surfaces ---------- */
+html.dark .hover\:bg-white:hover {
+  background-color: #1a2540 !important;
+}
+
+html.dark .hover\:bg-gray-50:hover,
+html.dark .group:hover .group-hover\:bg-gray-50 {
+  background-color: #16203a !important;
+}
+
+html.dark .hover\:bg-gray-100:hover,
+html.dark .group:hover .group-hover\:bg-gray-100 {
+  background-color: #1d2a45 !important;
+}
+
+html.dark .hover\:bg-gray-200:hover,
+html.dark .hover\:bg-gray-300:hover {
+  background-color: #27365a !important;
+}
+
+html.dark .focus\:bg-white:focus {
+  background-color: #131c31 !important;
+}
+
+html.dark .focus\:bg-gray-50:focus {
+  background-color: #0b1220 !important;
+}
+
+/* ---------- Neutral text ---------- */
+/* Covers gray-900, gray-950, gray-905, gray-955, gray-901, etc. */
+html.dark [class*="text-gray-9"] {
+  color: #f8fafc !important;
+}
+
+html.dark [class*="text-gray-8"] {
   color: #e2e8f0 !important;
 }
 
-html.dark .text-gray-700 {
+html.dark [class*="text-gray-7"] {
   color: #cbd5e1 !important;
 }
 
-html.dark .text-gray-600 {
+html.dark [class*="text-gray-6"] {
+  color: #b6c2d6 !important;
+}
+
+html.dark [class*="text-gray-5"] {
   color: #a3b1c8 !important;
 }
 
-html.dark .text-gray-500 {
-  color: #8ea0bb !important;
+html.dark [class*="text-gray-4"] {
+  color: #94a3b8 !important;
 }
 
-html.dark .text-gray-400 {
-  color: #6b7f9c !important;
+/* Neutral palettes used in a few screens */
+html.dark [class*="text-slate-9"],
+html.dark [class*="text-slate-8"],
+html.dark [class*="text-zinc-9"],
+html.dark [class*="text-zinc-8"],
+html.dark [class*="text-neutral-9"],
+html.dark [class*="text-neutral-8"],
+html.dark [class*="text-stone-9"],
+html.dark [class*="text-stone-8"] {
+  color: #f8fafc !important;
 }
 
+/* ---------- Tinted light backgrounds (badges, alerts, panels) ---------- */
+html.dark .bg-blue-50,
+html.dark [class*="bg-blue-50/"] {
+  background-color: rgba(37, 99, 235, 0.16) !important;
+}
+
+html.dark .bg-blue-100,
+html.dark [class*="bg-blue-100/"] {
+  background-color: rgba(37, 99, 235, 0.24) !important;
+}
+
+html.dark .bg-green-50,
+html.dark .bg-emerald-50,
+html.dark [class*="bg-green-50/"],
+html.dark [class*="bg-emerald-50/"] {
+  background-color: rgba(22, 163, 74, 0.16) !important;
+}
+
+html.dark .bg-green-100,
+html.dark [class*="bg-green-100/"] {
+  background-color: rgba(22, 163, 74, 0.24) !important;
+}
+
+html.dark .bg-red-50,
+html.dark .bg-rose-50,
+html.dark [class*="bg-red-50/"],
+html.dark [class*="bg-rose-50/"] {
+  background-color: rgba(220, 38, 38, 0.16) !important;
+}
+
+html.dark .bg-red-100,
+html.dark [class*="bg-red-100/"] {
+  background-color: rgba(220, 38, 38, 0.24) !important;
+}
+
+html.dark .bg-amber-50,
+html.dark .bg-yellow-50,
+html.dark [class*="bg-amber-50/"],
+html.dark [class*="bg-yellow-50/"] {
+  background-color: rgba(217, 119, 6, 0.16) !important;
+}
+
+html.dark .bg-amber-100,
+html.dark .bg-yellow-100,
+html.dark [class*="bg-amber-100/"],
+html.dark [class*="bg-yellow-100/"] {
+  background-color: rgba(217, 119, 6, 0.24) !important;
+}
+
+html.dark .bg-indigo-50,
+html.dark .bg-purple-50,
+html.dark [class*="bg-indigo-50/"],
+html.dark [class*="bg-purple-50/"] {
+  background-color: rgba(99, 102, 241, 0.18) !important;
+}
+
+html.dark .bg-indigo-100,
+html.dark [class*="bg-indigo-100/"] {
+  background-color: rgba(99, 102, 241, 0.26) !important;
+}
+
+html.dark .bg-orange-50,
+html.dark .bg-teal-50,
+html.dark .bg-cyan-50,
+html.dark .bg-sky-50,
+html.dark [class*="bg-orange-50/"],
+html.dark [class*="bg-teal-50/"],
+html.dark [class*="bg-cyan-50/"],
+html.dark [class*="bg-sky-50/"] {
+  background-color: rgba(14, 165, 233, 0.16) !important;
+}
+
+/* ---------- Accent text (brighten for dark backgrounds) ---------- */
+html.dark [class*="text-blue-9"],
+html.dark [class*="text-blue-8"] {
+  color: #bfdbfe !important;
+}
+
+html.dark [class*="text-blue-7"] {
+  color: #93c5fd !important;
+}
+
+html.dark [class*="text-blue-6"],
+html.dark [class*="text-blue-5"] {
+  color: #60a5fa !important;
+}
+
+html.dark [class*="text-green-9"],
+html.dark [class*="text-green-8"],
+html.dark [class*="text-emerald-9"],
+html.dark [class*="text-emerald-8"] {
+  color: #bbf7d0 !important;
+}
+
+html.dark [class*="text-green-7"],
+html.dark [class*="text-emerald-7"] {
+  color: #86efac !important;
+}
+
+html.dark [class*="text-green-6"],
+html.dark [class*="text-green-5"],
+html.dark [class*="text-emerald-6"],
+html.dark [class*="text-emerald-5"] {
+  color: #4ade80 !important;
+}
+
+html.dark [class*="text-red-9"],
+html.dark [class*="text-red-8"],
+html.dark [class*="text-rose-9"],
+html.dark [class*="text-rose-8"] {
+  color: #fecaca !important;
+}
+
+html.dark [class*="text-red-7"],
+html.dark [class*="text-rose-7"] {
+  color: #fca5a5 !important;
+}
+
+html.dark [class*="text-red-6"],
+html.dark [class*="text-red-5"],
+html.dark [class*="text-rose-6"],
+html.dark [class*="text-rose-5"] {
+  color: #f87171 !important;
+}
+
+/* Keep truly pale red text (text-red-50) light */
+html.dark .text-red-50 {
+  color: #fef2f2 !important;
+}
+
+html.dark [class*="text-amber-9"],
+html.dark [class*="text-amber-8"],
+html.dark [class*="text-yellow-9"],
+html.dark [class*="text-yellow-8"] {
+  color: #fde68a !important;
+}
+
+html.dark [class*="text-amber-7"],
+html.dark [class*="text-yellow-7"] {
+  color: #fcd34d !important;
+}
+
+html.dark [class*="text-amber-6"],
+html.dark [class*="text-amber-5"],
+html.dark [class*="text-yellow-6"],
+html.dark [class*="text-yellow-5"] {
+  color: #fbbf24 !important;
+}
+
+html.dark [class*="text-indigo-9"],
+html.dark [class*="text-indigo-8"],
+html.dark [class*="text-purple-9"],
+html.dark [class*="text-purple-8"],
+html.dark [class*="text-violet-9"],
+html.dark [class*="text-violet-8"] {
+  color: #c7d2fe !important;
+}
+
+html.dark [class*="text-indigo-7"],
+html.dark [class*="text-purple-7"],
+html.dark [class*="text-violet-7"] {
+  color: #a5b4fc !important;
+}
+
+html.dark [class*="text-indigo-6"],
+html.dark [class*="text-indigo-5"],
+html.dark [class*="text-purple-6"],
+html.dark [class*="text-purple-5"],
+html.dark [class*="text-violet-6"],
+html.dark [class*="text-violet-5"] {
+  color: #818cf8 !important;
+}
+
+html.dark [class*="text-orange-9"],
+html.dark [class*="text-orange-8"] {
+  color: #fed7aa !important;
+}
+
+html.dark [class*="text-orange-7"] {
+  color: #fdba74 !important;
+}
+
+html.dark [class*="text-orange-6"],
+html.dark [class*="text-orange-5"] {
+  color: #fb923c !important;
+}
+
+html.dark [class*="text-teal-9"],
+html.dark [class*="text-teal-8"],
+html.dark [class*="text-cyan-9"],
+html.dark [class*="text-cyan-8"],
+html.dark [class*="text-sky-9"],
+html.dark [class*="text-sky-8"] {
+  color: #a5f3fc !important;
+}
+
+html.dark [class*="text-teal-7"],
+html.dark [class*="text-cyan-7"],
+html.dark [class*="text-sky-7"] {
+  color: #67e8f9 !important;
+}
+
+html.dark [class*="text-teal-6"],
+html.dark [class*="text-teal-5"],
+html.dark [class*="text-cyan-6"],
+html.dark [class*="text-cyan-5"],
+html.dark [class*="text-sky-6"],
+html.dark [class*="text-sky-5"] {
+  color: #22d3ee !important;
+}
+
+html.dark [class*="text-pink-9"],
+html.dark [class*="text-pink-8"],
+html.dark [class*="text-fuchsia-9"],
+html.dark [class*="text-fuchsia-8"] {
+  color: #fbcfe8 !important;
+}
+
+html.dark [class*="text-pink-7"],
+html.dark [class*="text-pink-6"],
+html.dark [class*="text-pink-5"] {
+  color: #f9a8d4 !important;
+}
+
+/* ---------- Borders ---------- */
 html.dark .border-gray-100,
 html.dark .border-gray-150,
 html.dark .border-gray-200 {
   border-color: #1d2a45 !important;
 }
 
-html.dark .bg-white\/50,
-html.dark .bg-white\/60,
-html.dark .bg-white\/70 {
-  background-color: rgba(19, 28, 49, 0.8) !important;
+html.dark .border-gray-105,
+html.dark .border-gray-250,
+html.dark .border-gray-300 {
+  border-color: #27365a !important;
+}
+
+html.dark [class*="border-blue-1"],
+html.dark [class*="border-blue-2"] {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+html.dark [class*="border-green-1"],
+html.dark [class*="border-green-2"],
+html.dark [class*="border-emerald-1"] {
+  border-color: rgba(34, 197, 94, 0.35) !important;
+}
+
+html.dark [class*="border-red-1"],
+html.dark [class*="border-red-2"],
+html.dark [class*="border-rose-1"] {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+html.dark [class*="border-amber-1"],
+html.dark [class*="border-amber-2"],
+html.dark [class*="border-yellow-1"],
+html.dark [class*="border-yellow-2"] {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html.dark [class*="border-indigo-1"],
+html.dark [class*="border-indigo-2"],
+html.dark [class*="border-purple-1"] {
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+/* ---------- Form controls ---------- */
+html.dark input,
+html.dark textarea,
+html.dark select {
+  color: #e2e8f0;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #6b7f9c;
+}
+
+html.dark select option {
+  background-color: #131c31;
+  color: #e2e8f0;
 }
 
 /* ===== Reduce Motion (accessibility preference) ===== */
