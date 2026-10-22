@@ -367,7 +367,7 @@ export default function ActiveContractsResolver() {
                   <AlertTriangle className="shrink-0 text-yellow-600 mt-0.5" size={16} />
                   <div>
                     <span className="font-black uppercase block tracking-wider mb-0.5">{t('escalation_warning')}</span>
-                    {t('escalation_desc_detail', { name: 'Shema Honore' })}
+                    {t('escalation_desc_detail', { name: contract.workerName })}
                   </div>
                 </div>
               )}

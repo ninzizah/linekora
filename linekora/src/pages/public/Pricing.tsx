@@ -47,25 +47,7 @@ export default function Pricing() {
     if (raw) {
       try { return JSON.parse(raw); } catch (e) {}
     }
-    return [
-      {
-        id: "req_9921",
-        date: "2 hours ago",
-        userName: "Gabriel Niyonkuru",
-        userEmail: "gabi@niyo.rw",
-        role: "worker",
-        tierName: "Verified Bronze",
-        price: "15,000",
-        method: "momo",
-        paymentPhoneOrCard: "+250 793 980 268",
-        status: "paid_awaiting_admin",
-        steps: [
-          { title: "Billing request sent to device", date: "2 hours ago", done: true },
-          { title: "User paid & PIN authorized", date: "2 hours ago", done: true },
-          { title: "Awaiting administrator approval", date: "Just now", done: false }
-        ]
-      }
-    ];
+    return [];
   });
 
   // Keep state matching the Admin's approvals
@@ -78,7 +60,7 @@ export default function Pricing() {
           setUpgradeRequests(parsed);
 
           // Find if there is an approved request for the logged-in candidate
-          const clientEmail = profile?.email || user?.email || "worker@demo.com";
+          const clientEmail = profile?.email || user?.email || '';
           const approvedOne = parsed.find((r: any) => r.userEmail === clientEmail && r.status === 'approved');
           if (approvedOne) {
             if (approvedOne.role === 'worker') {
@@ -105,9 +87,9 @@ export default function Pricing() {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutMethod, setCheckoutMethod] = useState<'momo' | 'card'>('momo');
   const [checkoutPhone, setCheckoutPhone] = useState('+250 793 980 268');
-  const [checkoutCardNum, setCheckoutCardNum] = useState('4128 9011 2341 8802');
-  const [checkoutCardExp, setCheckoutCardExp] = useState('11/29');
-  const [checkoutCardCvc, setCheckoutCardCvc] = useState('515');
+  const [checkoutCardNum, setCheckoutCardNum] = useState('');
+  const [checkoutCardExp, setCheckoutCardExp] = useState('');
+  const [checkoutCardCvc, setCheckoutCardCvc] = useState('');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
@@ -339,8 +321,8 @@ export default function Pricing() {
         setCheckoutLoading(false);
         setCheckoutSuccess(true);
 
-        const clientName = profile?.displayName || user?.displayName || "Shema Honore";
-        const clientEmail = profile?.email || user?.email || "worker@demo.com";
+        const clientName = profile?.displayName || user?.displayName || t('unknown_user');
+        const clientEmail = profile?.email || user?.email || '';
 
         const newReq = {
           id: `req_${Date.now()}`,
@@ -416,8 +398,8 @@ export default function Pricing() {
       setShowPinPrompt(false);
       setCheckoutSuccess(true);
       
-      const clientName = profile?.displayName || user?.displayName || "Shema Honore";
-      const clientEmail = profile?.email || user?.email || "worker@demo.com";
+      const clientName = profile?.displayName || user?.displayName || t('unknown_user');
+      const clientEmail = profile?.email || user?.email || '';
 
       const newReq = {
         id: `req_${Date.now()}`,
@@ -780,7 +762,7 @@ export default function Pricing() {
 
         {/* ACTIVE BILLING INTERACTIVE HANDSHAKES FROM ADMIN PORTAL */}
         {(() => {
-          const clientEmail = profile?.email || user?.email || "worker@demo.com";
+          const clientEmail = profile?.email || user?.email || '';
           const pendingPrompt = upgradeRequests.find((r: any) => r.userEmail === clientEmail && r.status === 'request_sent');
           if (!pendingPrompt) return null;
           return (
@@ -824,7 +806,7 @@ export default function Pricing() {
 
         {/* MY UPGRADE REQUESTS LOG & TIMELINE SECTION */}
         {(() => {
-          const clientEmail = profile?.email || user?.email || "worker@demo.com";
+          const clientEmail = profile?.email || user?.email || '';
           const myRequests = upgradeRequests.filter((r: any) => r.userEmail === clientEmail);
           if (myRequests.length === 0) return null;
           return (

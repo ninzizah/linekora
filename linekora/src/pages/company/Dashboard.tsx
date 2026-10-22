@@ -12,6 +12,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import { getBids, createBid, deleteBid } from '../../lib/api';
 import ActiveContractsResolver from '../../components/ActiveContractsResolver';
+import CandidateShowcase from '../../components/CandidateShowcase';
 
 interface NotificationMsg {
   id: string;
@@ -379,6 +380,9 @@ export default function CompanyDashboard() {
 
         {dashboardTab === 'hiring' ? (
           <>
+            {/* Candidate directory — visible immediately after sign-in */}
+            <CandidateShowcase className="mb-12" />
+
             {/* Job Categories */}
             <section className="mb-12">
               <div className="flex items-center justify-between mb-5">

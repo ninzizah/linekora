@@ -252,7 +252,7 @@ export default function BrowseWorkers() {
         setWorkers(realWorkers);
       } catch (err) {
         console.error('Failed to load workers from DB', err);
-        // Keep demo workers on failure
+        setWorkers([]);
       }
     }
     loadWorkers();

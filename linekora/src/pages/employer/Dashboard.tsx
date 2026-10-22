@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
 import ActiveContractsResolver from '../../components/ActiveContractsResolver';
+import CandidateShowcase from '../../components/CandidateShowcase';
 import { getJobs, deleteJob, createNotification } from '../../lib/api';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 
@@ -165,6 +166,8 @@ export default function EmployerDashboard() {
             {t('post_simple_task')}
           </Link>
         </header>
+
+        <CandidateShowcase className="mb-12" />
 
         <section className="mb-12">
           <h2 className="text-lg font-bold text-gray-400 uppercase tracking-widest font-sans mb-6">{t('what_do_you_need')}</h2>

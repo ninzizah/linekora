@@ -271,7 +271,7 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
           <div className="mb-6">
             <SectionHeader icon={<Award size={12} className="text-blue-500" />} label={t('professional_bio')} />
             <p className="text-xs text-gray-700 leading-relaxed font-medium bg-gray-50 p-4 rounded-2xl border border-gray-100 italic">
-              {bio ? `"${bio}"` : `"${t('no_bio_provided')}"`}
+              {bio || t('no_bio_provided')}
             </p>
           </div>
 

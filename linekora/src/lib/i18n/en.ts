@@ -2313,6 +2313,15 @@ const en: Record<string, string> = {
     assign_members: 'Assign Members',
     assign_selected: 'Assign Selected ({count})',
 
+    candidates_title: 'Available Candidates',
+    candidates_subtitle: 'Verified workers ready to hire, grouped by job category.',
+    candidates_view_all: 'View all candidates',
+    candidates_search_placeholder: 'Search by name, job title, skill or location...',
+    candidates_empty: 'No candidates found in this category yet.',
+    candidates_loading: 'Loading candidates...',
+    candidates_count: '{count} candidates',
+    candidates_browse_more: 'Browse all talent',
+
     add_rating: 'Add rating',
     add_rating_reviews: 'Add rating/reviews',
     view_more: 'View more',
