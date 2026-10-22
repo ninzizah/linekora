@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Filter, MapPin, Star, User, 
   CheckCircle2, ChevronRight, MessageSquare, Briefcase, Zap, 
@@ -6,8 +6,9 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
-import { getWorkers, sendMessage, createContract } from '../../lib/api';
-import { useNavigate } from 'react-router-dom';
+import { getWorkers, getJobs, sendMessage, createContract } from '../../lib/api';
+import type { Job } from '../../lib/api';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import PublicProfileModal from '../../components/PublicProfileModal';
 import type { PublicProfileUser } from '../../components/PublicProfileModal';
@@ -23,10 +24,15 @@ interface WorkerItem {
   jobs: number;
   verified: boolean;
   skills: string[];
+  certificates: string[];
   trustScore: number;
   experience: string;
+  experienceCount: number;
+  education: string;
   avatarUrl?: string;
   bio?: string;
+  matchScore?: number;
+  matchRelevant?: boolean;
 }
 
 interface Toast {
@@ -36,8 +42,163 @@ interface Toast {
   type: 'success' | 'info' | 'error';
 }
 
+const MATCH_STOP_WORDS = new Set([
+  'the', 'and', 'for', 'with', 'you', 'your', 'our', 'are', 'have', 'has', 'had',
+  'can', 'will', 'must', 'need', 'needed', 'looking', 'want', 'wanted', 'able',
+  'job', 'jobs', 'work', 'worker', 'workers', 'role', 'position', 'task', 'tasks',
+  'good', 'great', 'strong', 'ability', 'skills', 'skill', 'experience',
+  'experienced', 'years', 'year', 'who', 'that', 'this', 'from', 'any', 'all',
+  'other', 'more', 'plus', 'preferred', 'required', 'requirements', 'responsibilities',
+  'company', 'team', 'time', 'full', 'part', 'contract', 'daily', 'weekly',
+]);
+
+const tokenize = (text?: string | null): string[] =>
+  (text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9+#.\s]/g, ' ')
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !MATCH_STOP_WORDS.has(token));
+
+const normalizeToken = (token: string): string =>
+  token.toLowerCase().replace(/(ing|ers|er|ed|es|s)$/g, '');
+
+const tokenSet = (text?: string | null): Set<string> => new Set(tokenize(text));
+
+const hasRelatedToken = (tokens: Set<string>, keyword: string): boolean => {
+  const target = normalizeToken(keyword);
+  for (const token of tokens) {
+    const candidate = normalizeToken(token);
+    if (candidate === target) return true;
+    if (target.length >= 4 && candidate.length >= 4 && (candidate.startsWith(target) || target.startsWith(candidate))) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const parseList = (raw?: string | null): string[] => {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map((item) => String(item)).filter(Boolean);
+  } catch {
+    // Legacy comma-separated values
+  }
+  return raw.split(',').map((item) => item.trim()).filter(Boolean);
+};
+
+const experienceToText = (raw?: string | null): { text: string; count: number } => {
+  if (!raw) return { text: '', count: 0 };
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const text = parsed
+        .map((entry: any) => {
+          if (typeof entry === 'string') return entry;
+          return [entry?.role, entry?.company, entry?.period, entry?.desc].filter(Boolean).join(' ');
+        })
+        .join(' ');
+      return { text, count: parsed.length };
+    }
+  } catch {
+    // Legacy plain-text experience
+  }
+  return { text: raw, count: 1 };
+};
+
+const educationToText = (raw?: string | null): string => {
+  if (!raw) return '';
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((entry: any) =>
+          typeof entry === 'string' ? entry : [entry?.degree, entry?.school].filter(Boolean).join(' ')
+        )
+        .join(' ');
+    }
+  } catch {
+    // Legacy plain-text education
+  }
+  return raw;
+};
+
+const computeMatch = (worker: WorkerItem, job: Job): { score: number; relevant: boolean } => {
+  const jobCorpus = [job.title, job.category, job.requirements, job.description].filter(Boolean).join(' ');
+  const jobKeywords = Array.from(new Set(tokenize(jobCorpus))).slice(0, 60);
+  if (!jobKeywords.length) return { score: 0, relevant: false };
+
+  const skillTokens = tokenSet(worker.skills.join(' '));
+  const certificateTokens = tokenSet(worker.certificates.join(' '));
+  const experienceTokens = tokenSet(worker.experience);
+  const bioTokens = tokenSet(worker.bio);
+  const educationTokens = tokenSet(worker.education);
+  const jobText = jobCorpus.toLowerCase();
+
+  // Skills are the strongest signal, then certificates, experience, bio,
+  // education. Each job keyword is weighted by the best field it appears in.
+  let weightedFound = 0;
+  let skillKeywordHits = 0;
+  let relevantHits = 0;
+  for (const keyword of jobKeywords) {
+    if (hasRelatedToken(skillTokens, keyword)) {
+      weightedFound += 4;
+      skillKeywordHits += 1;
+      relevantHits += 1;
+    } else if (hasRelatedToken(certificateTokens, keyword)) {
+      weightedFound += 3;
+      relevantHits += 0.75;
+    } else if (hasRelatedToken(experienceTokens, keyword)) {
+      weightedFound += 2.5;
+      relevantHits += 0.5;
+    } else if (hasRelatedToken(bioTokens, keyword)) {
+      weightedFound += 1.5;
+      relevantHits += 0.25;
+    } else if (hasRelatedToken(educationTokens, keyword)) {
+      weightedFound += 1;
+      relevantHits += 0.25;
+    }
+  }
+
+  // A worker may list a skill the employer wrote as a phrase, e.g. "customer
+  // service" — count exact phrase hits as well as individual keywords.
+  const phraseHits = worker.skills.filter((skill) => {
+    const phrase = skill.toLowerCase().trim();
+    return phrase.length >= 3 && jobText.includes(phrase);
+  }).length;
+
+  const relevance = weightedFound / (jobKeywords.length * 4);
+  const skillSignals = skillKeywordHits + phraseHits;
+  const skillCoverage = skillSignals > 0 ? Math.min(1, 0.55 + skillSignals * 0.15) : 0;
+  const ratingScore = worker.rating > 0 ? Math.min(1, worker.rating / 5) : 0;
+  const trustScore = Math.min(1, Math.max(0, worker.trustScore / 1000));
+  const jobsScore = Math.min(1, worker.jobs / 10);
+  const experienceScore = Math.min(1, worker.experienceCount / 3);
+  const locationScore =
+    job.location && worker.location &&
+    tokenize(worker.location).some((token) => tokenize(job.location).includes(token))
+      ? 1
+      : 0;
+
+  const score =
+    relevance * 50 +
+    skillCoverage * 20 +
+    ratingScore * 10 +
+    trustScore * 8 +
+    jobsScore * 5 +
+    experienceScore * 4 +
+    locationScore * 3;
+
+  return {
+    score: Math.round(Math.min(100, score)),
+    relevant: relevantHits > 0 || phraseHits > 0,
+  };
+};
+
 export default function BrowseWorkers() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { profile } = useAuth();
   const { t } = useLanguage();
   const [search, setSearch] = useState('');
@@ -54,6 +215,12 @@ export default function BrowseWorkers() {
   // Workers dataset
   const [workers, setWorkers] = useState<WorkerItem[]>([]);
 
+  // Job matching: pick the job the employer is hiring for and rank workers
+  // against it. PostJob links here with ?jobId=... so the newest post is used.
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string>(() => searchParams.get('jobId') || '');
+  const [onlyMatching, setOnlyMatching] = useState(true);
+
   useEffect(() => {
     async function loadWorkers() {
       try {
@@ -61,19 +228,22 @@ export default function BrowseWorkers() {
         const realWorkers: WorkerItem[] = users
           .filter(u => u.role === 'WORKER')
           .map((u) => {
-            let parsedSkills: string[] = [];
-            try { parsedSkills = u.skills ? JSON.parse(u.skills) : []; } catch (e) {}
+            const parsedSkills = parseList(u.skills);
+            const experience = experienceToText(u.experience);
             return {
               id: u.id,
-              name: u.displayName,
+              name: u.displayName || '',
               role: t('professional_worker'),
               location: u.location || 'Kigali',
-              rating: 0,
-              jobs: 0,
+              rating: u.avgRating ?? 0,
+              jobs: u.completedJobsCount ?? 0,
               verified: u.verificationStatus === 'verified',
-              skills: Array.isArray(parsedSkills) ? parsedSkills : [],
-              trustScore: u.trustScore,
-              experience: '',
+              skills: parsedSkills,
+              certificates: parseList(u.certificates),
+              trustScore: u.trustScore ?? 0,
+              experience: experience.text,
+              experienceCount: experience.count,
+              education: educationToText(u.education),
               avatarUrl: u.avatarUrl,
               bio: u.bio || undefined,
             };
@@ -86,7 +256,45 @@ export default function BrowseWorkers() {
       }
     }
     loadWorkers();
-  }, []);
+  }, [t]);
+
+  useEffect(() => {
+    async function loadJobs() {
+      if (!profile?.id) return;
+      try {
+        const list = await getJobs({ status: 'open' });
+        const ownJobs = list.filter((job) => job.employerId === profile.id);
+        setJobs(ownJobs);
+        const fromUrl = searchParams.get('jobId');
+        if (fromUrl && ownJobs.some((job) => String(job.id) === fromUrl)) {
+          setSelectedJobId(fromUrl);
+        } else if (!selectedJobId && ownJobs.length > 0) {
+          setSelectedJobId(String(ownJobs[0].id));
+        }
+      } catch (err) {
+        console.error('Failed to load employer jobs for matching', err);
+      }
+    }
+    loadJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
+
+  const selectedJob = jobs.find((job) => String(job.id) === selectedJobId) || null;
+
+  const rankedWorkers = useMemo(() => {
+    if (!selectedJob) return workers;
+    return workers
+      .map((worker) => {
+        const match = computeMatch(worker, selectedJob);
+        return { ...worker, matchScore: match.score, matchRelevant: match.relevant };
+      })
+      .sort((a, b) => {
+        const scoreDiff = (b.matchScore ?? 0) - (a.matchScore ?? 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return b.trustScore - a.trustScore;
+      });
+  }, [workers, selectedJob]);
 
 
   // Employer active draft jobs parsed from localStorage to let them match quickly
@@ -132,7 +340,7 @@ export default function BrowseWorkers() {
 
   // REAL FILTERING LOGIC
   const getFilteredWorkers = () => {
-    return workers.filter(w => {
+    return rankedWorkers.filter(w => {
       // 1. Text Search matches Name, Role, or Skills tags
       const query = search.toLowerCase().trim();
       const matchText = !query || 
@@ -155,14 +363,22 @@ export default function BrowseWorkers() {
         if (w.rating < minStars) return false;
       }
 
-      // 4. Experience tags toggle filter
+      // 4. Experience tags filter (number of recorded roles)
       if (selectedExperience) {
-        if (w.experience !== selectedExperience) return false;
+        const minEntries = selectedExperience === '1-2yrs' ? 1 : selectedExperience === '3-5yrs' ? 2 : 3;
+        if (w.experienceCount < minEntries) return false;
       }
 
       // 5. Highly Trusted (800+ Score) checkbox filter
       if (onlyHighlyTrusted) {
         if (w.trustScore < 800) return false;
+      }
+
+      // 6. When matching a job, keep only workers whose skills, certificates,
+      // experience or education are related to the post. The toggle lets the
+      // employer see everyone when they want to widen the search.
+      if (selectedJob && onlyMatching && !w.matchRelevant) {
+        return false;
       }
 
       return true;
@@ -314,6 +530,57 @@ export default function BrowseWorkers() {
             </div>
           </div>
         </header>
+
+        {/* Job matching controls */}
+        {jobs.length > 0 && (
+          <div className="mb-8 bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-end gap-4">
+              <div className="flex-1">
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans mb-2.5">{t('match_to_job')}</label>
+                <select
+                  value={selectedJobId}
+                  onChange={(e) => {
+                    setSelectedJobId(e.target.value);
+                    const nextParams = new URLSearchParams(searchParams);
+                    if (e.target.value) nextParams.set('jobId', e.target.value);
+                    else nextParams.delete('jobId');
+                    setSearchParams(nextParams, { replace: true });
+                  }}
+                  className="w-full p-3.5 rounded-xl border border-gray-100 font-sans font-bold text-xs outline-none focus:border-blue-600 bg-gray-50 cursor-pointer text-gray-900"
+                >
+                  <option value="">{t('all_workers_no_match')}</option>
+                  {jobs.map((job) => (
+                    <option key={job.id} value={String(job.id)}>
+                      {job.title}{job.category ? ` — ${job.category}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {selectedJob && (
+                <label className="flex items-center gap-2.5 px-4 py-3.5 rounded-xl bg-blue-50 border border-blue-100 cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={onlyMatching}
+                    onChange={(e) => setOnlyMatching(e.target.checked)}
+                    className="h-4 w-4 rounded text-blue-600 accent-blue-600 border-gray-300 cursor-pointer"
+                  />
+                  <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider font-sans">{t('only_relevant_workers')}</span>
+                </label>
+              )}
+            </div>
+            {selectedJob && (
+              <div className="mt-4 pt-4 border-t border-gray-50 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold text-gray-500 font-sans">
+                  <span className="text-blue-600 font-black uppercase tracking-wider mr-1">{t('best_matches_for')}</span>
+                  {selectedJob.title}
+                </p>
+                <p className="text-[10px] font-bold text-gray-400 font-sans">
+                  {t('strong_matches_count', { matched: filteredWorkers.length, total: workers.length })} · {t('job_match_hint')}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Search & Filter Bar */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -493,11 +760,25 @@ export default function BrowseWorkers() {
                     </div>
 
                     <div className="flex flex-col items-end gap-1">
+                      {selectedJob && worker.matchScore !== undefined && (
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border shadow-sm ${
+                          worker.matchScore >= 75
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : worker.matchScore >= 50
+                            ? 'bg-blue-50 text-blue-700 border-blue-150'
+                            : 'bg-gray-50 text-gray-500 border-gray-150'
+                        }`}>
+                          <Sparkles size={10} />
+                          {t('match_percent', { score: worker.matchScore })}
+                        </div>
+                      )}
                       <div className="flex items-center gap-1 bg-yellow-50 text-yellow-705 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-yellow-150 shadow-sm">
                         <Zap size={10} fill="currentColor" />
                         {t('trust_badge', { score: worker.trustScore })}
                       </div>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 font-mono mt-1">{t('experience_label', { experience: expText(worker.experience) })}</span>
+                      {worker.experienceCount > 0 && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-400 font-mono mt-1">{t('experience_entries', { count: worker.experienceCount })}</span>
+                      )}
                     </div>
                   </div>
 
@@ -597,11 +878,22 @@ export default function BrowseWorkers() {
           <div className="bg-white rounded-[3rem] p-8 md:p-16 text-center border border-gray-100 max-w-md mx-auto my-12 space-y-4 shadow-sm">
             <Inbox size={48} className="mx-auto text-gray-300" />
             <div>
-              <p className="text-sm font-black text-gray-800 uppercase tracking-wider font-sans leading-none">{t('no_candidates_match')}</p>
+              <p className="text-sm font-black text-gray-800 uppercase tracking-wider font-sans leading-none">
+                {selectedJob && onlyMatching ? t('no_strong_matches') : t('no_candidates_match')}
+              </p>
               <p className="text-xs text-gray-400 italic mt-1.5 font-sans">
-                {t('no_candidates_match_hint')}
+                {selectedJob && onlyMatching ? t('no_strong_matches_hint') : t('no_candidates_match_hint')}
               </p>
             </div>
+            {selectedJob && onlyMatching && (
+              <button
+                type="button"
+                onClick={() => setOnlyMatching(false)}
+                className="px-5 py-2.5 bg-blue-600 text-white font-sans text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-colors cursor-pointer"
+              >
+                {t('show_all_workers')}
+              </button>
+            )}
             <button 
               type="button"
               onClick={() => {
@@ -612,7 +904,7 @@ export default function BrowseWorkers() {
                 setOnlyHighlyTrusted(false);
                 addToast(t('toast_filters_reset'), t('toast_filters_reset_msg'), 'info');
               }}
-              className="px-5 py-2.5 bg-blue-600 text-white font-sans text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-colors cursor-pointer"
+              className="px-5 py-2.5 bg-gray-100 text-gray-700 font-sans text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-200 transition-colors cursor-pointer"
             >
               {t('reset_search_views')}
             </button>

@@ -253,12 +253,33 @@ app.get('/api/users/workers', async (_req, res) => {
         skills: true,
         experience: true,
         education: true,
+        certificates: true,
         trustScore: true,
         verificationStatus: true,
+        reviewsReceived: {
+          select: { rating: true },
+          orderBy: { createdAt: 'desc' },
+          take: 100,
+        },
+        contractsAsWorker: {
+          where: { status: 'completed' },
+          select: { id: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
-    res.json(workers);
+
+    // Rankable directory data: average rating and completed-job count are
+    // derived here so the employer "match" view does not need N+1 requests.
+    const directory = workers.map(({ reviewsReceived, contractsAsWorker, ...worker }) => {
+      const ratings = reviewsReceived.map((r) => r.rating);
+      const avgRating = ratings.length
+        ? Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10) / 10
+        : null;
+      return { ...worker, avgRating, completedJobsCount: contractsAsWorker.length };
+    });
+
+    res.json(directory);
   } catch (error: any) {
     console.error('Failed to fetch workers:', error);
     res.status(500).json({ error: 'Failed to fetch workers' });

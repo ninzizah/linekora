@@ -218,8 +218,13 @@ export const unlockAdmin = (username: string, passkey: string) =>
   });
 
 // Scoped worker directory (minimal public fields, no email/phone)
+export interface WorkerDirectoryEntry extends Partial<UserProfile> {
+  avgRating?: number | null;
+  completedJobsCount?: number;
+}
+
 export const getWorkers = () =>
-  request<Partial<UserProfile>[]>('/users/workers');
+  request<WorkerDirectoryEntry[]>('/users/workers');
 
 // Full public profile (bio, skills, experience, education, certificates,
 // portfolio, CV) backing the "view profile" modal employers open from

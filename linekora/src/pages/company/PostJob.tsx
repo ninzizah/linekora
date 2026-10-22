@@ -481,7 +481,7 @@ export default function PostJob() {
                 <button 
                   onClick={() => {
                     setShowSuccessModal(false);
-                    navigate('/dashboard/company/browse');
+                    navigate(publishedJobId ? `/dashboard/company/browse?jobId=${publishedJobId}` : '/dashboard/company/browse');
                   }}
                   className="mt-3 mx-auto block text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors"
                 >
@@ -516,7 +516,7 @@ export default function PostJob() {
                   <button 
                     onClick={() => {
                       setShowSuccessModal(false);
-                      navigate('/dashboard/company/browse');
+                      navigate(publishedJobId ? `/dashboard/company/browse?jobId=${publishedJobId}` : '/dashboard/company/browse');
                     }}
                     className="py-4 bg-blue-50 hover:bg-blue-100 border border-blue-100 text-blue-600 rounded-2xl font-sans font-black uppercase tracking-widest text-[9px] text-center transition-all flex items-center justify-center gap-1.5"
                   >

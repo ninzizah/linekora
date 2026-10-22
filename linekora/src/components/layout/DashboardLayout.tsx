@@ -284,6 +284,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       { name: t('dashboard'), icon: LayoutDashboard, path: '/dashboard/company' },
       { name: t('post_job'), icon: PlusSquare, path: '/dashboard/company/post' },
       { name: t('manage_jobs'), icon: Briefcase, path: '/dashboard/company/jobs' },
+      { name: t('browse_workers'), icon: Search, path: '/dashboard/company/browse' },
       { name: t('applicants'), icon: Users, path: '/dashboard/company/applicants' },
       { name: t('messages'), icon: MessageSquare, path: '/dashboard/company/messages' },
       { name: t('verification'), icon: ShieldCheck, path: '/dashboard/company/verify' },
