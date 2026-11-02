@@ -301,6 +301,8 @@ app.get('/api/users/public/:id', async (req, res) => {
         location: true,
         avatarUrl: true,
         bio: true,
+        industry: true,
+        companyEmail: true,
         skills: true,
         experience: true,
         education: true,
@@ -386,6 +388,8 @@ app.post('/api/users', async (req, res) => {
       if (data.location !== undefined) safe.location = data.location;
       if (data.avatarUrl !== undefined) safe.avatarUrl = data.avatarUrl;
       if (data.bio !== undefined) safe.bio = data.bio;
+      if (data.industry !== undefined) safe.industry = data.industry;
+      if (data.companyEmail !== undefined) safe.companyEmail = data.companyEmail;
       if (data.skills !== undefined) safe.skills = data.skills;
       if (data.experience !== undefined) safe.experience = data.experience;
       if (data.education !== undefined) safe.education = data.education;
@@ -432,7 +436,7 @@ app.patch('/api/users/:id', async (req, res) => {
 
     // Identity/profile fields — editable only for your own account.
     if (isSelf || isAdmin) {
-      for (const f of ['displayName', 'location', 'avatarUrl', 'bio', 'skills', 'experience', 'education', 'registrationNumber', 'taxId', 'certificates', 'portfolio', 'cvFile', 'cvFilename']) {
+      for (const f of ['displayName', 'location', 'avatarUrl', 'bio', 'industry', 'companyEmail', 'skills', 'experience', 'education', 'registrationNumber', 'taxId', 'certificates', 'portfolio', 'cvFile', 'cvFilename']) {
         if (body[f] !== undefined) safe[f] = body[f];
       }
       // A phone may be corrected but never blanked out — otherwise the
@@ -1026,6 +1030,10 @@ app.get('/api/jobs/:id', async (req, res) => {
             displayName: true,
             email: true,
             phone: true,
+            avatarUrl: true,
+            location: true,
+            industry: true,
+            verificationStatus: true,
           },
         },
       },

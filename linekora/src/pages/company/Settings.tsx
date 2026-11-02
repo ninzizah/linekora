@@ -33,8 +33,8 @@ export default function CompanySettings() {
   useEffect(() => {
     if (profile) {
       setCompanyName(localStorage.getItem(storageKey('company_name')) || profile.displayName || '');
-      setIndustry(localStorage.getItem(storageKey('company_industry')) || '');
-      setEmail(localStorage.getItem(storageKey('company_email')) || profile.email || '');
+      setIndustry(localStorage.getItem(storageKey('company_industry')) || profile.industry || '');
+      setEmail(localStorage.getItem(storageKey('company_email')) || profile.companyEmail || profile.email || '');
       setPhone(localStorage.getItem(storageKey('company_phone')) || profile.phone || '');
       setHeadquarters(localStorage.getItem(storageKey('company_location')) || profile.location || '');
       setStrictHiring(localStorage.getItem(storageKey('company_strict_hiring')) === 'true');
@@ -86,7 +86,7 @@ export default function CompanySettings() {
     const dbId = profile?.id || profile?.firebaseUid;
     if (dbId) {
       try {
-        await updateUser(dbId, { displayName: companyName, location: headquarters, phone, avatarUrl: selectedAvatar || undefined } as any);
+        await updateUser(dbId, { displayName: companyName, location: headquarters, phone, avatarUrl: selectedAvatar || undefined, industry, companyEmail: email } as any);
       } catch (err) {
         console.warn('Failed to persist to DB:', err);
     }

@@ -89,10 +89,14 @@ export default function Seo({
         : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
     );
 
+    setMeta('property', 'og:site_name', 'LINEKORA');
+    setMeta('property', 'og:type', 'website');
     setMeta('property', 'og:title', fullTitle);
     setMeta('property', 'og:description', description);
     setMeta('property', 'og:url', url);
     setMeta('property', 'og:image', imageUrl);
+    setMeta('property', 'og:image:alt', fullTitle);
+    setMeta('name', 'twitter:card', 'summary_large_image');
     setMeta('name', 'twitter:title', fullTitle);
     setMeta('name', 'twitter:description', description);
     setMeta('name', 'twitter:image', imageUrl);
@@ -118,8 +122,10 @@ export default function Seo({
 /** Routes that belong in search results. Everything else is application surface. */
 const PUBLIC_PATHS = new Set(['/', '/about', '/pricing', '/contact', '/scams', '/legal']);
 
-const isPublicPath = (pathname: string) =>
-  PUBLIC_PATHS.has(pathname.replace(/\/+$/, '') || '/');
+const isPublicPath = (pathname: string) => {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  return PUBLIC_PATHS.has(clean) || clean.startsWith('/jobs/');
+};
 
 /**
  * Keeps auth, dashboard and admin routes out of the index.

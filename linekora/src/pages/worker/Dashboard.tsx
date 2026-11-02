@@ -3,13 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, Search, TrendingUp, CheckCircle2, Clock, 
   ChevronRight, MapPin, DollarSign, Star, Zap, Shield, Wallet, Briefcase, MessageSquare,
-  Bell, AlertCircle, Smartphone, X, Phone, Info, Bookmark, Check, Loader2, RefreshCw
+  Bell, AlertCircle, Smartphone, X, Phone, Info, Bookmark, Check, Loader2, RefreshCw, Building2
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import PublicProfileModal, { type PublicProfileUser } from '../../components/PublicProfileModal';
 import { useAuth } from '../../lib/AuthContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import { getJobs, createApplication, createNotification, applyToJob, getApplications, getSavedJobs, saveJob, deleteSavedJob, Job } from '../../lib/api';
+import { getJobCategory } from '../../lib/jobCategories';
 import { formatDistanceToNow } from 'date-fns';
 import { useLanguage } from '../../lib/LanguageContext';
 import { useLiveChat } from '../../lib/useLiveChat';
@@ -32,7 +34,19 @@ export default function WorkerDashboard() {
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{ type: 'claim' | 'apply' | 'already' | 'limit'; title: string; message: string } | null>(null);
-  
+  const [viewingCompanyProfile, setViewingCompanyProfile] = useState<PublicProfileUser | null>(null);
+
+  const openCompanyProfile = (job: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const employerId = job.employer?.id || job.employerId;
+    if (!employerId) return;
+    setViewingCompanyProfile({
+      id: employerId,
+      displayName: job.employer?.displayName || job.company || t('private_client'),
+      role: 'COMPANY',
+    });
+  };
+
   // Real-time stateful saved jobs aligned with local storage
   const [savedJobs, setSavedJobs] = useState<any[]>(() => {
     return readScopedStorage<any[]>(profile?.id, 'worker_saved_jobs', []);
@@ -241,6 +255,11 @@ export default function WorkerDashboard() {
 
   const verificationText = (s?: string) => ({ verified: t('status_verified'), unverified: t('status_unverified') }[s || ''] || s?.replace('_', ' ') || '');
 
+  const catLabel = (value?: string) => {
+    const labelKey = getJobCategory(value)?.labelKey;
+    return labelKey ? t(labelKey) : (value || '');
+  };
+
   const stats = [
     {
       icon: Briefcase,
@@ -373,55 +392,77 @@ export default function WorkerDashboard() {
                 }
                 return (
                   <div className="space-y-4">
-                    {uniqueHotJobs.map((job) => (
+                    {uniqueHotJobs.map((job) => {
+                      const employerId = job.employer?.id || job.employerId;
+                      const employerName = job.employer?.displayName || job.company || t('private_client');
+                      return (
                     <div 
                       key={job.id} 
                       onClick={() => setSelectedJob(job)}
-                      className="bg-white p-5 rounded-2xl border border-red-100 hover:border-red-400 hover:shadow-lg shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
+                      className="bg-white p-5 rounded-2xl border border-red-100 hover:border-red-400 hover:shadow-lg shadow-sm transition-all flex flex-col gap-3 cursor-pointer"
                     >
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-red-100 text-red-600 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded">
-                            {job.category || t('urgent')}
-                          </span>
-                          <span className="text-[10px] text-gray-400 font-sans font-medium">{getRelativeTime(job.createdAt || job.postedAt, t)} </span>
+                      <div className="flex items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Building2 size={14} className="text-gray-400 shrink-0" />
+                          <span className="font-sans font-black text-xs text-gray-800 truncate">{employerName}</span>
                         </div>
-                        <h3 className="font-sans font-black text-gray-950 text-base leading-tight">
-                          {job.title}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                          <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-gray-500 font-sans">
-                            <MapPin size={12} className="text-red-400" />
-                            {job.location}
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-600 font-sans">
-                            <DollarSign size={12} />
-                            {job.salary}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 font-sans font-medium italic mt-1 line-clamp-1">
-                          "{job.description}"
-                        </p>
+                        {employerId && (
+                          <button
+                            type="button"
+                            onClick={(e) => openCompanyProfile(job, e)}
+                            className="text-[9px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 shrink-0 transition-colors"
+                          >
+                            {t('view_profile')} →
+                          </button>
+                        )}
                       </div>
 
-                      <button
-                        disabled={acceptedJobId !== null || appliedIds.has(job.id)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAcceptJob(job.id);
-                        }}
-                        className={`px-5 py-3 rounded-xl font-sans font-black uppercase tracking-widest text-[9px] shrink-0 transition-all text-center ${
-                          appliedIds.has(job.id)
-                            ? 'bg-green-100 text-green-700 border border-green-200 cursor-default'
-                            : acceptedJobId === job.id
-                            ? 'bg-amber-500 text-white animate-pulse'
-                            : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-100'
-                        }`}
-                      >
-                        {appliedIds.has(job.id) ? t('applied_check') : acceptedJobId === job.id ? t('securing') : t('claim_job')}
-                      </button>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-red-100 text-red-600 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded">
+                              {catLabel(job.category) || t('urgent')}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-sans font-medium">{getRelativeTime(job.createdAt || job.postedAt, t)} </span>
+                          </div>
+                          <h3 className="font-sans font-black text-gray-950 text-base leading-tight">
+                            {job.title}
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                            <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-gray-500 font-sans">
+                              <MapPin size={12} className="text-red-400" />
+                              {job.location}
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-600 font-sans">
+                              <DollarSign size={12} />
+                              {job.salary}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 font-sans font-medium italic mt-1 line-clamp-1">
+                            "{job.description}"
+                          </p>
+                        </div>
+
+                        <button
+                          disabled={acceptedJobId !== null || appliedIds.has(job.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAcceptJob(job.id);
+                          }}
+                          className={`px-5 py-3 rounded-xl font-sans font-black uppercase tracking-widest text-[9px] shrink-0 transition-all text-center ${
+                            appliedIds.has(job.id)
+                              ? 'bg-green-100 text-green-700 border border-green-200 cursor-default'
+                              : acceptedJobId === job.id
+                              ? 'bg-amber-500 text-white animate-pulse'
+                              : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-100'
+                          }`}
+                        >
+                          {appliedIds.has(job.id) ? t('applied_check') : acceptedJobId === job.id ? t('securing') : t('claim_job')}
+                        </button>
+                      </div>
                     </div>
-                  ))}
+                      );
+                    })}
                 </div>
               );
             })()}
@@ -743,7 +784,7 @@ export default function WorkerDashboard() {
                         ? 'bg-red-50 text-red-600 border border-red-100 animate-pulse'
                         : 'bg-blue-50 text-blue-600 border border-blue-100'
                     }`}>
-                      {selectedJob.category ? selectedJob.category : selectedJob.urgent ? t('urgent_gig') : t('recommended_opportunity')}
+                      {selectedJob.category ? catLabel(selectedJob.category) : selectedJob.urgent ? t('urgent_gig') : t('recommended_opportunity')}
                     </span>
                     {selectedJob.verified && (
                       <span className="flex items-center gap-1 bg-green-50 text-green-600 px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest">
@@ -834,6 +875,12 @@ export default function WorkerDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      <PublicProfileModal
+        user={viewingCompanyProfile}
+        isOpen={!!viewingCompanyProfile}
+        onClose={() => setViewingCompanyProfile(null)}
+      />
     </DashboardLayout>
   );
 }

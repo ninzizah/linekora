@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, ShieldCheck, MapPin, Star, Phone, Award, CheckCircle2, Briefcase,
-  GraduationCap, FileText, ExternalLink, Zap
+  GraduationCap, FileText, ExternalLink, Zap, Building2
 } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
 import { getReviews, getPublicProfile, type Review, type PublicProfileDetails } from '../lib/api';
@@ -26,6 +26,8 @@ export interface PublicProfileUser {
   bio?: string;
   phone?: string;
   email?: string;
+  industry?: string;
+  companyEmail?: string;
   skills?: string[];
   experience?: string | ExperienceEntry[];
   education?: string | EducationEntry[];
@@ -147,7 +149,8 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
   if (!isOpen || !user) return null;
 
   const displayName = details?.displayName || user.displayName || user.name || t('user_profile');
-  const roleName = user.role || t('member');
+  const roleName = details?.role || user.role || t('member');
+  const isCompany = roleName === 'COMPANY' || roleName === 'EMPLOYER';
   const verificationStatus = details?.verificationStatus || user.verificationStatus;
   const isVerified = verificationStatus === 'verified' || user.verified;
   const trustScore = details?.trustScore ?? user.trustScore ?? 0;
@@ -269,12 +272,39 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
 
           {/* Professional Bio */}
           <div className="mb-6">
-            <SectionHeader icon={<Award size={12} className="text-blue-500" />} label={t('professional_bio')} />
+            <SectionHeader icon={<Award size={12} className="text-blue-500" />} label={isCompany ? t('company_information') : t('professional_bio')} />
             <p className="text-xs text-gray-700 leading-relaxed font-medium bg-gray-50 p-4 rounded-2xl border border-gray-100 italic">
               {bio || t('no_bio_provided')}
             </p>
           </div>
 
+          {/* Company Details */}
+          {isCompany && (
+            <div className="mb-6">
+              <SectionHeader icon={<Building2 size={12} className="text-blue-500" />} label={t('company_information')} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 bg-gray-50 border border-gray-100 rounded-2xl">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('industry')}</p>
+                  <p className="text-xs font-bold text-gray-900 font-sans break-words">{details?.industry || user.industry || t('not_provided')}</p>
+                </div>
+                <div className="p-3.5 bg-gray-50 border border-gray-100 rounded-2xl">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('official_email')}</p>
+                  <p className="text-xs font-bold text-gray-900 font-sans break-words">{details?.companyEmail || user.companyEmail || t('not_provided')}</p>
+                </div>
+                <div className="p-3.5 bg-gray-50 border border-gray-100 rounded-2xl">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('headquarters')}</p>
+                  <p className="text-xs font-bold text-gray-900 font-sans break-words">{location || t('not_provided')}</p>
+                </div>
+                <div className="p-3.5 bg-gray-50 border border-gray-100 rounded-2xl">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('telephone_number')}</p>
+                  <p className="text-xs font-bold text-gray-900 font-sans break-words">{phone || t('not_provided')}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isCompany && (
+            <>
           {/* Main Skills */}
           <div className="mb-6">
             <SectionHeader icon={<Zap size={12} className="text-blue-500" />} label={t('main_skills')} />
@@ -439,6 +469,8 @@ export default function PublicProfileModal({ user, isOpen, onClose }: PublicProf
               <EmptyState icon={<FileText size={22} />} text={t('no_cv_uploaded')} />
             )}
           </div>
+            </>
+          )}
 
           {/* Direct Contact Line */}
           {phone && (

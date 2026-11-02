@@ -11,52 +11,7 @@ import { useLanguage } from '../../lib/LanguageContext';
 import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
 import { motion, AnimatePresence } from 'motion/react';
 import { createJob } from '../../lib/api';
-
-// Recommended range lookup and custom tags for each category
-const CATEGORY_METADATA: Record<string, { range: string; min: number; max: number; tags: string[] }> = {
-  'Domestic Cleaning': { 
-    range: '5,000 - 15,000 RWF', 
-    min: 5000, 
-    max: 15000, 
-    tags: ['Floor Mopping', 'Dishes & Kitchen', 'Laundry / Ironing', 'Window Washing', 'Bathroom Sanitation', 'Dusting'] 
-  },
-  'Plumbing Repairs': { 
-    range: '15,000 - 45,000 RWF', 
-    min: 15000, 
-    max: 45000, 
-    tags: ['Pipe Fitting', 'Emergency Leaks', 'Clogged Drain', 'Sewer Check', 'Tap & Shower Install'] 
-  },
-  'Garden Work': { 
-    range: '5,000 - 20,000 RWF', 
-    min: 5000, 
-    max: 20000, 
-    tags: ['Lawn Mowing', 'Hedge Trimming', 'Weed Control', 'Soil Tilling', 'Fencing repair'] 
-  },
-  'Mechanical Repairs': { 
-    range: '20,000 - 75,000 RWF', 
-    min: 20000, 
-    max: 75000, 
-    tags: ['Car Alternator', 'Brake Pads Replacement', 'Engine Noise Check', 'Moto Maintenance', 'Battery Boost'] 
-  },
-  'Security / Guard': { 
-    range: '10,000 - 35,000 RWF', 
-    min: 10000, 
-    max: 35000, 
-    tags: ['Overnight Patrol', 'Gate Registry', 'CCTV Setup Check', 'Access Control'] 
-  },
-  'Event Helper': { 
-    range: '7,000 - 18,000 RWF', 
-    min: 7000, 
-    max: 18000, 
-    tags: ['Marquee Decor', 'Server & Catering', 'Guest ushering', 'Exhibition Clean up'] 
-  },
-  'Moving Support': { 
-    range: '12,000 - 40,000 RWF', 
-    min: 12000, 
-    max: 40000, 
-    tags: ['Heavy Couch Lifting', 'Fragile packing', 'Truck loading', 'Furniture reassembly'] 
-  }
-};
+import { JOB_CATEGORIES, getJobCategory } from '../../lib/jobCategories';
 
 interface Toast {
   id: string;
@@ -71,15 +26,10 @@ export default function EmployerPostTask() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const catLabel = (v: string) => ({
-    'Domestic Cleaning': t('category_domestic_cleaning'),
-    'Plumbing Repairs': t('category_plumbing_repairs'),
-    'Garden Work': t('category_garden_work'),
-    'Mechanical Repairs': t('category_mechanical_repairs'),
-    'Security / Guard': t('category_security_guard'),
-    'Event Helper': t('category_event_helper'),
-    'Moving Support': t('category_moving_support'),
-  }[v] || v);
+  const catLabel = (v: string) => {
+    const labelKey = getJobCategory(v)?.labelKey;
+    return labelKey ? t(labelKey) : v;
+  };
 
   const tagLabel = (v: string) => ({
     'Floor Mopping': t('tag_floor_mopping'),
@@ -120,7 +70,7 @@ export default function EmployerPostTask() {
   
   // Form State
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Domestic Cleaning');
+  const [category, setCategory] = useState('Cleaning Services');
   const [location, setLocation] = useState('');
   const [phone, setPhone] = useState('');
   const [description, setDescription] = useState('');
@@ -159,7 +109,7 @@ export default function EmployerPostTask() {
 
   // Apply Median Price Recommendation
   const handleApplyRecommendedBudget = () => {
-    const meta = CATEGORY_METADATA[category];
+    const meta = getJobCategory(category);
     if (meta) {
       const median = Math.round((meta.min + meta.max) / 2);
       setBudget(median.toString());
@@ -294,7 +244,7 @@ export default function EmployerPostTask() {
     }
   };
 
-  const activeCategoryMeta = CATEGORY_METADATA[category] || CATEGORY_METADATA['Domestic Cleaning'];
+  const activeCategoryMeta = getJobCategory(category) || JOB_CATEGORIES[0];
 
 
 
@@ -389,13 +339,9 @@ export default function EmployerPostTask() {
                           }}
                           className="w-full px-5 py-4 rounded-xl bg-gray-50 border border-transparent focus:bg-white focus:border-blue-600 outline-none font-sans font-bold transition-all cursor-pointer"
                         >
-                          <option value="Domestic Cleaning">{catLabel('Domestic Cleaning')}</option>
-                          <option value="Plumbing Repairs">{catLabel('Plumbing Repairs')}</option>
-                          <option value="Garden Work">{catLabel('Garden Work')}</option>
-                          <option value="Mechanical Repairs">{catLabel('Mechanical Repairs')}</option>
-                          <option value="Security / Guard">{catLabel('Security / Guard')}</option>
-                          <option value="Event Helper">{catLabel('Event Helper')}</option>
-                          <option value="Moving Support">{catLabel('Moving Support')}</option>
+                          {JOB_CATEGORIES.map((c) => (
+                            <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
+                          ))}
                         </select>
                       </div>
 

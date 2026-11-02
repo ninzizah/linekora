@@ -9,7 +9,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../lib/AuthContext';
 import { createJob } from '../../lib/api';
+import { JOB_CATEGORIES } from '../../lib/jobCategories';
 import { useLanguage } from '../../lib/LanguageContext';
+import SocialShare from '../../components/SocialShare';
+import { absoluteUrl } from '../../components/Seo';
 interface NotificationMsg {
   id: string;
   type: 'success' | 'info' | 'error' | 'invite';
@@ -55,14 +58,7 @@ export default function PostJob() {
   // Expired Jobs mock database
   const [expiredJobs, setExpiredJobs] = useState<{ id: number; title: string; location: string; expiredAt: string; salary: string }[]>([]);
 
-  const categories = [
-    'Construction', 'Domestic Help', 'Mechanical', 'Security', 
-    'Logistics', 'Creative', 'IT & Tech', 'Hospitality'
-  ];
-
   const jobTypes = ['full-time', 'part-time', 'contract', 'on-demand'];
-
-  const catLabel = (v: string) => ({ Construction: t('category_construction'), 'Domestic Help': t('category_domestic_help'), Mechanical: t('category_mechanical'), Security: t('category_security'), Logistics: t('category_logistics'), Creative: t('category_creative'), 'IT & Tech': t('category_it_tech'), Hospitality: t('category_hospitality') }[v] || v);
 
   const jobTypeLabel = (v: string) => ({ 'full-time': t('job_type_full_time'), 'part-time': t('job_type_part_time'), contract: t('job_type_contract'), 'on-demand': t('job_type_on_demand') }[v] || v);
 
@@ -276,7 +272,7 @@ export default function PostJob() {
                     value={formData.category}
                     onChange={e => setFormData({ ...formData, category: e.target.value })}
                   >
-                    {categories.map(c => <option key={c} value={c}>{catLabel(c)}</option>)}
+                    {JOB_CATEGORIES.map(c => <option key={c.value} value={c.value}>{t(c.labelKey)}</option>)}
                   </select>
                 </div>
                 <div>
@@ -488,6 +484,22 @@ export default function PostJob() {
                   {t('browse_workers')} →
                 </button>
               </div>
+
+              {publishedJobId && (
+                <div className="p-5 rounded-2xl border border-gray-100 bg-gray-50 mb-8">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">
+                    LINEKORA
+                  </p>
+                  <p className="text-sm font-black text-gray-900 mb-3">
+                    {formData.title || t('job')}
+                  </p>
+                  <SocialShare
+                    url={absoluteUrl(`/jobs/${publishedJobId}`)}
+                    title={`${formData.title || t('job')} | LINEKORA`}
+                    description={[profile?.displayName, formData.location, formData.salary].filter(Boolean).join(' • ')}
+                  />
+                </div>
+              )}
 
               {/* ROUTING OPTIONS */}
               <div className="border-t border-gray-100 pt-8 flex flex-col gap-3">

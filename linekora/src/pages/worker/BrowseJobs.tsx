@@ -9,6 +9,7 @@ import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStora
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { getJobs, createApplication, createNotification, getSavedJobs, saveJob, deleteSavedJob, Job } from '../../lib/api';
+import { JOB_CATEGORIES, getJobCategory, matchesJobCategory } from '../../lib/jobCategories';
 import { formatDistanceToNow } from 'date-fns';
 import { useLanguage } from '../../lib/LanguageContext';
 
@@ -54,9 +55,8 @@ export default function BrowseJobs() {
   const loadJobs = async () => {
     setLoading(true);
     try {
-      const params: { urgent?: boolean; category?: string; status?: string } = { status: 'open' };
+      const params: { urgent?: boolean; status?: string } = { status: 'open' };
       if (filterUrgent) params.urgent = true;
-      if (filterCategory) params.category = filterCategory;
       const data = await getJobs(params);
       setJobs(data);
     } catch (err) {
@@ -82,7 +82,7 @@ export default function BrowseJobs() {
         })
         .catch((err) => console.error('Failed to load saved jobs', err));
     }
-  }, [filterUrgent, filterCategory]);
+  }, [filterUrgent]);
 
   const handleApply = async (job: Job) => {
     if (!profile?.id) {
@@ -163,6 +163,7 @@ export default function BrowseJobs() {
   };
 
   const filteredJobs = jobs.filter(job => {
+    if (!matchesJobCategory(job.category, filterCategory)) return false;
     if (filterNearby && myLocationTokens.length > 0) {
       const jobLoc = (job.location || '').toLowerCase();
       const nearby = myLocationTokens.some(token => token.length >= 3 && jobLoc.includes(token));
@@ -183,16 +184,7 @@ export default function BrowseJobs() {
   const nearbyActive = filterNearby && myLocationTokens.length > 0;
   const subtitleCount = `${filteredJobs.length} verified ${filteredJobs.length === 1 ? t('opportunity') : t('opportunities')}`;
 
-  const categories = [
-    { value: 'Construction', key: 'category_construction' },
-    { value: 'Domestic Help', key: 'category_domestic_help' },
-    { value: 'Mechanical', key: 'category_mechanical' },
-    { value: 'Security', key: 'category_security' },
-    { value: 'Logistics', key: 'category_logistics' },
-    { value: 'Creative', key: 'category_creative' },
-    { value: 'IT & Tech', key: 'category_it_tech' },
-    { value: 'Hospitality', key: 'category_hospitality' },
-  ];
+  const categories = JOB_CATEGORIES;
 
   return (
     <DashboardLayout>
@@ -268,7 +260,7 @@ export default function BrowseJobs() {
                   className="w-full p-3 rounded-xl border border-gray-100 font-sans font-bold text-sm outline-none focus:border-blue-600"
                 >
                   <option value="">{t('all_categories')}</option>
-                  {categories.map(c => <option key={c.value} value={c.value}>{t(c.key)}</option>)}
+                  {categories.map(c => <option key={c.value} value={c.value}>{t(c.labelKey)}</option>)}
                 </select>
               </div>
               <div>
@@ -365,7 +357,10 @@ export default function BrowseJobs() {
                         )}
                         {job.category && (
                           <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
-                            {job.category}
+                            {(() => {
+                              const labelKey = getJobCategory(job.category)?.labelKey;
+                              return labelKey ? t(labelKey) : job.category;
+                            })()}
                           </span>
                         )}
                       </div>

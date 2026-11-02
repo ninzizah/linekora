@@ -1,4 +1,4 @@
-import { Shield, ChevronRight, CheckCircle, Users, Building, Briefcase, Handshake, MapPin, Search } from 'lucide-react';
+import { Shield, ChevronRight, CheckCircle, Users, Building, Briefcase, Handshake, MapPin, Search, Wrench, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
@@ -7,6 +7,7 @@ import Footer from '../../components/layout/Footer';
 import InstallAppButton from '../../components/InstallAppButton';
 import { useLanguage } from '../../lib/LanguageContext';
 import { getStats } from '../../lib/api';
+import { JOB_CATEGORIES } from '../../lib/jobCategories';
 import Seo from '../../components/Seo';
 
 export default function Home() {
@@ -46,17 +47,52 @@ export default function Home() {
 
   const fmt = (n: number) => n.toLocaleString('en-US');
 
-  const categories = [
-    { name: t('category_office_jobs'), icon: Building },
-    { name: t('category_construction'), icon: Briefcase },
-    { name: t('category_cleaning'), icon: CheckCircle },
-    { name: t('category_mechanic'), icon: Handshake },
-    { name: t('category_delivery'), icon: MapPin },
-    { name: t('category_it_tech'), icon: Shield },
-    { name: t('category_agriculture'), icon: Briefcase },
-    { name: t('category_security'), icon: Shield },
-    { name: t('category_hospitality'), icon: Users },
+  const CATEGORY_ICONS: Record<string, typeof Building> = {
+    Construction: Briefcase,
+    'Domestic Help': Users,
+    'Cleaning Services': CheckCircle,
+    Plumbing: Wrench,
+    Electrical: Zap,
+    Carpentry: Handshake,
+    Mechanical: Wrench,
+    Security: Shield,
+    Logistics: MapPin,
+    Delivery: MapPin,
+    Driving: MapPin,
+    Agriculture: Briefcase,
+    'Gardening & Landscaping': Briefcase,
+    Hospitality: Users,
+    'Food Service': Users,
+    Events: Users,
+    Childcare: Users,
+    Healthcare: Shield,
+    'Education & Tutoring': Briefcase,
+    'IT & Tech': Shield,
+    Creative: Briefcase,
+    'Marketing & Media': Briefcase,
+    'Office Jobs': Building,
+    'Retail & Sales': Handshake,
+    'Beauty & Wellness': CheckCircle,
+    'Tailoring & Fashion': Handshake,
+    'Accounting & Finance': Building,
+    'Customer Service': Users,
+    'Moving & Relocation': MapPin,
+    Other: Briefcase,
+  };
+
+  const FEATURED_CATEGORY_VALUES = [
+    'Construction', 'Cleaning Services', 'Plumbing', 'Electrical', 'Mechanical',
+    'Security', 'Delivery', 'Agriculture', 'IT & Tech', 'Hospitality',
+    'Healthcare', 'Education & Tutoring', 'Creative', 'Office Jobs', 'Other',
   ];
+
+  const categories = FEATURED_CATEGORY_VALUES.map((value) => {
+    const meta = JOB_CATEGORIES.find((category) => category.value === value);
+    return {
+      name: meta ? t(meta.labelKey) : value,
+      icon: CATEGORY_ICONS[value] || Briefcase,
+    };
+  });
 
   // No real figures yet (still loading, or the API is down with no cache) — the
   // strip renders nothing rather than a number we cannot stand behind.

@@ -17,6 +17,9 @@ model User {
   location           String?
   avatarUrl          String?  @db.Text
   bio                String?  @db.Text
+  // Company profile fields (optional for all roles; used by COMPANY/EMPLOYER)
+  industry           String?
+  companyEmail       String?
   skills             String?
   experience         String?
   education          String?

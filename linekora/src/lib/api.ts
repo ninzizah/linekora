@@ -98,6 +98,8 @@ export interface UserProfile {
   phone?: string;
   location?: string;
   bio?: string;
+  industry?: string;
+  companyEmail?: string;
   skills?: string;
   experience?: string;
   education?: string;
@@ -255,7 +257,7 @@ export interface Job {
   requirements?: string;
   photos?: string;
   workerType?: string;
-  employer?: Pick<UserProfile, 'id' | 'displayName' | 'email' | 'phone'>;
+  employer?: Pick<UserProfile, 'id' | 'displayName' | 'email' | 'phone' | 'avatarUrl' | 'location' | 'industry' | 'verificationStatus'>;
   createdAt: string;
 }
 
