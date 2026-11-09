@@ -952,6 +952,27 @@ app.post('/api/jobs', async (req, res) => {
     if (data.deadline && typeof data.deadline === 'string') {
       data.deadline = new Date(data.deadline).toISOString();
     }
+    // Duplicate guard: if the same employer submitted an identical job moments
+    // ago (double-click, retry after a client error, etc.), return the existing
+    // job instead of creating a duplicate.
+    if (
+      data.employerId &&
+      typeof data.title === 'string' &&
+      typeof data.description === 'string'
+    ) {
+      const recentDuplicate = await prisma.job.findFirst({
+        where: {
+          employerId: String(data.employerId),
+          title: data.title,
+          description: data.description,
+          createdAt: { gte: new Date(Date.now() - 30_000) },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (recentDuplicate) {
+        return res.json(recentDuplicate);
+      }
+    }
     const job = await prisma.job.create({ data });
     res.json(job);
   } catch (error: any) {

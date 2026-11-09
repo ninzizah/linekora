@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   ShieldCheck, ArrowLeft, Send, Sparkles, 
   MapPin, DollarSign, Calendar, FileText, CheckCircle2,
@@ -12,6 +12,7 @@ import { createJob } from '../../lib/api';
 import { JOB_CATEGORIES } from '../../lib/jobCategories';
 import { useLanguage } from '../../lib/LanguageContext';
 import SocialShare from '../../components/SocialShare';
+import { cacheJob } from '../../lib/jobCache';
 import { absoluteUrl } from '../../components/Seo';
 interface NotificationMsg {
   id: string;
@@ -25,6 +26,7 @@ export default function PostJob() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [verifiedOnly, setVerifiedOnly] = useState(true);
   const [isUrgent, setIsUrgent] = useState(false);
 
@@ -76,13 +78,15 @@ export default function PostJob() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (submittingRef.current) return;
 
     if (!profile?.id) {
       addNotification('error', t('toast_not_authenticated'), t('toast_sign_in_before_posting'));
-      setLoading(false);
       return;
     }
+
+    submittingRef.current = true;
+    setLoading(true);
     
     const salaryStr = formData.salary.includes('RWF') ? formData.salary : `RWF ${formData.salary}`;
 
@@ -113,20 +117,18 @@ export default function PostJob() {
         verified: true,
       };
 
+      // Also cache locally for offline use (best-effort, never blocks publishing)
       if (isUrgent) {
-        const existingUrgent = localStorage.getItem('urgent_jobs');
-        const urgentList = existingUrgent ? JSON.parse(existingUrgent) : [];
-        localStorage.setItem('urgent_jobs', JSON.stringify([localJob, ...urgentList]));
+        cacheJob('urgent_jobs', localJob);
       }
-      const existingJobs = localStorage.getItem('all_jobs');
-      const jobsList = existingJobs ? JSON.parse(existingJobs) : [];
-      localStorage.setItem('all_jobs', JSON.stringify([localJob, ...jobsList]));
+      cacheJob('all_jobs', localJob);
 
       setLoading(false);
       setPublishedJobId(dbJob.id);
       setShowSuccessModal(true);
       addNotification('success', t('toast_job_published'), t('toast_job_published_msg'));
     } catch (err: any) {
+      submittingRef.current = false;
       setLoading(false);
       addNotification('error', t('toast_publish_failed'), err.message || t('server_error_retry'));
     }

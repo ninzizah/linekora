@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   PlusSquare, MapPin, DollarSign, Clock, 
   ChevronRight, ChevronLeft, Calendar, Info, Shield, 
@@ -8,7 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import { useAuth } from '../../lib/AuthContext';
 import { useLanguage } from '../../lib/LanguageContext';
-import { readScopedStorage, writeScopedStorage } from '../../lib/userScopedStorage';
+import { scopedKey } from '../../lib/userScopedStorage';
+import { cacheJob } from '../../lib/jobCache';
 import { motion, AnimatePresence } from 'motion/react';
 import { createJob } from '../../lib/api';
 import { JOB_CATEGORIES, getJobCategory } from '../../lib/jobCategories';
@@ -25,6 +26,7 @@ export default function EmployerPostTask() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const catLabel = (v: string) => {
     const labelKey = getJobCategory(v)?.labelKey;
@@ -188,13 +190,15 @@ export default function EmployerPostTask() {
   };
 
   const handleSubmit = async () => {
-    setLoading(true);
+    if (submittingRef.current) return;
 
     if (!profile?.id) {
       addToast(t('toast_sign_in_to_post'), 'error');
-      setLoading(false);
       return;
     }
+
+    submittingRef.current = true;
+    setLoading(true);
     
     const finalDescription = description.trim() + 
       (selectedTags.length > 0 ? `\n\n[TASK SUB-SCOPES: ${selectedTags.join(', ')}]` : '');
@@ -228,17 +232,17 @@ export default function EmployerPostTask() {
         tags: selectedTags
       };
 
+      // Cache locally too (best-effort, never blocks publishing)
       if (isUrgent) {
-        const urgentList = readScopedStorage<any[]>(profile?.id, 'urgent_jobs', []);
-        writeScopedStorage(profile?.id, 'urgent_jobs', [localTask, ...urgentList]);
+        cacheJob(scopedKey(profile.id, 'urgent_jobs'), localTask);
       }
-      const jobsList = readScopedStorage<any[]>(profile?.id, 'all_jobs', []);
-      writeScopedStorage(profile?.id, 'all_jobs', [localTask, ...jobsList]);
+      cacheJob(scopedKey(profile.id, 'all_jobs'), localTask);
 
       setLoading(false);
       setShowSuccessBlast(true);
       addToast(t('toast_task_dispatched'), 'success');
     } catch (err: any) {
+      submittingRef.current = false;
       setLoading(false);
       addToast(err.message || t('server_error_retry'), 'error');
     }
