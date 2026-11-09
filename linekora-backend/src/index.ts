@@ -83,6 +83,88 @@ app.post('/api/operator/unlock', async (req, res) => {
   }
 });
 
+// ─── PUBLIC SHARE ENDPOINTS ────────────────────────────────────────────────
+// Shareable job links are opened by people who may not be signed in, and by
+// link-preview crawlers (WhatsApp, Facebook, ...) that cannot authenticate.
+// These routes are registered before requireAuth and never expose the
+// employer's email or phone.
+
+// Public employer/company avatar. Avatars are stored as base64 data URLs,
+// which link-preview crawlers cannot use directly, so this serves real image
+// bytes (or redirects when the avatar is already an external URL).
+app.get('/api/users/:id/avatar', async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id },
+      select: { avatarUrl: true },
+    });
+    if (!user?.avatarUrl) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    if (/^https?:\/\//i.test(user.avatarUrl)) {
+      return res.redirect(302, user.avatarUrl);
+    }
+    const match = user.avatarUrl.match(/^data:(image\/(?:png|jpe?g|webp|gif));base64,(.+)$/is);
+    if (!match) {
+      return res.status(404).json({ error: 'Avatar not found' });
+    }
+    const [, mime, base64] = match;
+    const buffer = Buffer.from(base64, 'base64');
+    if (buffer.length > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Avatar too large' });
+    }
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+    return res.send(buffer);
+  } catch (err) {
+    console.error('Get avatar error:', err);
+    res.status(500).json({ error: 'Failed to fetch avatar' });
+  }
+});
+
+// Public job details for shareable links (also used by routing middleware).
+app.get('/api/jobs/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid job id' });
+    }
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: {
+        employer: {
+          select: {
+            id: true,
+            displayName: true,
+            avatarUrl: true,
+            location: true,
+            industry: true,
+            verificationStatus: true,
+          },
+        },
+      },
+    });
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    // Replace stored data-URL avatars with a public image URL that crawlers and
+    // the public page can load.
+    let employer = job.employer;
+    if (employer?.avatarUrl && !/^https?:\/\//i.test(employer.avatarUrl)) {
+      const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol;
+      const host = (req.headers['x-forwarded-host'] as string) || req.get('host');
+      employer = {
+        ...employer,
+        avatarUrl: `${proto}://${host}/api/users/${employer.id}/avatar`,
+      };
+    }
+    res.json({ ...job, employer });
+  } catch (err) {
+    console.error('Get job by id error:', err);
+    res.status(500).json({ error: 'Failed to fetch job' });
+  }
+});
+
 // ─── AUTH ──────────────────────────────────────────────────────────────────
 // Every route defined below this point requires a valid Firebase ID token.
 app.use('/api', requireAuth);
@@ -1034,41 +1116,6 @@ app.delete('/api/jobs/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete job' });
   }
 });
-
-// Get single job by ID (public)
-app.get('/api/jobs/:id', async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid job id' });
-    }
-    const job = await prisma.job.findUnique({
-      where: { id },
-      include: {
-        employer: {
-          select: {
-            id: true,
-            displayName: true,
-            email: true,
-            phone: true,
-            avatarUrl: true,
-            location: true,
-            industry: true,
-            verificationStatus: true,
-          },
-        },
-      },
-    });
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' });
-    }
-    res.json(job);
-  } catch (err) {
-    console.error('Get job by id error:', err);
-    res.status(500).json({ error: 'Failed to fetch job' });
-  }
-});
-
 
 // Apply to a job (worker claiming)
 app.post('/api/jobs/:id/apply', async (req, res) => {
